@@ -1,0 +1,86 @@
+<main class="reading-page">
+  <header class="reading-heading">
+    <div>
+      <p class="eyebrow">Reading</p>
+      <h1>Today's passage</h1>
+    </div>
+    <a routerLink="/">Back to today</a>
+  </header>
+
+  @if (facade.exerciseState() === 'loading') {
+    <p role="status">Loading today's passage...</p>
+  }
+
+  @if (facade.exerciseState() === 'error') {
+    <div class="error-state" role="alert">
+      <strong>Couldn't load today's passage.</strong>
+    </div>
+  }
+
+  @if (facade.exerciseState() === 'ready' && facade.exercise(); as exercise) {
+    @if (exercise.status === 'failed') {
+      <div class="error-state" data-testid="reading-failed">
+        <h2>Couldn't generate today's passage</h2>
+        <button type="button" (click)="retry()">Retry</button>
+      </div>
+    } @else if (facade.result()) {
+      @let result = facade.result()!;
+      <section class="reading-card" data-testid="reading-result">
+        <p class="eyebrow">Result</p>
+        <h2>{{ result.score }} / {{ result.total }} correct</h2>
+        <ol class="answer-review">
+          @for (answer of result.answers; track $index; let ai = $index) {
+            <li [class.correct]="answer.correct" [class.wrong]="!answer.correct">
+              <p>{{ answer.questionText }}</p>
+              <p>Your answer: {{ answer.options[answer.learnerAnswerIndex] }}</p>
+              @if (!answer.correct) {
+                <p>Correct answer: {{ answer.options[answer.correctOptionIndex] }}</p>
+                @if (openQuickAddIndex === ai) {
+                  <app-mistake-quick-add
+                    [data]="quickAddData(answer)"
+                    (saved)="closeQuickAdd()"
+                    (cancelled)="closeQuickAdd()" />
+                } @else {
+                  <button type="button" (click)="openQuickAdd(ai)">
+                    Add to Mistake Notebook
+                  </button>
+                }
+              }
+            </li>
+          }
+        </ol>
+        <a class="button-link primary" routerLink="/">Back to today's lesson</a>
+      </section>
+    } @else {
+      <section class="reading-card">
+        @if (exercise.focusReference) {
+          <p class="focus-note">Targets: {{ exercise.focusReference }}</p>
+        }
+        <p class="passage-text">{{ exercise.passageText }}</p>
+        <ol class="question-list">
+          @for (question of exercise.questions; track question.id; let qi = $index) {
+            <li>
+              <p>{{ question.questionText }}</p>
+              <div class="options">
+                @for (option of question.options; track $index; let oi = $index) {
+                  <button
+                    type="button"
+                    class="option"
+                    [class.selected]="selectedAnswers[qi] === oi"
+                    (click)="selectAnswer(qi, oi)">
+                    {{ option }}
+                  </button>
+                }
+              </div>
+            </li>
+          }
+        </ol>
+        <div class="actions">
+          <button class="primary" type="button" [disabled]="!canSubmit" (click)="submit()">
+            Submit Answers
+          </button>
+        </div>
+      </section>
+    }
+  }
+</main>

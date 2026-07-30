@@ -1,0 +1,58 @@
+<section class="word-panel" aria-labelledby="add-word-heading">
+  <header>
+    <h2 id="add-word-heading">Add a vocabulary word</h2>
+    <button type="button" aria-label="Close add word panel" (click)="closed.emit()">Close</button>
+  </header>
+  <form (ngSubmit)="save()">
+    <label>
+      Word
+      <input
+        name="word"
+        [value]="word"
+        (input)="word = $any($event.target).value"
+        required
+      />
+    </label>
+    <label>
+      Meaning
+      <textarea
+        name="meaning"
+        [value]="meaning"
+        (input)="meaning = $any($event.target).value"
+        rows="3"
+        required
+      ></textarea>
+    </label>
+    <label>
+      Example sentence <span>Optional</span>
+      <textarea
+        name="example"
+        [value]="example"
+        (input)="example = $any($event.target).value"
+        rows="3"
+      ></textarea>
+    </label>
+    <label>
+      Topic <span>Optional</span>
+      <input
+        name="topic"
+        [value]="topic"
+        (input)="topic = $any($event.target).value"
+      />
+    </label>
+    @if (savedMessage) {
+      <p class="word-panel__success" role="status">{{ savedMessage }}</p>
+    }
+    @if (errorMessage) {
+      <p class="word-panel__error" role="alert">{{ errorMessage }}</p>
+    }
+    <button
+      data-testid="save-word"
+      class="word-panel__save"
+      type="submit"
+      [disabled]="saveDisabled"
+    >
+      {{ saving ? 'Saving...' : 'Save word' }}
+    </button>
+  </form>
+</section>

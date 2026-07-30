@@ -1,0 +1,105 @@
+<main class="progress-page">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">Progress</p>
+      <h1>Practice trend</h1>
+      <p>See the direction of your recent work and the question types holding you back.</p>
+    </div>
+    <div class="actions">
+      <a class="button-link primary" routerLink="/progress/log">Log result</a>
+      <a routerLink="/progress/history">View history</a>
+    </div>
+  </header>
+
+  <section class="filter-bar card" aria-label="Progress filters">
+    <label>
+      Skill
+      <select
+        [value]="facade.skill()"
+        (change)="setSkill($any($event.target).value)"
+      >
+        <option value="Both">Reading and Listening</option>
+        <option value="Reading">Reading</option>
+        <option value="Listening">Listening</option>
+      </select>
+    </label>
+    <label>
+      Period
+      <select
+        [value]="facade.period()"
+        (change)="setPeriod($any($event.target).value)"
+      >
+        <option value="4_weeks">Last 4 weeks</option>
+        <option value="8_weeks">Last 8 weeks</option>
+        <option value="12_weeks">Last 12 weeks</option>
+      </select>
+    </label>
+    <button type="button" (click)="refresh()" [disabled]="facade.loadState() === 'loading'">
+      {{ facade.loadState() === 'loading' ? 'Refreshing...' : 'Refresh' }}
+    </button>
+  </section>
+
+  @if (facade.loadState() === 'loading' && !facade.result()) {
+    <section class="card state-card" aria-live="polite">Loading progress...</section>
+  } @else if (facade.loadState() === 'error') {
+    <section class="card state-card error-state" data-testid="load-error" role="alert">
+      <h2>Progress could not be loaded</h2>
+      <p>This is a loading problem, not a lack of practice data.</p>
+      <button type="button" (click)="refresh()">Try again</button>
+    </section>
+  } @else if (facade.result(); as result) {
+    @if (result.sessionCount === 0) {
+      <section class="card state-card" data-testid="zero-sessions">
+        <p class="eyebrow">Start here</p>
+        <h2>No results in this view yet</h2>
+        <p>Log a Reading or Listening result to begin building your trend.</p>
+        <a class="button-link primary" routerLink="/progress/log">Log practice result</a>
+      </section>
+    } @else {
+      <div class="trend-layout">
+        <section class="card trend-card" data-testid="trend-region">
+          <p class="eyebrow">Score direction</p>
+          @if (result.threshold.sufficient) {
+            <div class="score-line">
+              <strong>{{ result.averageScorePercentage }}%</strong>
+              <span class="direction" [attr.data-direction]="result.direction">
+                {{ directionLabel(result.direction) }}
+              </span>
+            </div>
+            <p>
+              Normalized average across {{ result.sessionCount }} sessions.
+              Direction compares your recent half with your earlier half.
+            </p>
+          } @else {
+            <div data-testid="insufficient">
+              <h2>{{ result.threshold.count }} of 4 sessions logged</h2>
+              <p>
+                Log {{ result.threshold.remaining }} more
+                {{ result.threshold.remaining === 1 ? 'session' : 'sessions' }}
+                to see a reliable trend.
+              </p>
+              <a routerLink="/progress/history">Review the results already logged</a>
+            </div>
+          }
+        </section>
+
+        <section class="card breakdown-card" data-testid="breakdown-region">
+          <p class="eyebrow">Missed question types</p>
+          <h2>Where errors collect</h2>
+          @if (result.breakdown.length === 0) {
+            <p>No missed question types were recorded for these sessions.</p>
+          } @else {
+            <ol>
+              @for (entry of result.breakdown; track entry.key) {
+                <li>
+                  <span>{{ humanize(entry.key) }}</span>
+                  <strong>{{ entry.count }}</strong>
+                </li>
+              }
+            </ol>
+          }
+        </section>
+      </div>
+    }
+  }
+</main>

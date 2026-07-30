@@ -1,0 +1,162 @@
+.progress-page {
+  width: min(68rem, 100%);
+  margin: 0 auto;
+  padding: 1.5rem 0 3rem;
+  color: #1f3326;
+}
+
+.page-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.page-heading h1,
+.card h1,
+.card h2 {
+  margin: 0.2rem 0 0.45rem;
+  line-height: 1.15;
+}
+
+.page-heading p,
+.card p {
+  margin: 0;
+  color: #536259;
+}
+
+.eyebrow {
+  color: #28713c !important;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.card {
+  padding: 1.35rem;
+  border: 1px solid #d6e0d8;
+  border-radius: 0.75rem;
+  background: #fff;
+  box-shadow: 0 0.35rem 1.5rem rgba(29, 55, 36, 0.06);
+}
+
+fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  margin-bottom: 0.75rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  color: #263b2d;
+  font-weight: 700;
+}
+
+input,
+select,
+textarea,
+button {
+  font: inherit;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid #8a9b8f;
+  border-radius: 0.5rem;
+  color: #17291e;
+  background: #fff;
+}
+
+textarea {
+  resize: vertical;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid #a9d7b4;
+  outline-offset: 2px;
+}
+
+.actions,
+.filter-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+button,
+.button-link {
+  padding: 0.65rem 0.9rem;
+  border: 1px solid #87988c;
+  border-radius: 0.5rem;
+  color: #23372a;
+  background: #f6f9f6;
+  cursor: pointer;
+  font-weight: 750;
+}
+
+button.primary,
+.button-link.primary {
+  border-color: #276d39;
+  color: #fff;
+  background: #276d39;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+a {
+  color: #226c37;
+  font-weight: 750;
+}
+
+.field-help,
+.optional {
+  color: #657269;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.error-box,
+.inline-warning {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  padding: 0.8rem;
+  border: 1px solid #c98787;
+  border-radius: 0.5rem;
+  color: #742e2e;
+  background: #fff5f5;
+}
+
+@media (max-width: 48rem) {
+  .progress-page {
+    padding-top: 0.75rem;
+  }
+
+  .page-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

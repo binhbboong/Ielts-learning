@@ -1,0 +1,84 @@
+.word-panel {
+  padding: 1.25rem;
+  border: 1px solid #d5dfdc;
+  border-radius: 0.75rem;
+  background: #fff;
+  box-shadow: 0 1rem 2.5rem rgb(30 60 52 / 0.1);
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+h2 {
+  margin: 0;
+}
+
+form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 700;
+}
+
+label span {
+  color: #697773;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+input,
+textarea,
+button {
+  box-sizing: border-box;
+  font: inherit;
+}
+
+input,
+textarea {
+  width: 100%;
+  padding: 0.7rem;
+  border: 1px solid #9caaa6;
+  border-radius: 0.5rem;
+}
+
+button {
+  min-height: 2.65rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid #8d9b97;
+  border-radius: 0.5rem;
+  background: #fff;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.word-panel__save {
+  color: #fff;
+  border-color: #15594d;
+  background: #15594d;
+}
+
+.word-panel__save:disabled {
+  color: #6e7976;
+  border-color: #cbd4d1;
+  background: #e7ecea;
+  cursor: not-allowed;
+}
+
+.word-panel__success {
+  color: #15594d;
+  font-weight: 750;
+}
+
+.word-panel__error {
+  color: #9a2f28;
+  font-weight: 750;
+}

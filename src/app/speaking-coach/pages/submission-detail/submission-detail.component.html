@@ -1,0 +1,70 @@
+<main class="coach-page">
+  <header class="coach-heading">
+    <div>
+      <p class="eyebrow">Speaking coach</p>
+      <h1>Response detail</h1>
+    </div>
+    <a routerLink="/speaking/history">Back to history</a>
+  </header>
+
+  @if (facade.state() === 'loading' && !facade.current()) {
+    <section class="coach-card state-card">Loading response...</section>
+  } @else if (facade.state() === 'error') {
+    <section class="coach-card state-card error-state">Response could not be loaded.</section>
+  } @else if (facade.current(); as item) {
+    <section class="coach-card prompt">
+      <p class="eyebrow">{{ item.part.replace('_', ' ') }}</p>
+      <h2>{{ item.question }}</h2>
+    </section>
+
+    @if (item.transcript) {
+      <section class="coach-card transcript" data-testid="transcript">
+        <p class="eyebrow">Read-only transcript</p>
+        <h2>What was captured</h2>
+        <p>{{ item.transcript }}</p>
+      </section>
+    }
+
+    @if (item.status === 'PROCESSING') {
+      <section class="coach-card state-card">
+        <h2>{{ item.transcript ? 'Evaluating transcript' : 'Transcribing response' }}</h2>
+        <p>Processing is underway. You can leave and return later.</p>
+      </section>
+    } @else if (item.status === 'TRANSCRIPTION_FAILED') {
+      <section class="coach-card state-card error-state">
+        <h2>Transcription failed</h2>
+        <p>Your original recording is preserved.</p>
+        <button type="button" (click)="retryTranscription()">Retry transcription</button>
+      </section>
+    } @else if (item.status === 'EVALUATION_FAILED') {
+      <section class="coach-card state-card error-state">
+        <h2>Evaluation failed</h2>
+        <p>The transcript above is preserved. No new recording or transcription is needed.</p>
+        <button type="button" (click)="retryEvaluation()">Retry evaluation</button>
+      </section>
+    } @else {
+      <div class="feedback-grid">
+        @for (criterion of criteria(item); track criterion.label) {
+          @if (criterion.value; as feedback) {
+            <article class="coach-card">
+              <div class="criterion-heading">
+                <h2>{{ criterion.label }}</h2>
+                <strong>Band {{ feedback.bandScore }}</strong>
+              </div>
+              <p>{{ feedback.feedback }}</p>
+              <h3>Strengths</h3>
+              <ul>@for (value of feedback.strengths; track value) { <li>{{ value }}</li> }</ul>
+              <h3>Improve next</h3>
+              <ul>@for (value of feedback.weaknesses; track value) { <li>{{ value }}</li> }</ul>
+            </article>
+          }
+        }
+        <article class="coach-card pronunciation">
+          <p class="eyebrow">Pronunciation</p>
+          <h2>Not assessed</h2>
+          <p>This transcript-based coach does not estimate pronunciation.</p>
+        </article>
+      </div>
+    }
+  }
+</main>

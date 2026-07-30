@@ -1,0 +1,83 @@
+.review-page {
+  width: min(100% - 2rem, 46rem);
+  margin: 2rem auto;
+  color: #18201e;
+}
+
+header p {
+  margin-bottom: 0.35rem;
+  color: #1f6f5f;
+  font-weight: 800;
+}
+
+h1 {
+  margin-top: 0;
+}
+
+.recall-card,
+.review-page__state {
+  padding: clamp(1.25rem, 5vw, 2.5rem);
+  border: 1px solid #d5dfdc;
+  border-radius: 0.8rem;
+  background: #fff;
+}
+
+.recall-card > span {
+  color: #697773;
+  font-weight: 700;
+}
+
+.recall-card h2 {
+  margin: 1.5rem 0;
+  font-size: clamp(2rem, 7vw, 3.5rem);
+}
+
+.recall-card__answer {
+  padding: 1rem 0;
+  border-top: 1px solid #d5dfdc;
+}
+
+.recall-card__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+button {
+  min-height: 2.7rem;
+  padding: 0.65rem 1rem;
+  border: 1px solid #15594d;
+  border-radius: 0.5rem;
+  color: #15594d;
+  background: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.recall-card__reveal,
+.recall-card__actions button:last-child {
+  color: #fff;
+  background: #15594d;
+}
+
+.review-page__add {
+  margin: 1rem 0;
+}
+
+.review-page__state--error {
+  border-color: #d6a09b;
+  background: #fff7f6;
+}
+
+.review-page__loading {
+  height: 16rem;
+  border-radius: 0.8rem;
+  background: linear-gradient(90deg, #edf1f0, #f8faf9, #edf1f0);
+}
+
+@media (max-width: 34rem) {
+  .recall-card__actions {
+    grid-template-columns: 1fr;
+  }
+}

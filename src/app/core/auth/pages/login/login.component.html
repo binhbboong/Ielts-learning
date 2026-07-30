@@ -1,0 +1,43 @@
+<div class="login-page">
+  <header class="login-header">IELTS Learning</header>
+
+  <main class="login-main">
+    <section class="login-panel" aria-labelledby="login-heading">
+      @if (sessionExpired) {
+        <p class="login-expired" data-testid="session-expired" role="status">
+          Your session expired. Please log in again.
+        </p>
+      }
+
+      <h1 id="login-heading">Log in</h1>
+      <p class="login-intro">Enter your learner password to continue to your study plan.</p>
+
+      <form (submit)="$event.preventDefault(); submit()">
+        <label for="learner-password">Password</label>
+        <input
+          id="learner-password"
+          data-testid="password-input"
+          type="password"
+          autocomplete="current-password"
+          [formControl]="password"
+          aria-describedby="login-error"
+        />
+
+        @if (errorMessage) {
+          <p
+            id="login-error"
+            class="login-error"
+            data-testid="login-error"
+            role="alert"
+          >
+            {{ errorMessage }}
+          </p>
+        }
+
+        <button type="submit" [disabled]="password.invalid || submitting">
+          {{ submitting ? 'Logging in...' : 'Log in' }}
+        </button>
+      </form>
+    </section>
+  </main>
+</div>

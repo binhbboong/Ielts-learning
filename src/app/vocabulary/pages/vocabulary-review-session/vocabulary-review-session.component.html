@@ -1,0 +1,70 @@
+<main class="review-page">
+  <header>
+    <p>Vocabulary review</p>
+    <h1>Active recall</h1>
+  </header>
+
+  @if (facade.reviewLoadState() === 'loading') {
+    <div class="review-page__loading" aria-label="Loading review"></div>
+  } @else if (facade.reviewLoadState() === 'error') {
+    <section class="review-page__state review-page__state--error">
+      <h2>We could not load your review</h2>
+      <p>No word is shown because the schedule could not be read safely.</p>
+    </section>
+  } @else if (facade.reviewState(); as state) {
+    @if (state.status === 'item') {
+      <article data-testid="recall-card" class="recall-card">
+        <span>{{ state.item.position + 1 }} of {{ state.item.total }}</span>
+        <h2>{{ state.item.word }}</h2>
+        @if (revealed()) {
+          <div class="recall-card__answer">
+            <strong>{{ state.item.meaning }}</strong>
+            @if (state.item.example) {
+              <p>{{ state.item.example }}</p>
+            }
+          </div>
+          <div class="recall-card__actions">
+            <button type="button" [disabled]="assessing()" (click)="assess('forgot')">
+              Forgot
+            </button>
+            <button type="button" [disabled]="assessing()" (click)="assess('remembered')">
+              Remembered
+            </button>
+          </div>
+        } @else {
+          <button type="button" class="recall-card__reveal" (click)="reveal()">
+            Reveal answer
+          </button>
+        }
+      </article>
+    } @else if (state.status === 'complete' && state.summary) {
+      <section class="review-page__state">
+        <h2>Review complete</h2>
+        <strong>{{ state.summary.totalReviewed }} reviewed</strong>
+        <p>
+          {{ state.summary.remembered }} remembered,
+          {{ state.summary.forgot }} forgot
+        </p>
+        <p>Review dates were updated.</p>
+      </section>
+    } @else if (state.status === 'nothing_due') {
+      <section class="review-page__state">
+        <h2>Nothing due</h2>
+        <p>You are up to date. This is not an empty or broken queue.</p>
+      </section>
+    }
+  }
+
+  <button type="button" class="review-page__add" (click)="addPanelOpen.set(true)">
+    Add a word I just noticed
+  </button>
+  @if (wordAddedMessage()) {
+    <p role="status">{{ wordAddedMessage() }}</p>
+  }
+  @if (addPanelOpen()) {
+    <app-add-vocabulary-word-panel
+      (saved)="wordSaved()"
+      (closed)="addPanelOpen.set(false)"
+    />
+  }
+</main>

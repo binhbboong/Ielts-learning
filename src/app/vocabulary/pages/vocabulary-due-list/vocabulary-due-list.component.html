@@ -1,0 +1,52 @@
+<main class="due-page">
+  <header>
+    <p>Vocabulary review</p>
+    <h1>Words due today</h1>
+  </header>
+
+  @if (facade.dueLoadState() === 'loading') {
+    <div class="due-page__loading" aria-label="Loading due words"></div>
+  } @else if (facade.dueLoadState() === 'error') {
+    <section class="due-page__message due-page__message--error">
+      <h2>We could not load your due words</h2>
+      <p>Try again when your connection is available.</p>
+    </section>
+  } @else if (facade.dueSummary(); as summary) {
+    @if (summary.totalDue === 0) {
+      <section class="due-page__message">
+        <h2>You are on schedule</h2>
+        <p>No vocabulary is due today.</p>
+      </section>
+    } @else {
+      <section class="due-page__summary">
+        <strong>{{ summary.totalDue }} words due</strong>
+        <div>
+          <h2>By interval</h2>
+          @for (entry of entries(summary.byInterval); track entry[0]) {
+            <span>{{ entry[0] }}: {{ entry[1] }}</span>
+          }
+        </div>
+        <div>
+          <h2>By topic</h2>
+          @for (entry of entries(summary.byTopic); track entry[0]) {
+            <span>{{ entry[0] }}: {{ entry[1] }}</span>
+          }
+        </div>
+        <a href="/vocabulary/review">Start review</a>
+      </section>
+    }
+  }
+
+  <button type="button" class="due-page__add" (click)="addPanelOpen.set(true)">
+    Add a word
+  </button>
+  @if (wordAddedMessage()) {
+    <p role="status">{{ wordAddedMessage() }}</p>
+  }
+  @if (addPanelOpen()) {
+    <app-add-vocabulary-word-panel
+      (saved)="wordSaved()"
+      (closed)="addPanelOpen.set(false)"
+    />
+  }
+</main>

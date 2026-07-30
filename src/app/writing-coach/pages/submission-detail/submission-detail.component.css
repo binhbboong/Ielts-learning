@@ -1,0 +1,51 @@
+@import '../writing-coach.shared.css';
+
+.prompt-card,
+.overall,
+.corrections {
+  margin-bottom: 1rem;
+}
+
+.submitted-response {
+  white-space: pre-wrap;
+}
+
+.overall {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 1rem 1.35rem;
+  border-radius: 0.75rem;
+  color: #fff;
+  background: #276d39;
+}
+
+.overall strong {
+  font-size: 2.5rem;
+}
+
+.feedback-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 1rem;
+}
+
+.criterion-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.criterion-heading > strong {
+  white-space: nowrap;
+}
+
+.corrections article {
+  padding: 0.75rem 0;
+  border-top: 1px solid #dce5de;
+}
+
+@media (max-width: 48rem) {
+  .feedback-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,7 @@
+@import '../writing-coach.shared.css';
+
+.coach-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

@@ -1,0 +1,129 @@
+.coach-page {
+  width: min(68rem, 100%);
+  margin: 0 auto;
+  padding: 1.5rem 0 3rem;
+  color: #1f3326;
+}
+
+.coach-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.4rem;
+}
+
+.coach-heading h1,
+.coach-card h2,
+.coach-card h3 {
+  margin: 0.25rem 0 0.5rem;
+}
+
+.coach-heading p,
+.coach-card p {
+  color: #536259;
+}
+
+.eyebrow {
+  margin: 0 !important;
+  color: #28713c !important;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.coach-card {
+  padding: 1.35rem;
+  border: 1px solid #d6e0d8;
+  border-radius: 0.75rem;
+  background: #fff;
+  box-shadow: 0 0.35rem 1.5rem rgba(29, 55, 36, 0.06);
+}
+
+.coach-form,
+.coach-list,
+.feedback-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-weight: 700;
+}
+
+input,
+select,
+textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid #8a9b8f;
+  border-radius: 0.5rem;
+  font: inherit;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+button,
+.button-link {
+  padding: 0.65rem 0.9rem;
+  border: 1px solid #87988c;
+  border-radius: 0.5rem;
+  color: #23372a;
+  background: #f6f9f6;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 750;
+}
+
+.primary {
+  border-color: #276d39;
+  color: #fff;
+  background: #276d39;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+a {
+  color: #226c37;
+  font-weight: 750;
+}
+
+.error-state {
+  padding: 0.9rem;
+  border: 1px solid #c98787;
+  border-radius: 0.5rem;
+  color: #742e2e;
+  background: #fff5f5;
+}
+
+.state-card {
+  display: grid;
+  min-height: 10rem;
+  place-content: center;
+  gap: 0.75rem;
+  text-align: center;
+}
+
+@media (max-width: 48rem) {
+  .coach-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

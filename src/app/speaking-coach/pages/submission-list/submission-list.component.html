@@ -1,0 +1,33 @@
+<main class="coach-page">
+  <header class="coach-heading">
+    <div>
+      <p class="eyebrow">Speaking coach</p>
+      <h1>Past responses</h1>
+      <p>Track the exact processing state of every recording.</p>
+    </div>
+    <a class="button-link primary" routerLink="/speaking">Record a response</a>
+  </header>
+
+  @if (facade.state() === 'loading') {
+    <section class="coach-card state-card">Loading speaking submissions...</section>
+  } @else if (facade.state() === 'error') {
+    <section class="coach-card state-card error-state">Speaking history could not be loaded.</section>
+  } @else if (facade.submissions().length === 0) {
+    <section class="coach-card state-card">
+      <h2>No speaking responses yet</h2>
+      <a routerLink="/speaking">Record your first response</a>
+    </section>
+  } @else {
+    <ol class="coach-list">
+      @for (item of facade.submissions(); track item.id) {
+        <li class="coach-card">
+          <p class="eyebrow">{{ item.part.replace('_', ' ') }}</p>
+          <h2>{{ item.question }}</h2>
+          <p>{{ item.createdAt | date: 'medium' }}</p>
+          <span class="status" [attr.data-status]="item.status">{{ statusLabel(item.status) }}</span>
+          <a [routerLink]="['/speaking/submissions', item.id]">Open submission</a>
+        </li>
+      }
+    </ol>
+  }
+</main>

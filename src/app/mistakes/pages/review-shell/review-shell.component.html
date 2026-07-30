@@ -1,0 +1,56 @@
+<main class="review-shell">
+  <header>
+    <div>
+      <p class="review-shell__kicker">Mistake notebook</p>
+      <h1>Review recurring patterns</h1>
+    </div>
+    <a href="/mistakes/log">Log a mistake</a>
+  </header>
+
+  <section class="review-shell__controls" aria-label="Review controls">
+    <label>
+      Review period
+      <select
+        [ngModel]="facade.selectedPeriod()"
+        (ngModelChange)="changePeriod($event)"
+      >
+        @for (period of periods; track period.value) {
+          <option [value]="period.value">{{ period.label }}</option>
+        }
+      </select>
+    </label>
+    <div class="review-shell__toggle" aria-label="View mode">
+      <button
+        type="button"
+        [attr.aria-pressed]="facade.viewMode() === 'list'"
+        (click)="changeView('list')"
+      >
+        List
+      </button>
+      <button
+        type="button"
+        [attr.aria-pressed]="facade.viewMode() === 'grouped'"
+        (click)="changeView('grouped')"
+      >
+        Grouped
+      </button>
+    </div>
+  </section>
+
+  @if (selectedReason(); as reason) {
+    <section aria-labelledby="category-heading">
+      <button type="button" class="review-shell__back" (click)="selectedReason.set(null)">
+        Back to groups
+      </button>
+      <h2 id="category-heading">{{ reasonLabel(reason) }}</h2>
+      <app-review-category-detail [items]="facade.categoryDetail()" />
+    </section>
+  } @else if (facade.viewMode() === 'grouped') {
+    <app-review-grouped
+      [groups]="facade.grouped()"
+      (selected)="showCategory($event)"
+    />
+  } @else {
+    <app-review-list [entries]="facade.entries()" />
+  }
+</main>

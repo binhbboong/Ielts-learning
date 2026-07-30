@@ -1,0 +1,78 @@
+<main class="coach-page">
+  <header class="coach-heading">
+    <div>
+      <p class="eyebrow">Writing coach</p>
+      <h1>Submission feedback</h1>
+    </div>
+    <a routerLink="/writing/history">Back to submissions</a>
+  </header>
+
+  @if (facade.detailState() === 'loading') {
+    <section class="coach-card state-card">Loading full feedback...</section>
+  } @else if (facade.detailState() === 'error') {
+    <section class="coach-card state-card error-state" data-testid="writing-detail-error">
+      <h2>Feedback could not be loaded</h2>
+      <p>The submission may still exist. Return to history and try again.</p>
+    </section>
+  } @else if (facade.current(); as item) {
+    <section class="coach-card prompt-card">
+      <p class="eyebrow">{{ item.taskType === 'task1' ? 'Task 1' : 'Task 2' }}</p>
+      <h2>Question</h2>
+      <p>{{ item.questionText }}</p>
+      <details>
+        <summary>Read submitted response</summary>
+        <p class="submitted-response">{{ item.responseText }}</p>
+      </details>
+    </section>
+
+    @if (item.status === 'failed') {
+      <section class="coach-card error-state">
+        <h2>Evaluation did not complete</h2>
+        <p>{{ item.errorMessage || 'The AI provider did not return complete feedback.' }}</p>
+        <a class="button-link primary" routerLink="/writing">Resubmit this response</a>
+      </section>
+    } @else {
+      <section class="overall">
+        <span>Overall band</span>
+        <strong>{{ item.overallBand }}</strong>
+      </section>
+      <div class="feedback-grid">
+        @for (criterion of criteria(item); track criterion.label) {
+          @if (criterion.value; as feedback) {
+            <article class="coach-card criterion-card">
+              <div class="criterion-heading">
+                <h2>{{ criterion.label }}</h2>
+                <strong>Band {{ feedback.bandScore }}</strong>
+              </div>
+              <p>{{ feedback.feedback }}</p>
+              @if (feedback.strengths.length) {
+                <h3>Strengths</h3>
+                <ul>@for (strength of feedback.strengths; track strength) { <li>{{ strength }}</li> }</ul>
+              }
+              @if (feedback.weaknesses.length) {
+                <h3>Improve next</h3>
+                <ul>@for (weakness of feedback.weaknesses; track weakness) { <li>{{ weakness }}</li> }</ul>
+              }
+            </article>
+          }
+        }
+      </div>
+      <section class="coach-card corrections">
+        <p class="eyebrow">Sentence corrections</p>
+        <h2>Specific changes</h2>
+        @for (correction of item.corrections ?? []; track correction.original) {
+          <article>
+            <p><strong>Original:</strong> {{ correction.original }}</p>
+            <p><strong>Improved:</strong> {{ correction.corrected }}</p>
+            <p>{{ correction.explanation }}</p>
+          </article>
+        }
+      </section>
+    }
+  } @else {
+    <section class="coach-card state-card" data-testid="writing-detail-empty">
+      <h2>Submission not found</h2>
+      <a routerLink="/writing/history">Return to submission history</a>
+    </section>
+  }
+</main>

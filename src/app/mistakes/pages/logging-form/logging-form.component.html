@@ -1,0 +1,94 @@
+<section class="mistake-form" aria-labelledby="mistake-form-title">
+  <header>
+    <p class="mistake-form__kicker">Mistake notebook</p>
+    <h1 id="mistake-form-title">Capture what went wrong</h1>
+    <p>Save the useful context now. You can leave uncertain details blank.</p>
+  </header>
+
+  <form (ngSubmit)="save()">
+    <fieldset>
+      <legend>Context</legend>
+      <div class="mistake-form__grid">
+        <label>
+          Skill
+          <select
+            data-testid="skill"
+            name="skill"
+            [value]="skill"
+            (change)="skill = $any($event.target).value"
+          >
+            <option value="reading">Reading</option>
+            <option value="listening">Listening</option>
+            <option value="writing">Writing</option>
+            <option value="speaking">Speaking</option>
+          </select>
+        </label>
+        <label>
+          Source
+          <input
+            data-testid="source"
+            name="source"
+            [value]="source"
+            (input)="source = $any($event.target).value"
+            required
+          />
+        </label>
+      </div>
+      <label>
+        Question type
+        <input name="questionType" [(ngModel)]="questionType" />
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Answers</legend>
+      <label>
+        Your answer
+        <textarea name="ownAnswer" rows="3" [(ngModel)]="ownAnswer"></textarea>
+      </label>
+      <label>
+        Correct answer
+        <textarea
+          name="correctAnswer"
+          rows="3"
+          [(ngModel)]="correctAnswer"
+          [disabled]="correctAnswerUnknown"
+        ></textarea>
+      </label>
+      <label class="mistake-form__check">
+        <input
+          type="checkbox"
+          name="correctAnswerUnknown"
+          [(ngModel)]="correctAnswerUnknown"
+        />
+        I do not have the correct answer yet
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Pattern</legend>
+      <label>
+        Why did this happen?
+        <select data-testid="reason" name="reasonCategory" [(ngModel)]="reasonCategory">
+          @for (reason of reasons; track reason.key) {
+            <option [value]="reason.key">{{ reason.label }}</option>
+          }
+        </select>
+      </label>
+      <label>
+        Explanation
+        <textarea name="explanation" rows="4" [(ngModel)]="explanation"></textarea>
+      </label>
+    </fieldset>
+
+    @if (validationMessage) {
+      <p class="mistake-form__error" role="alert">{{ validationMessage }}</p>
+    }
+
+    <footer class="mistake-form__actions">
+      <button type="submit" class="mistake-form__primary">Save mistake</button>
+      <button type="button" (click)="close()">Close and preserve</button>
+      <button type="button" (click)="cancel()">Discard</button>
+    </footer>
+  </form>
+</section>

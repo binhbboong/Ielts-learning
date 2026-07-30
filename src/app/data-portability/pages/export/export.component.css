@@ -1,0 +1,20 @@
+@import '../../../writing-coach/pages/writing-coach.shared.css';
+
+.export-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
+.confirmation,
+.error-state {
+  margin-top: 1rem;
+}
+
+@media (max-width: 48rem) {
+  .export-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

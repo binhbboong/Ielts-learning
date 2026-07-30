@@ -1,0 +1,110 @@
+<main class="progress-page">
+  @if (facade.submissionState() === 'confirmed') {
+    <section class="confirmation card" data-testid="confirmation" aria-live="polite">
+      <p class="eyebrow">Result saved</p>
+      <h1>Practice logged</h1>
+      <p>
+        {{ facade.savedResult()?.skill }} score
+        <strong>{{ facade.savedResult()?.score }}/{{ facade.savedResult()?.total }}</strong>
+        is now included in your progress.
+      </p>
+      <div class="actions">
+        <button class="primary" type="button" (click)="logAnother()">Log another</button>
+        <a routerLink="/progress">View progress</a>
+        <button type="button" (click)="returnBack()">Return</button>
+      </div>
+    </section>
+  } @else {
+    <header class="page-heading">
+      <div>
+        <p class="eyebrow">Practice log</p>
+        <h1>Log a result</h1>
+        <p>Capture one Reading or Listening session while the details are fresh.</p>
+      </div>
+      <a routerLink="/progress/history">View history</a>
+    </header>
+
+    <form class="card form-stack" (ngSubmit)="save()">
+      <fieldset>
+        <legend>Session</legend>
+        <div class="form-grid">
+          <label>
+            Skill
+            <select
+              name="skill"
+              [ngModel]="skill"
+              (ngModelChange)="changeSkill($event)"
+              required
+            >
+              <option value="Reading">Reading</option>
+              <option value="Listening">Listening</option>
+            </select>
+          </label>
+          <label>
+            Source
+            <input name="source" [(ngModel)]="source" required placeholder="Cambridge IELTS 18, Test 2" />
+          </label>
+          <label>
+            Score
+            <input name="score" type="number" [(ngModel)]="score" min="0" [max]="total" required />
+          </label>
+          <label>
+            Total questions
+            <input name="total" type="number" [(ngModel)]="total" min="1" required />
+          </label>
+          <label>
+            Time taken (minutes)
+            <input name="timeTaken" type="number" [(ngModel)]="timeTakenMinutes" min="1" required />
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>What did you miss?</legend>
+        <p class="field-help">Optional. Select every question type that caused trouble.</p>
+        @if (taxonomyFailed) {
+          <p class="inline-warning">Question types could not be loaded. You can still save this result.</p>
+        } @else if (questionTypes.length === 0) {
+          <p class="field-help">Loading question types...</p>
+        } @else {
+          <div class="check-grid">
+            @for (type of questionTypes; track type.key) {
+              <label class="check-option">
+                <input
+                  type="checkbox"
+                  [checked]="missedQuestionTypes.has(type.key)"
+                  (change)="toggleMissedType(type.key, $any($event.target).checked)"
+                />
+                {{ type.label }}
+              </label>
+            }
+          </div>
+        }
+      </fieldset>
+
+      <label>
+        Note <span class="optional">(optional)</span>
+        <textarea name="note" rows="4" [(ngModel)]="note" placeholder="What will you change next time?"></textarea>
+      </label>
+
+      @if (facade.submissionState() === 'error') {
+        <div class="error-box" data-testid="save-error" role="alert">
+          <strong>Result not saved.</strong>
+          <span>Your entries are still here. Check your connection and try again.</span>
+          <button type="button" (click)="retry()">Retry same result</button>
+        </div>
+      }
+
+      <div class="actions">
+        <button
+          class="primary"
+          type="submit"
+          [disabled]="!canSave || facade.submissionState() === 'saving'"
+        >
+          {{ facade.submissionState() === 'saving' ? 'Saving...' : 'Save result' }}
+        </button>
+        <button type="button" (click)="cancel()">Cancel</button>
+      </div>
+    </form>
+  }
+</main>

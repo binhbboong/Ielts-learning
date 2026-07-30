@@ -1,0 +1,32 @@
+.examples {
+  display: grid;
+  gap: 1rem;
+}
+
+article {
+  padding: 1rem;
+  border: 1px solid #d5dfdc;
+  border-radius: 0.65rem;
+  background: #fff;
+}
+
+dl,
+dd {
+  margin: 0;
+}
+
+dl {
+  display: grid;
+  gap: 0.85rem;
+}
+
+dt {
+  color: #63706d;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+dd {
+  margin-top: 0.2rem;
+  white-space: pre-wrap;
+}

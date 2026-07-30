@@ -1,0 +1,42 @@
+.grouped-list {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.grouped-list button {
+  display: grid;
+  grid-template-columns: 2rem 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0.7rem;
+  border: 1px solid #d5dfdc;
+  border-radius: 0.6rem;
+  color: #24302d;
+  background: #fff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.grouped-list button:hover {
+  border-color: #1f6f5f;
+  background: #f3faf8;
+}
+
+.grouped-list__rank {
+  color: #697773;
+  text-align: center;
+}
+
+.grouped-list strong {
+  color: #15594d;
+}
+
+.empty {
+  color: #63706d;
+}

@@ -1,0 +1,15 @@
+@if (rankedGroups().length === 0) {
+  <p class="empty">No recurring reasons in this period yet.</p>
+} @else {
+  <ol class="grouped-list">
+    @for (group of rankedGroups(); track group.reasonCategory; let rank = $index) {
+      <li>
+        <button type="button" (click)="selected.emit(group.reasonCategory)">
+          <span class="grouped-list__rank">{{ rank + 1 }}</span>
+          <span>{{ reasonLabel(group.reasonCategory) }}</span>
+          <strong>{{ group.count }}</strong>
+        </button>
+      </li>
+    }
+  </ol>
+}

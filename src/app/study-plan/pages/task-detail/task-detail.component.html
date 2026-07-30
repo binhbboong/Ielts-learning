@@ -1,0 +1,47 @@
+<section class="task-detail">
+  <header class="task-detail__header">
+    <span class="task-detail__skill">{{ task.skill }}</span>
+    <span class="task-detail__title">{{ task.title }}</span>
+  </header>
+
+  <div class="task-detail__status-controls">
+    <button type="button" data-testid="status-Completed" (click)="setStatus('Completed')">Completed</button>
+    <button type="button" data-testid="status-Skipped" (click)="setStatus('Skipped')">Skipped</button>
+    <button type="button" data-testid="status-NotStarted" (click)="setStatus('NotStarted')">Not Started</button>
+  </div>
+
+  <label class="task-detail__description-label" for="task-detail-description">Description</label>
+  <textarea
+    id="task-detail-description"
+    data-testid="description-field"
+    [value]="descriptionDraft"
+    (input)="onDescriptionInput($event)"
+  ></textarea>
+
+  <label class="task-detail__estimated-label" for="task-detail-estimated">Estimated time (minutes)</label>
+  <input
+    id="task-detail-estimated"
+    type="number"
+    data-testid="estimated-minutes-field"
+    [value]="estimatedMinutesDraft"
+    (input)="onEstimatedMinutesInput($event)"
+  />
+
+  <footer class="task-detail__details-footer">
+    <button type="button" data-testid="save-details" (click)="saveDetails()">Save</button>
+    <button type="button" data-testid="cancel-details" (click)="cancelDetails()">Cancel</button>
+  </footer>
+
+  <label class="task-detail__note-label" for="task-detail-note">Note</label>
+  <textarea
+    id="task-detail-note"
+    data-testid="note-field"
+    [value]="noteDraft"
+    (input)="onNoteInput($event)"
+  ></textarea>
+
+  <footer class="task-detail__footer">
+    <button type="button" data-testid="save-note" (click)="saveNote()">Save</button>
+    <button type="button" data-testid="cancel-note" (click)="cancelNote()">Cancel</button>
+  </footer>
+</section>

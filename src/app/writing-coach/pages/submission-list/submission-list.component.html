@@ -1,0 +1,42 @@
+<main class="coach-page">
+  <header class="coach-heading">
+    <div>
+      <p class="eyebrow">Writing coach</p>
+      <h1>Past submissions</h1>
+      <p>Reopen feedback exactly as it was produced.</p>
+    </div>
+    <a class="button-link primary" routerLink="/writing">Evaluate a response</a>
+  </header>
+
+  @if (facade.listState() === 'loading') {
+    <section class="coach-card state-card">Loading writing submissions...</section>
+  } @else if (facade.listState() === 'error') {
+    <section class="coach-card state-card error-state" data-testid="writing-list-error">
+      <h2>Submissions could not be loaded</h2>
+      <p>This is a loading problem, not an empty history.</p>
+      <button type="button" (click)="load()">Try again</button>
+    </section>
+  } @else if (facade.submissions().length === 0) {
+    <section class="coach-card state-card" data-testid="writing-list-empty">
+      <h2>No Writing submissions yet</h2>
+      <p>Submit your first response to build a reviewable feedback history.</p>
+      <a class="button-link primary" routerLink="/writing">Submit a response</a>
+    </section>
+  } @else {
+    <ol class="coach-list">
+      @for (item of facade.submissions(); track item.id) {
+        <li class="coach-card">
+          <p class="eyebrow">{{ item.taskType === 'task1' ? 'Task 1' : 'Task 2' }}</p>
+          <h2>{{ item.questionExcerpt }}</h2>
+          <p>{{ item.createdAt | date: 'mediumDate' }}</p>
+          @if (item.status === 'complete') {
+            <p>Overall band <strong>{{ item.overallBand }}</strong></p>
+          } @else {
+            <p class="error-state">Evaluation failed. Your submitted text is preserved.</p>
+          }
+          <a [routerLink]="['/writing/submissions', item.id]">Open submission</a>
+        </li>
+      }
+    </ol>
+  }
+</main>

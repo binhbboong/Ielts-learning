@@ -1,0 +1,82 @@
+<main class="progress-page">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">Practice log</p>
+      <h1>Result history</h1>
+      <p>Inspect the full record behind your progress trend.</p>
+    </div>
+    <div class="actions">
+      <a class="button-link primary" routerLink="/progress/log">Log result</a>
+      <a routerLink="/progress">View trend</a>
+    </div>
+  </header>
+
+  <section class="filter-bar card" aria-label="History filters">
+    <label>
+      Skill
+      <select [value]="skill ?? ''" (change)="setSkill($any($event.target).value)">
+        <option value="">Reading and Listening</option>
+        <option value="Reading">Reading</option>
+        <option value="Listening">Listening</option>
+      </select>
+    </label>
+    <label>
+      Sort
+      <select [value]="sort" (change)="setSort($any($event.target).value)">
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+      </select>
+    </label>
+    <button type="button" (click)="refresh()" [disabled]="loadState() === 'loading'">
+      Refresh
+    </button>
+  </section>
+
+  @if (loadState() === 'loading') {
+    <section class="card history-state">Loading practice history...</section>
+  } @else if (loadState() === 'error') {
+    <section class="card history-state" data-testid="history-error" role="alert">
+      <h2>History could not be loaded</h2>
+      <p>Your saved results may still be available. Try loading them again.</p>
+      <button type="button" (click)="refresh()">Try again</button>
+    </section>
+  } @else if (results().length === 0) {
+    <section class="card history-state" data-testid="history-empty">
+      <h2>Nothing logged yet</h2>
+      <p>Your completed Reading and Listening sessions will appear here.</p>
+      <a class="button-link primary" routerLink="/progress/log">Log practice result</a>
+    </section>
+  } @else {
+    <ol class="history-list">
+      @for (result of results(); track result.id) {
+        <li class="card history-entry" data-testid="history-entry">
+          <div class="entry-date">
+            <span>{{ result.loggedAt | date: 'MMM d' }}</span>
+            <small>{{ result.loggedAt | date: 'y' }}</small>
+          </div>
+          <div class="entry-main">
+            <div class="entry-title">
+              <strong>{{ result.skill }}</strong>
+              <span>{{ result.source }}</span>
+            </div>
+            <p>
+              Score <strong>{{ result.score }}/{{ result.total }}</strong>
+              · {{ minutes(result.timeTakenSeconds) }} minutes
+            </p>
+            @if ((result.missedQuestionTypes?.length ?? 0) > 0) {
+              <p class="secondary">
+                Missed:
+                @for (type of result.missedQuestionTypes; track type; let last = $last) {
+                  {{ humanize(type) }}{{ last ? '' : ', ' }}
+                }
+              </p>
+            }
+            @if (result.note) {
+              <p class="secondary">Note: {{ result.note }}</p>
+            }
+          </div>
+        </li>
+      }
+    </ol>
+  }
+</main>

@@ -1,0 +1,43 @@
+@import '../../../writing-coach/pages/writing-coach.shared.css';
+
+.recorder {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.selection-grid {
+  display: grid;
+  grid-template-columns: 12rem 1fr;
+  gap: 1rem;
+}
+
+.recording-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 0.7rem;
+  background: #f0f6f1;
+}
+
+.timer {
+  display: flex;
+  flex-direction: column;
+}
+
+.timer.active span {
+  color: #a23232;
+  font-weight: 800;
+}
+
+@media (max-width: 48rem) {
+  .selection-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .recording-panel {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

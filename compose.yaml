@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: ielts_dev
+    ports:
+      - "5433:5432"
+    volumes:
+      - ielts-postgres-data:/var/lib/postgresql/data
+      - ./backend/docker/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ielts_dev"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  ielts-postgres-data:

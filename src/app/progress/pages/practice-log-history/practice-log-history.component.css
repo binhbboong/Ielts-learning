@@ -1,0 +1,78 @@
+@import '../progress-page.shared.css';
+
+.filter-bar {
+  margin-bottom: 1rem;
+}
+
+.filter-bar label {
+  min-width: 12rem;
+}
+
+.filter-bar button {
+  align-self: flex-end;
+}
+
+.history-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.history-entry {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr;
+  gap: 1rem;
+}
+
+.entry-date {
+  display: flex;
+  flex-direction: column;
+  color: #31553c;
+  font-weight: 800;
+}
+
+.entry-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.entry-main p {
+  margin-top: 0.35rem;
+}
+
+.entry-main .secondary {
+  color: #5f6d63;
+  font-size: 0.9rem;
+}
+
+.history-state {
+  display: grid;
+  min-height: 12rem;
+  place-content: center;
+  gap: 0.75rem;
+  text-align: center;
+}
+
+@media (max-width: 48rem) {
+  .filter-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .filter-bar button {
+    align-self: flex-start;
+  }
+
+  .history-entry {
+    grid-template-columns: 1fr;
+  }
+
+  .entry-date {
+    flex-direction: row;
+    gap: 0.35rem;
+  }
+}

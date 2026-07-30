@@ -1,0 +1,78 @@
+<main class="coach-page">
+  <header class="coach-heading">
+    <div>
+      <p class="eyebrow">Speaking coach</p>
+      <h1>Record a response</h1>
+      <p>Choose a prompt, record up to two minutes, then let each processing step complete.</p>
+    </div>
+    <a routerLink="/speaking/history">Past submissions</a>
+  </header>
+
+  @if (facade.current(); as current) {
+    <section class="coach-card state-card" data-testid="speaking-received">
+      @if (current.status === 'PROCESSING') {
+        <p class="eyebrow">Response received</p>
+        <h2>Processing has begun</h2>
+        <p>You can leave this page and reopen the submission later.</p>
+      } @else if (current.status === 'COMPLETED') {
+        <p class="eyebrow">Evaluation complete</p>
+        <h2>Your feedback is ready</h2>
+        <a class="button-link primary" [routerLink]="['/speaking/submissions', current.id]">
+          Open feedback
+        </a>
+      } @else {
+        <h2>{{ current.status === 'TRANSCRIPTION_FAILED' ? 'Transcription failed' : 'Evaluation failed' }}</h2>
+        <p>The recording and any completed transcript are preserved.</p>
+        <a [routerLink]="['/speaking/submissions', current.id]">Review and retry</a>
+      }
+    </section>
+  } @else {
+    <section class="coach-card recorder">
+      <div class="selection-grid">
+        <label>
+          Speaking part
+          <select [value]="selectedPart" (change)="changePart($any($event.target).value)">
+            <option value="PART_1">Part 1</option>
+            <option value="PART_2">Part 2</option>
+            <option value="PART_3">Part 3</option>
+          </select>
+        </label>
+        <label>
+          Question
+          <select
+            [value]="selectedQuestionId"
+            (change)="selectedQuestionId = $any($event.target).value"
+          >
+            <option value="">Select a question</option>
+            @for (question of filteredQuestions; track question.id) {
+              <option [value]="question.id">{{ question.prompt }}</option>
+            }
+          </select>
+        </label>
+      </div>
+
+      <div class="recording-panel">
+        <div class="timer" [class.active]="recording">
+          <span>{{ recording ? 'Recording' : audio ? 'Recording ready' : 'Ready' }}</span>
+          <strong>{{ elapsedSeconds }}s / 120s</strong>
+        </div>
+        <div class="actions">
+          @if (!recording) {
+            <button type="button" (click)="startRecording()">
+              {{ audio ? 'Record again' : 'Start recording' }}
+            </button>
+          } @else {
+            <button type="button" (click)="stopRecording()">Stop recording</button>
+          }
+          <button class="primary" type="button" (click)="submit()"
+            [disabled]="!canSubmit || facade.state() === 'loading'">
+            {{ facade.state() === 'loading' ? 'Processing...' : 'Submit response' }}
+          </button>
+        </div>
+      </div>
+      @if (recordingError) {
+        <p class="error-state" role="alert">{{ recordingError }}</p>
+      }
+    </section>
+  }
+</main>

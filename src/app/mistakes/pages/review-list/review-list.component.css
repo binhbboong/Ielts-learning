@@ -1,0 +1,46 @@
+.review-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.review-list li {
+  position: relative;
+  padding: 1rem 0;
+  border-bottom: 1px solid #dbe3e1;
+}
+
+.review-list li > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.review-list p {
+  margin: 0.45rem 0 0.2rem;
+}
+
+.review-list small,
+.review-list li > div span {
+  color: #63706d;
+}
+
+.review-list__incomplete {
+  padding-left: 0.85rem !important;
+  border-left: 3px solid #a85b2a;
+}
+
+.review-list__status {
+  display: inline-block;
+  margin-top: 0.5rem;
+  color: #8b461f;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.empty {
+  padding: 2rem 0;
+  color: #63706d;
+}

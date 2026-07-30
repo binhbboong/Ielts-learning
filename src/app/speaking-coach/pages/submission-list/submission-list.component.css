@@ -1,0 +1,21 @@
+@import '../../../writing-coach/pages/writing-coach.shared.css';
+
+.coach-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.status {
+  display: inline-block;
+  margin-right: 1rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  background: #e7efe9;
+  font-weight: 800;
+}
+
+.status[data-status$='FAILED'] {
+  color: #783434;
+  background: #f8e7e7;
+}

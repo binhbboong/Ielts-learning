@@ -1,0 +1,72 @@
+# Tasks: Daily Personalized Lesson Plan
+Plan: docs/specs/daily-lesson-plan/ImplementationPlan.md
+
+## Task-1 — DailyFocus model + migration
+- [x] Status: Done
+- Depends on: none
+- Goal: Define `DailyFocus` (id, day, skill enum, focus_kind enum, focus_reference nullable, created_at, unique on (day, skill)) in `backend/app/models/daily_lesson_plan.py`, and the Alembic migration creating the `daily_focus` table — per `docs/adr/2026-07-30-daily-lesson-plan-data-model.md`.
+- Files touched: `backend/app/models/daily_lesson_plan.py`, `backend/alembic/versions/<ts>_daily_focus_table.py`
+- Definition of done: migration test creates the table with the expected columns and unique constraint; a model round-trip test confirms the unique constraint rejects a second row for the same (day, skill).
+
+## Task-2 — Retire the old Study Plan module
+- [ ] Status: Not started
+- Depends on: Task-1
+- Goal: Remove `backend/app/models/study_plan.py`, `backend/app/routers/study_plan.py`, `backend/app/services/study_plan.py`, and their `tasks`/`plan_state` tables (Alembic migration dropping both tables), per the supersede note in `docs/specs/study-plan-execution/Specification.md` and the data-model ADR's Consequences.
+- Files touched: deleted backend files above, `backend/alembic/versions/<ts>_drop_study_plan_tables.py`, `backend/app/main.py` (remove the old router registration)
+- Definition of done: migration test confirms `tasks`/`plan_state` no longer exist after upgrade and are restored on downgrade; the full backend test suite passes with zero references to the removed module remaining.
+
+## Task-3 — Personalization selection service
+- [ ] Status: Not started
+- Depends on: Task-1
+- Goal: Implement `get_or_create_focus(day: date, skill: Skill) -> DailyFocus` in `backend/app/services/daily_lesson_plan.py`: if a row already exists for (day, skill), return it; otherwise select a target from recent Mistake Notebook entries or vocabulary due for review (falling back to a general-topic default when neither exists) and persist it once.
+- Files touched: `backend/app/services/daily_lesson_plan.py`, `backend/app/services/daily_lesson_plan_test.py`
+- Definition of done: unit tests pass, asserting (1) with seeded mistake/vocabulary data, the selected focus references one of those items — covers FR-1; (2) with no such data, a default focus is still produced — covers FR-2; (3) a second call for the same (day, skill) returns the identical row — covers FR-3; (4) deleting the source mistake/vocabulary item after generation does not change the already-persisted `focus_reference` — covers FR-10.
+
+## Task-4 — Prompt-text generation for Writing/Speaking
+- [ ] Status: Not started
+- Depends on: Task-3
+- Goal: Implement `generate_prompt_text(focus: DailyFocus) -> str` in `backend/app/services/daily_lesson_plan.py`, calling `AIProvider.chat()` with a constructed instruction to produce one IELTS-style Writing or Speaking prompt from the focus.
+- Files touched: `backend/app/services/daily_lesson_plan.py`, `backend/app/services/daily_lesson_plan_test.py`
+- Definition of done: unit test passes with a `FakeAIProvider`, asserting `chat()` is called with an instruction referencing the focus and the returned prompt text is what gets exposed for Writing/Speaking to use — covers FR-7.
+
+## Task-5 — Status aggregation across skill modules
+- [ ] Status: Not started
+- Depends on: Task-1, Task-3, reading-practice Task-1, listening-practice Task-1
+- Goal: Implement `get_skill_status(day: date, skill: Skill) -> Status` in `backend/app/services/daily_lesson_plan.py`, reading Reading Practice's, Listening Practice's, or the existing writing-submissions/speaking-submissions table for the matching day and mapping each module's own state to the shared Ready/Generating/Done/Failed vocabulary.
+- Files touched: `backend/app/services/daily_lesson_plan.py`, `backend/app/services/daily_lesson_plan_test.py`
+- Definition of done: unit tests pass with fixture rows in each of the four skill tables covering every state, asserting each maps to the correct shared status value — covers FR-4.
+
+## Task-6 — Generation orchestration
+- [ ] Status: Not started
+- Depends on: Task-5, reading-practice Task-3, listening-practice Task-4, Task-4 (this spec)
+- Goal: Implement `ensure_today_generated(day: date) -> None` in `backend/app/services/daily_lesson_plan.py`: for each of the four skills, if no focus exists yet for `day`, call `get_or_create_focus`, then trigger that skill's own generation (`reading_practice.get_or_create_exercise`, `listening_practice.get_or_create_exercise`, or `generate_prompt_text` for Writing/Speaking) with the resulting focus.
+- Files touched: `backend/app/services/daily_lesson_plan.py`, `backend/app/services/daily_lesson_plan_test.py`
+- Definition of done: integration test passes, asserting a fresh day's first call triggers generation for all four skills exactly once, and a second call for the same day triggers no further generation calls (reuses Task-3's `get_or_create_focus` idempotency).
+
+## Task-7 — GET /api/daily-lesson/overview endpoint
+- [ ] Status: Not started
+- Depends on: Task-6
+- Goal: Implement the overview endpoint: calls `ensure_today_generated` for the current calendar day, then returns today's four skills' focus/status plus any earlier day's skill still not Done, each labeled with its own day.
+- Files touched: `backend/app/routers/daily_lesson_plan.py`, `backend/app/routers/daily_lesson_plan_test.py`, `backend/app/schemas/daily_lesson_plan.py`
+- Definition of done: integration tests pass, asserting (1) the response includes a status and focus note per skill for today — covers FR-4, FR-6; (2) a not-yet-Done skill from an earlier day appears in the response labeled with its original day — covers FR-11, FR-12.
+
+## Task-8 — POST /api/daily-lesson/{skill}/retry endpoint
+- [ ] Status: Not started
+- Depends on: Task-6
+- Goal: Implement a retry endpoint that re-triggers the named skill's generation for a given day, reusing that day's already-computed focus rather than recomputing it.
+- Files touched: `backend/app/routers/daily_lesson_plan.py`, `backend/app/routers/daily_lesson_plan_test.py`
+- Definition of done: integration test passes, asserting the retried generation call's focus argument matches the original day's `daily_focus` row — covers FR-5.
+
+## Task-9 — Frontend Daily Overview page
+- [ ] Status: Not started
+- Depends on: Task-7, Task-8
+- Goal: Implement `src/app/daily-lesson/{models,data,state,pages/daily-overview}` rendering the skill cards, personalization notes, retry action, and carried-over-day distinction from `docs/ux/wireframes/daily-overview.md`, plus the secondary navigation row (Vocabulary, Mistakes, Progress, Export).
+- Files touched: `src/app/daily-lesson/models/daily-focus.model.ts`, `src/app/daily-lesson/data/daily-lesson.repository.ts`, `src/app/daily-lesson/state/daily-lesson.state.ts`, `src/app/daily-lesson/pages/daily-overview/*`
+- Definition of done: component tests pass covering all states from the wireframe (Ready/Generating/Done/Failed per skill, cold-start with no personalization data, carried-over day labeling) and confirming the secondary navigation renders regardless of skill states — covers FR-4, FR-6, FR-9, FR-11, FR-12.
+
+## Task-10 — Remove old Study Plan frontend module and mount Daily Overview at root
+- [ ] Status: Not started
+- Depends on: Task-9, Task-2
+- Goal: Remove `src/app/study-plan/` entirely and update `src/app/app.routes.ts` so the root route renders the Daily Overview page instead of the old daily-checklist page.
+- Files touched: deleted `src/app/study-plan/*`, `src/app/app.routes.ts`
+- Definition of done: full frontend test suite passes with zero references to the removed module remaining, and an end-to-end check confirms the root route renders Daily Overview.

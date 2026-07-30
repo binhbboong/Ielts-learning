@@ -1,0 +1,41 @@
+<main class="coach-page">
+  <header class="coach-heading">
+    <div>
+      <p class="eyebrow">Data portability</p>
+      <h1>Export all learning data</h1>
+      <p>Download one readable JSON file with every category. Selective exports are not offered.</p>
+    </div>
+  </header>
+
+  <section class="coach-card export-card">
+    <div>
+      <h2>One complete, independent copy</h2>
+      <p>
+        Includes your study plan and task history, vocabulary and reviews, mistakes,
+        practice results, Writing feedback, Speaking transcripts, feedback, and recordings.
+      </p>
+    </div>
+    <button class="primary" type="button" (click)="exportData()"
+      [disabled]="state() === 'exporting'">
+      {{ state() === 'exporting' ? 'Preparing complete export...' : 'Export all my data' }}
+    </button>
+  </section>
+
+  @if (result(); as exportResult) {
+    @if (exportResult.status === 'success') {
+      <section class="coach-card confirmation" data-testid="export-success" aria-live="polite">
+        <p class="eyebrow">Complete export downloaded</p>
+        <h2>{{ exportResult.categoryCount }} complete categories</h2>
+        <p>Produced {{ exportResult.producedAt | date: 'medium' }}</p>
+        <p>The file <strong>{{ exportResult.filename }}</strong> is now yours to keep.</p>
+        <button type="button" (click)="exportData()">Export a fresh copy</button>
+      </section>
+    } @else {
+      <section class="coach-card error-state" data-testid="export-error" role="alert">
+        <h2>Export failed</h2>
+        <p>{{ exportResult.message }} No partial file was kept.</p>
+        <button type="button" (click)="exportData()">Retry complete export</button>
+      </section>
+    }
+  }
+</main>

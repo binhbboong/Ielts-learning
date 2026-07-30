@@ -1,0 +1,19 @@
+@if (sortedEntries().length === 0) {
+  <p class="empty">No mistakes logged in this period.</p>
+} @else {
+  <ul class="review-list">
+    @for (entry of sortedEntries(); track entry.id) {
+      <li [class.review-list__incomplete]="entry.isIncomplete">
+        <div>
+          <strong>{{ entry.skill | titlecase }}</strong>
+          <span>{{ entry.loggedAt | date: 'mediumDate' }}</span>
+        </div>
+        <p>{{ reasonLabel(entry.reasonCategory) }}</p>
+        <small>{{ entry.source }}</small>
+        @if (entry.isIncomplete) {
+          <span class="review-list__status">Incomplete</span>
+        }
+      </li>
+    }
+  </ul>
+}

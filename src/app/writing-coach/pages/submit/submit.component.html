@@ -1,0 +1,63 @@
+<main class="coach-page">
+  <header class="coach-heading">
+    <div>
+      <p class="eyebrow">Writing coach</p>
+      <h1>Evaluate a response</h1>
+      <p>Get criterion-by-criterion feedback tied to your exact prompt and wording.</p>
+    </div>
+    <a routerLink="/writing/history">Past submissions</a>
+  </header>
+
+  @if (facade.submissionState() === 'ready' && facade.current(); as result) {
+    <section class="coach-card state-card">
+      @if (result.status === 'complete') {
+        <p class="eyebrow">Evaluation complete</p>
+        <h2>Overall band {{ result.overallBand }}</h2>
+        <a class="button-link primary" [routerLink]="['/writing/submissions', result.id]">
+          Open full feedback
+        </a>
+      } @else {
+        <div class="error-state" data-testid="writing-error">
+          <h2>Evaluation did not complete</h2>
+          <p>Your response is saved. Submit the same text again when the provider is available.</p>
+          <button type="button" (click)="retry()">Retry evaluation</button>
+        </div>
+      }
+    </section>
+  } @else {
+    <form class="coach-card coach-form" (ngSubmit)="submit()">
+      <label>
+        IELTS task
+        <select name="taskType" [(ngModel)]="taskType">
+          <option value="task1">Task 1</option>
+          <option value="task2">Task 2</option>
+        </select>
+      </label>
+      <label>
+        Exact task or question
+        <textarea name="questionText" rows="4" [(ngModel)]="questionText" required></textarea>
+      </label>
+      <label>
+        Your response
+        <textarea name="responseText" rows="14" [(ngModel)]="responseText" required></textarea>
+      </label>
+      @if (facade.submissionState() === 'loading') {
+        <p role="status">Evaluating your response against all four IELTS criteria...</p>
+      }
+      @if (facade.submissionState() === 'error') {
+        <div class="error-state" data-testid="writing-error" role="alert">
+          <strong>Evaluation request failed.</strong>
+          <p>Your prompt and response remain in the form.</p>
+          <button type="button" (click)="retry()">Retry same response</button>
+        </div>
+      }
+      <div class="actions">
+        <button class="primary" type="submit"
+          [disabled]="!canSubmit || facade.submissionState() === 'loading'">
+          {{ facade.submissionState() === 'loading' ? 'Evaluating...' : 'Evaluate response' }}
+        </button>
+        <button type="button" (click)="cancel()">Cancel</button>
+      </div>
+    </form>
+  }
+</main>

@@ -1,0 +1,22 @@
+<div class="examples">
+  @for (item of items(); track $index) {
+    <article>
+      <dl>
+        <div>
+          <dt>Your answer</dt>
+          <dd>{{ item.ownAnswer || 'Not recorded' }}</dd>
+        </div>
+        <div>
+          <dt>Correct answer</dt>
+          <dd>{{ item.correctAnswer || 'Not known yet' }}</dd>
+        </div>
+        <div>
+          <dt>Explanation</dt>
+          <dd>{{ item.explanation || 'No explanation recorded' }}</dd>
+        </div>
+      </dl>
+    </article>
+  } @empty {
+    <p>No examples found in this period.</p>
+  }
+</div>
