@@ -17,6 +17,7 @@ from app.ai.schemas import (
     SpeakingEvaluationResult,
     WritingEvaluationRequest,
     WritingEvaluationResult,
+    level_context_line,
 )
 from app.core.config import settings
 
@@ -45,7 +46,7 @@ class OpenAIProvider(AIProvider):
         prompt = f"""Evaluate this IELTS Writing {request.task_type} response.
 Question: {request.question_text}
 Response: {request.response_text}
-
+{level_context_line(request.target_band, request.phase)}
 Return JSON only with keys: task_response, coherence_and_cohesion, lexical_resource,
 grammatical_range_and_accuracy, overall_band, corrections. Each criterion must contain
 band_score, feedback, strengths, weaknesses and cite exact submitted wording. Corrections must
@@ -66,7 +67,7 @@ contain at least one object with original, corrected, explanation."""
         prompt = f"""Evaluate this IELTS Speaking transcript against the question.
 Question: {request.question_text}
 Transcript: {request.transcript}
-
+{level_context_line(request.target_band, request.phase)}
 Return JSON only with keys fluency_and_coherence, lexical_resource, and
 grammatical_range_and_accuracy. Each must contain band_score, feedback, strengths, weaknesses
 and cite exact transcript wording. Do not estimate pronunciation."""

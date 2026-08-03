@@ -17,6 +17,7 @@ from app.ai.schemas import (
     SpeakingEvaluationResult,
     WritingEvaluationRequest,
     WritingEvaluationResult,
+    level_context_line,
 )
 
 
@@ -37,12 +38,49 @@ def test_writing_request_requires_task_type_question_and_response():
     )
 
     assert request.task_type == "task2"
+    assert request.target_band is None
+    assert request.phase is None
     with pytest.raises(ValidationError):
         WritingEvaluationRequest(
             response_text=" ",
             task_type="task2",
             question_text="Question",
         )
+
+
+def test_writing_and_speaking_requests_accept_optional_level_context():
+    writing = WritingEvaluationRequest(
+        response_text="A complete essay",
+        task_type="task2",
+        question_text="Discuss both views.",
+        target_band=4.5,
+        phase="foundation",
+    )
+    speaking = SpeakingEvaluationRequest(
+        transcript="I would like to describe...",
+        question_text="Describe a memorable journey.",
+        target_band=6.5,
+        phase="exam_readiness",
+    )
+
+    assert writing.target_band == 4.5
+    assert writing.phase == "foundation"
+    assert speaking.target_band == 6.5
+    assert speaking.phase == "exam_readiness"
+
+
+def test_level_context_line_empty_when_no_level_known():
+    assert level_context_line(None, None) == ""
+    assert level_context_line(4.5, None) == ""
+    assert level_context_line(None, "foundation") == ""
+
+
+def test_level_context_line_includes_band_and_readable_phase_when_known():
+    line = level_context_line(4.5, "foundation")
+
+    assert "4.5" in line
+    assert "foundation phase" in line
+    assert "not a flat band-9 standard" in line
 
 
 def test_writing_result_discriminates_complete_success_from_error():

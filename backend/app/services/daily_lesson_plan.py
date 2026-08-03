@@ -46,15 +46,58 @@ _PHASES = (
     ("peak_performance", 6.5),
 )
 
+# Phase -> exam part/complexity tier. Foundation/core_skills learners are true
+# beginners: Speaking gets simple Part 1-style personal questions, Writing gets a
+# short concrete question, not the full essay/long-turn format. Complexity steps up
+# through development/consolidation (the pre-existing default) to exam_readiness/
+# peak_performance (harder, more abstract). See
+# docs/adr/2026-08-03-writing-speaking-level-adaptation.md.
+_BEGINNER_PHASES = {"foundation", "core_skills"}
+_ADVANCED_PHASES = {"exam_readiness", "peak_performance"}
+
 _PROMPT_INSTRUCTION = {
-    "writing": (
-        "Write one IELTS Writing Task 2-style prompt (a single essay question) "
-        "targeting: {focus}"
-    ),
-    "speaking": (
-        "Write one IELTS Speaking Part 2-style cue card prompt targeting: {focus}"
-    ),
+    "writing": {
+        "beginner": (
+            "Write one short, concrete IELTS-style writing question suitable for a true "
+            "beginner (around band 4.5) — an everyday, personal-experience topic (e.g. a "
+            "place, a routine, a preference), not an abstract policy or argumentative "
+            "essay question. State clearly that the expected response is about 100-150 "
+            "words in simple, everyday vocabulary and sentence structure, targeting: {focus}"
+        ),
+        "standard": (
+            "Write one IELTS Writing Task 2-style prompt (a single essay question) "
+            "targeting: {focus}"
+        ),
+        "advanced": (
+            "Write one IELTS Writing Task 2-style prompt (a single essay question) on a "
+            "more abstract or policy-oriented topic (e.g. society, technology, the "
+            "environment, government) targeting: {focus}"
+        ),
+    },
+    "speaking": {
+        "beginner": (
+            "Write one IELTS Speaking Part 1-style short personal question (a simple, "
+            "concrete question about the learner's own life, expecting a short spoken "
+            "answer of a few sentences, not a 2-minute long turn) targeting: {focus}"
+        ),
+        "standard": (
+            "Write one IELTS Speaking Part 2-style cue card prompt targeting: {focus}"
+        ),
+        "advanced": (
+            "Write one IELTS Speaking Part 3-style abstract discussion question (following "
+            "on from a Part 2 topic, expecting analysis and opinion, not just description) "
+            "targeting: {focus}"
+        ),
+    },
 }
+
+
+def _prompt_complexity_tier(phase: str) -> str:
+    if phase in _BEGINNER_PHASES:
+        return "beginner"
+    if phase in _ADVANCED_PHASES:
+        return "advanced"
+    return "standard"
 
 
 def get_or_create_profile(
@@ -159,8 +202,9 @@ def get_or_create_focus(
 
 def generate_prompt_text(provider: AIProvider, focus: DailyFocus) -> ChatResult:
     focus_description = focus.focus_reference or f"general IELTS {focus.skill} practice"
+    tier = _prompt_complexity_tier(focus.phase)
     instruction = (
-        _PROMPT_INSTRUCTION[focus.skill].format(focus=focus_description)
+        _PROMPT_INSTRUCTION[focus.skill][tier].format(focus=focus_description)
         + f". This is IELTS Academic practice targeting band {focus.target_band} "
         + f"during the {focus.phase.replace('_', ' ')} phase. "
         + f"Design it for about {focus.estimated_minutes} minutes."
@@ -420,6 +464,7 @@ class SkillOverviewEntry:
     priority: str
     phase: str
     rationale: str
+    generated_prompt_text: str | None = None
 
 
 @dataclass
@@ -457,6 +502,7 @@ def get_overview(
                     priority=focus.priority,
                     phase=focus.phase,
                     rationale=focus.rationale,
+                    generated_prompt_text=focus.generated_prompt_text,
                 )
             )
     checkpoint = evaluate_checkpoint(db, effective_day, user_id)

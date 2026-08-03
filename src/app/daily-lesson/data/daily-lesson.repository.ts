@@ -29,6 +29,7 @@ function entry(value: any): SkillOverviewEntry {
     priority: value.priority,
     phase: value.phase,
     rationale: value.rationale,
+    generatedPromptText: value.generated_prompt_text ?? null,
   };
 }
 

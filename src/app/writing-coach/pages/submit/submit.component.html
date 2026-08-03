@@ -26,6 +26,12 @@
     </section>
   } @else {
     <form class="coach-card coach-form" (ngSubmit)="submit()">
+      @if (promptDay) {
+        <p class="daily-prompt-banner" data-testid="daily-prompt-banner">
+          Today's AI-generated prompt ({{ promptPhase }} phase, target band {{ promptTargetBand }}).
+          You can edit it below if you'd rather answer something else.
+        </p>
+      }
       <label>
         IELTS task
         <select name="taskType" [(ngModel)]="taskType">

@@ -41,13 +41,15 @@ export class WritingCoachRepository {
   constructor(private readonly api: ApiClient) {}
 
   async submit(value: WritingSubmissionCreate): Promise<WritingSubmissionDetail> {
+    const body: Record<string, unknown> = {
+      task_type: value.taskType,
+      question_text: value.questionText,
+      response_text: value.responseText,
+    };
+    if (value.day) body['day'] = value.day;
     return detail(await firstValueFrom(this.api.post<any>(
       '/api/writing-coach/submissions',
-      {
-        task_type: value.taskType,
-        question_text: value.questionText,
-        response_text: value.responseText,
-      },
+      body,
     )));
   }
 

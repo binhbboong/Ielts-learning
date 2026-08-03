@@ -6,10 +6,24 @@ from sqlalchemy.orm import Session
 from app.ai.provider import AIProvider
 from app.ai.schemas import WritingEvaluationRequest
 from app.models.ai_call_log import AICallLog
+from app.models.daily_lesson_plan import DailyFocus
 from app.models.writing_submission import WritingSubmission
 from app.schemas.writing_submission import WritingSubmissionCreate
 from app.services.export_utils import serialize_all
 from app.models.user import LEGACY_USER_ID
+
+
+def _level_context(db: Session, day, user_id) -> tuple[float | None, str | None]:
+    if day is None:
+        return None, None
+    focus = (
+        db.query(DailyFocus)
+        .filter_by(user_id=user_id, day=day, skill="writing")
+        .one_or_none()
+    )
+    if focus is None:
+        return None, None
+    return focus.target_band, focus.phase
 
 
 def _run_with_timeout(provider, request, timeout_seconds):
@@ -30,7 +44,10 @@ def create_and_evaluate(
     timeout_seconds: float = 25,
     user_id=LEGACY_USER_ID,
 ) -> WritingSubmission:
-    request = WritingEvaluationRequest(**payload.model_dump())
+    target_band, phase = _level_context(db, payload.day, user_id)
+    request = WritingEvaluationRequest(
+        **payload.model_dump(), target_band=target_band, phase=phase
+    )
     result = _run_with_timeout(provider, request, timeout_seconds)
     valid = result is not None and result.status == "ok" and bool(result.corrections)
     submission = WritingSubmission(

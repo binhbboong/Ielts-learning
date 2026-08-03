@@ -1,6 +1,33 @@
 # Tasks: AI-Assisted Speaking Coaching
 Plan: docs/specs/speaking-coach/ImplementationPlan.md
 
+## Revision-2 Task-16 — Phase-based part selection, level-aware grading, wire AI prompt into recording UI
+- [x] Status: Done
+- Depends on: daily-lesson-plan's `generate_prompt_text`/`SkillOverviewEntry.generated_prompt_text`
+- Goal: `daily_lesson_plan.py`'s `_PROMPT_INSTRUCTION`/`_prompt_complexity_tier` select Part
+  1/2/3-style Speaking prompts by phase (foundation/core_skills -> beginner/Part 1,
+  development/consolidation -> standard/Part 2, exam_readiness/peak_performance ->
+  advanced/Part 3). `SpeakingEvaluationRequest` gains optional `target_band`/`phase`;
+  `run_evaluation` looks up that day's `DailyFocus` (skill="speaking") and populates them via
+  `level_context_line()`. `SpeakingCoachRepository.create()`/`SpeakingCoachFacade.submit()`
+  restructured to an options object supporting `promptText`+`day` (the backend contract already
+  supported this; the frontend never used it). `RecordResponseComponent` defaults to today's
+  daily-generated prompt when one exists, with the existing Part/question-bank picker as a
+  manual fallback. Also fixed an unrelated pre-existing bug found while touching this code: the
+  repository read `fluency_and_cohesion` but the backend field is `fluency_and_coherence`,
+  silently nulling that criterion in the UI.
+- Files touched: `backend/app/services/daily_lesson_plan.py`, `backend/app/ai/schemas.py`,
+  `backend/app/ai/claude_provider.py`, `backend/app/ai/openai_provider.py`,
+  `backend/app/services/speaking_coach.py`, `backend/app/services/speaking_coach_test.py`,
+  `backend/app/services/daily_lesson_plan_test.py`,
+  `src/app/speaking-coach/data/speaking-coach.repository.ts`,
+  `src/app/speaking-coach/state/speaking-coach.facade.ts`,
+  `src/app/speaking-coach/pages/record-response/*`.
+- Definition of done: `test_run_evaluation_passes_the_days_focus_level_to_the_provider`,
+  `test_run_evaluation_has_no_level_context_without_a_matching_focus`, the
+  `daily_lesson_plan_test.py` phase-tier tests, and the record-response pre-fill/submit test all
+  pass. Covers FR-16 through FR-18 and resolves the Part 1/2/3 Open Question below.
+
 ## Task-1 — Speaking question bank: model, migration, seed data
 - [x] Status: Done
 - Depends on: none (assumes `backend/app/core/db.py` already exists — owned by the

@@ -1,7 +1,8 @@
 import { Location } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { DailyLessonFacade } from '../../../daily-lesson/state/daily-lesson.facade';
 import { WritingTaskType } from '../../models/writing-submission.model';
 import { WritingCoachFacade } from '../../state/writing-coach.facade';
 
@@ -13,12 +14,32 @@ import { WritingCoachFacade } from '../../state/writing-coach.facade';
   styleUrl: './submit.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class WritingSubmitComponent {
+export class WritingSubmitComponent implements OnInit {
   private readonly location = inject(Location);
   readonly facade = inject(WritingCoachFacade);
+  private readonly dailyLessonFacade = inject(DailyLessonFacade);
   taskType: WritingTaskType = 'task2';
   questionText = '';
   responseText = '';
+  promptDay: string | null = null;
+  promptTargetBand: number | null = null;
+  promptPhase: string | null = null;
+
+  async ngOnInit(): Promise<void> {
+    if (this.dailyLessonFacade.state() === 'idle') {
+      await this.dailyLessonFacade.load().catch(() => undefined);
+    }
+    const overview = this.dailyLessonFacade.overview();
+    const entry = overview?.skills.find(
+      (s) => s.skill === 'writing' && s.generatedPromptText,
+    );
+    if (entry?.generatedPromptText) {
+      this.questionText = entry.generatedPromptText;
+      this.promptDay = entry.day;
+      this.promptTargetBand = entry.targetBand;
+      this.promptPhase = entry.phase;
+    }
+  }
 
   get canSubmit(): boolean {
     return Boolean(this.questionText.trim() && this.responseText.trim());
@@ -31,6 +52,7 @@ export class WritingSubmitComponent {
         taskType: this.taskType,
         questionText: this.questionText.trim(),
         responseText: this.responseText.trim(),
+        day: this.promptDay ?? undefined,
       });
     } catch {
       // Facade owns the visible retry state and retained draft.

@@ -1,6 +1,26 @@
 # Tasks: AI-Assisted Writing Coaching
 Plan: docs/specs/writing-coach/ImplementationPlan.md
 
+## Revision-2 Task-17 — Level-appropriate prompts, level-aware grading, wire AI prompt into submit UI
+- [x] Status: Done
+- Depends on: daily-lesson-plan's `generate_prompt_text`/`SkillOverviewEntry.generated_prompt_text`
+- Goal: `WritingEvaluationRequest` gains optional `target_band`/`phase`; `create_and_evaluate` looks
+  up that day's `DailyFocus` (skill="writing") and populates them; `level_context_line()`
+  (`app/ai/schemas.py`, shared with Speaking) appends level-calibration guidance to the grading
+  prompt in both `claude_provider.py`/`openai_provider.py` when present. Frontend: the Writing
+  submit page reads `DailyLessonFacade`'s overview for a writing entry with a generated prompt,
+  pre-fills question text (editable) and submits with `day` so grading is level-aware.
+- Files touched: `backend/app/ai/schemas.py`, `backend/app/ai/claude_provider.py`,
+  `backend/app/ai/openai_provider.py`, `backend/app/services/writing_coach.py`,
+  `backend/app/services/writing_coach_test.py`, `backend/tests/ai/test_schemas.py`,
+  `src/app/writing-coach/models/writing-submission.model.ts`,
+  `src/app/writing-coach/data/writing-coach.repository.ts`,
+  `src/app/writing-coach/pages/submit/*`.
+- Definition of done: `test_create_and_evaluate_passes_the_days_focus_level_to_the_provider`,
+  `test_create_and_evaluate_has_no_level_context_without_a_matching_focus`, schema-level
+  `level_context_line` tests, and the submit-component pre-fill test all pass. Covers FR-17
+  through FR-19.
+
 Sequencing note: Task-1 (the `AIProvider` interface + typed schemas + `FakeAIProvider`) is the
 foundation for every AI-calling task in this backlog. It is also the file
 `speaking-coach`'s backlog depends on per `docs/adr/2026-07-29-ai-provider-interface-shape.md` —

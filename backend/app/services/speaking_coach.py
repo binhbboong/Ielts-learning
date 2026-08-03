@@ -7,11 +7,25 @@ from sqlalchemy.orm import Session
 
 from app.ai.provider import AIProvider
 from app.ai.schemas import SpeakingEvaluationRequest
+from app.models.daily_lesson_plan import DailyFocus
 from app.models.speaking_question import SpeakingQuestion
 from app.models.speaking_submission import SpeakingSubmission
 from app.services.speech_to_text import SpeechToText
 from app.services.export_utils import serialize_all
 from app.models.user import LEGACY_USER_ID
+
+
+def _level_context(db: Session, day: date | None, user_id) -> tuple[float | None, str | None]:
+    if day is None:
+        return None, None
+    focus = (
+        db.query(DailyFocus)
+        .filter_by(user_id=user_id, day=day, skill="speaking")
+        .one_or_none()
+    )
+    if focus is None:
+        return None, None
+    return focus.target_band, focus.phase
 
 
 def create_submission(
@@ -81,9 +95,13 @@ def run_evaluation(
         question_text = db.get(SpeakingQuestion, value.question_id).prompt
     else:
         question_text = value.prompt_text
+    target_band, phase = _level_context(db, value.day, user_id)
     result = provider.evaluate_speaking(
         SpeakingEvaluationRequest(
-            transcript=value.transcript, question_text=question_text
+            transcript=value.transcript,
+            question_text=question_text,
+            target_band=target_band,
+            phase=phase,
         )
     )
     if result.status == "ok":

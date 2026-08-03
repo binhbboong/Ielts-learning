@@ -6,6 +6,18 @@ All notable changes to this project are documented here, newest first. Entries a
 ## [Unreleased]
 
 ### Added
+- Writing/Speaking level adaptation: task type and complexity now vary by the learner's phase
+  instead of every learner getting the hardest format (Writing Task 2 essay, Speaking Part 2 cue
+  card) regardless of level — foundation/core-skills learners get a short concrete Writing
+  question and a Part 1-style Speaking question; exam-readiness/peak-performance learners get
+  more abstract Writing topics and Part 3-style discussion. Grading is now calibrated to the
+  learner's target band/phase for submissions tied to a day, rather than an implicit flat band-9
+  standard. The AI-generated daily prompt is now actually wired into both submit UIs — previously
+  it was computed and stored but never shown to the learner, who had to source their own question
+  from scratch (Writing) or pick from a small fixed 6-question bank (Speaking)
+  (docs/adr/2026-08-03-writing-speaking-level-adaptation.md). Also fixed an unrelated bug found
+  along the way: the Speaking feedback UI read the wrong JSON key and always showed Fluency &
+  Coherence as missing.
 - Scheduled daily pre-generation: a Vercel Cron job (`0 1 * * *` UTC = 08:00
   `Asia/Ho_Chi_Minh`) now calls `GET /api/cron/pregenerate-lessons` (shared-secret protected)
   once a day, pre-generating each learner's effective day and the day after so content is ready

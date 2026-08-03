@@ -1,6 +1,27 @@
 # Specification: AI-Assisted Speaking Coaching
 Related UX: none yet — no wireframe/journey exists for this epic (it's a new epic, not carried over from the client-only architecture)
 
+## Revision 2 — Level-appropriate prompts and grading
+
+Decision: `docs/adr/2026-08-03-writing-speaking-level-adaptation.md`. Resolves this spec's Open
+Question on Part 1/2/3 distinction (below): **yes, the feature distinguishes the three parts**,
+selected by the learner's phase rather than left uniform.
+
+- FR-16: When `daily-lesson-plan` has generated today's (or the effective day's) Speaking prompt
+  for the learner, the recording screen MUST offer it as the default selectable prompt (submitted
+  via free-text prompt + day, not a seeded question id) rather than requiring the learner to pick
+  from the fixed question bank — the existing Part 1/2/3 question-bank picker MUST remain
+  available as a manual/secondary option.
+- FR-17: The generated prompt's exam part MUST vary by the learner's current phase: foundation
+  and core-skills phases get a Part 1-style short personal-experience question; development and
+  consolidation phases get a Part 2-style cue-card long turn; exam-readiness and
+  peak-performance phases get a Part 3-style abstract discussion question.
+- FR-18: When a submission is tied to a specific day, evaluation MUST be calibrated to the
+  learner's target band/phase for that day (realistic expectations for that level) rather than a
+  flat band-9 standard — criteria feedback MUST still cite exact transcript wording. A submission
+  not tied to any day (free/ad hoc practice, including the manual question-bank path) grades with
+  no level context, unchanged from before.
+
 ## Status
 Draft
 
@@ -127,14 +148,14 @@ independent of how that risk is eventually mitigated.
   speech-to-text usage costs are now a PRD constraint, and IELTS Speaking answers vary widely in
   expected length (a short Part 1 answer vs. a longer Part 2 long-turn response), so this affects
   both cost and what "one submission" should reasonably contain.]
-- [NEEDS CLARIFICATION: Should the feature distinguish IELTS Speaking's three exam parts (Part 1
-  short-answer questions, Part 2 long-turn cue-card response, Part 3 discussion), each with
-  different expected response length and prompt style, or should all speaking prompts be treated
-  uniformly by this feature? This affects prompt selection, recording length expectations, and
-  possibly how feedback is framed.]
-- [NEEDS CLARIFICATION: Where do speaking questions/prompts come from — a curated question bank
-  maintained within the application, or free-text prompts the learner supplies themselves? The
-  PRD describes submitting a response "tied to" a question but does not establish the source.]
+- Resolved 2026-08-03 (revision 2, `docs/adr/2026-08-03-writing-speaking-level-adaptation.md`):
+  yes, the three parts are distinguished — the daily-generated prompt's part is chosen by the
+  learner's phase (FR-17), while the manual question-bank picker still lets the learner pick any
+  part directly, unchanged.
+- Resolved 2026-08-03 (revision 2, same ADR): both — the curated question bank remains available
+  (manual/secondary path), and free-text prompts now also come from `daily-lesson-plan`'s
+  AI-generated `prompt_text` + `day` as the default daily path (FR-16), using a submission
+  contract the backend already supported but the frontend never used until now.
 - [NEEDS CLARIFICATION: Can the learner re-record and resubmit a new spoken response for a
   question/prompt they have already submitted and received completed feedback for, and if so, are
   prior submissions for that same question retained alongside the new one or replaced?]

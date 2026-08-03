@@ -1,8 +1,26 @@
 import { Location } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { DailyLessonRepository } from '../../../daily-lesson/data/daily-lesson.repository';
 import { WritingCoachRepository } from '../../data/writing-coach.repository';
 import { WritingSubmitComponent } from './submit.component';
+
+function dailyLessonRepositoryStub() {
+  const repository = jasmine.createSpyObj<DailyLessonRepository>(
+    'DailyLessonRepository', ['getOverview', 'retry'],
+  );
+  repository.getOverview.and.resolveTo({
+    examType: 'ielts_academic', week: 1, phase: 'foundation', targetBand: 4.5,
+    totalMinutes: 60, reviewMinutes: 10, effectiveDay: '2026-07-30',
+    checkpoint: {
+      day: '2026-07-30',
+      skills: { reading: false, listening: false, writing: false, speaking: false },
+      vocabularyQuiz: false, passedCount: 0, requiredCount: 5, allPassed: false,
+    },
+    skills: [],
+  });
+  return repository;
+}
 
 describe('WritingSubmitComponent', () => {
   it('blocks blank input, preserves failed text, and retries', async () => {
@@ -15,6 +33,7 @@ describe('WritingSubmitComponent', () => {
       providers: [
         provideRouter([]),
         { provide: WritingCoachRepository, useValue: repository },
+        { provide: DailyLessonRepository, useValue: dailyLessonRepositoryStub() },
       ],
     }).compileComponents();
     const fixture = TestBed.createComponent(WritingSubmitComponent);
@@ -41,11 +60,60 @@ describe('WritingSubmitComponent', () => {
         provideRouter([]),
         { provide: WritingCoachRepository, useValue: repository },
         { provide: Location, useValue: location },
+        { provide: DailyLessonRepository, useValue: dailyLessonRepositoryStub() },
       ],
     }).compileComponents();
     const fixture = TestBed.createComponent(WritingSubmitComponent);
     fixture.componentInstance.cancel();
     expect(repository.submit).not.toHaveBeenCalled();
     expect(location.back).toHaveBeenCalled();
+  });
+
+  it('pre-fills the question from the daily-generated writing prompt and submits with its day', async () => {
+    const repository = jasmine.createSpyObj<WritingCoachRepository>(
+      'WritingCoachRepository', ['submit'],
+    );
+    const dailyLessonRepository = dailyLessonRepositoryStub();
+    dailyLessonRepository.getOverview.and.resolveTo({
+      examType: 'ielts_academic', week: 1, phase: 'foundation', targetBand: 4.5,
+      totalMinutes: 60, reviewMinutes: 10, effectiveDay: '2026-07-30',
+      checkpoint: {
+        day: '2026-07-30',
+        skills: { reading: false, listening: false, writing: false, speaking: false },
+        vocabularyQuiz: false, passedCount: 0, requiredCount: 5, allPassed: false,
+      },
+      skills: [
+        {
+          day: '2026-07-30', skill: 'writing', status: 'ready', focusReference: null,
+          targetBand: 4.5, estimatedMinutes: 20, priority: 'primary', phase: 'foundation',
+          rationale: 'Scheduled', generatedPromptText: 'Describe your daily routine.',
+        },
+      ],
+    });
+    await TestBed.configureTestingModule({
+      imports: [WritingSubmitComponent],
+      providers: [
+        provideRouter([]),
+        { provide: WritingCoachRepository, useValue: repository },
+        { provide: DailyLessonRepository, useValue: dailyLessonRepository },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(WritingSubmitComponent);
+    const component = fixture.componentInstance;
+
+    await component.ngOnInit();
+
+    expect(component.questionText).toBe('Describe your daily routine.');
+    expect(component.promptDay).toBe('2026-07-30');
+    expect(component.promptTargetBand).toBe(4.5);
+    expect(component.promptPhase).toBe('foundation');
+
+    component.responseText = 'My response.';
+    await component.submit();
+
+    expect(repository.submit).toHaveBeenCalledWith(jasmine.objectContaining({
+      questionText: 'Describe your daily routine.',
+      day: '2026-07-30',
+    }));
   });
 });

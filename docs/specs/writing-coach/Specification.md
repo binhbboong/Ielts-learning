@@ -1,6 +1,23 @@
 # Specification: AI-Assisted Writing Coaching
 Related UX: none yet — no wireframe/journey exists for this epic (it's a new epic, not carried over from the client-only architecture)
 
+## Revision 2 — Level-appropriate prompts and grading
+
+Decision: `docs/adr/2026-08-03-writing-speaking-level-adaptation.md`.
+
+- FR-17: When `daily-lesson-plan` has generated today's (or the effective day's) Writing prompt
+  for the learner, the submission screen MUST pre-fill the task type and question text from it
+  rather than requiring the learner to source their own — the learner MAY still edit or replace
+  the pre-filled text.
+- FR-18: The generated prompt's complexity MUST vary by the learner's current phase: foundation
+  and core-skills phases get a short (~100-150 word), concrete, everyday-topic question;
+  later phases get the standard ~250-word opinion/discussion essay.
+- FR-19: When a submission is tied to a specific day, evaluation MUST be calibrated to the
+  learner's target band/phase for that day (realistic expectations for that level) rather than a
+  flat band-9 standard — the returned `overall_band` MUST still be an honest assessment, not
+  inflated, and criteria feedback MUST still cite exact submitted wording. A submission not tied
+  to any day (free/ad hoc practice) grades with no level context, unchanged from before.
+
 ## Status
 Draft
 

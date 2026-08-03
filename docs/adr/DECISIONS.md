@@ -12,6 +12,7 @@ reconcile since each ADR's identity is already unique.
 
 | Date | Decision | Status | Supersedes | Affects |
 |---|---|---|---|---|
+| 2026-08-03 | [Phase-appropriate Writing/Speaking task selection, level-aware grading, and wiring the AI-generated prompt into the submit UI](2026-08-03-writing-speaking-level-adaptation.md) | Accepted | — | writing-coach, speaking-coach, daily-lesson-plan |
 | 2026-08-03 | [Scheduled daily pre-generation of the next 2 days' lessons](2026-08-03-daily-lesson-pregeneration-job.md) | Accepted | — | daily-lesson-plan |
 | 2026-08-03 | [Per-skill 80% checkpoint, effective-day gating, all-4-skills-daily, and a vocabulary quiz mode](2026-08-03-daily-checkpoint-gating.md) | Accepted | — | daily-lesson-plan, vocabulary-review, reading-practice, listening-practice, writing-coach, speaking-coach |
 | 2026-08-03 | [Vocabulary daily minimum of 20 words via due-queue + recommendation backfill](2026-08-03-vocabulary-daily-minimum.md) | Accepted | — | vocabulary-review |

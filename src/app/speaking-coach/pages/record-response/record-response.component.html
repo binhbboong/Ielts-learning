@@ -28,28 +28,54 @@
     </section>
   } @else {
     <section class="coach-card recorder">
-      <div class="selection-grid">
-        <label>
-          Speaking part
-          <select [value]="selectedPart" (change)="changePart($any($event.target).value)">
-            <option value="PART_1">Part 1</option>
-            <option value="PART_2">Part 2</option>
-            <option value="PART_3">Part 3</option>
-          </select>
-        </label>
-        <label>
-          Question
-          <select
-            [value]="selectedQuestionId"
-            (change)="selectedQuestionId = $any($event.target).value"
+      @if (dailyPromptText) {
+        <div class="prompt-source-toggle" role="radiogroup" aria-label="Prompt source">
+          <button
+            type="button"
+            [class.active]="promptSource === 'daily'"
+            (click)="selectPromptSource('daily')"
           >
-            <option value="">Select a question</option>
-            @for (question of filteredQuestions; track question.id) {
-              <option [value]="question.id">{{ question.prompt }}</option>
-            }
-          </select>
-        </label>
-      </div>
+            Today's prompt
+          </button>
+          <button
+            type="button"
+            [class.active]="promptSource === 'bank'"
+            (click)="selectPromptSource('bank')"
+          >
+            Choose from question bank
+          </button>
+        </div>
+      }
+
+      @if (promptSource === 'daily' && dailyPromptText) {
+        <p class="daily-prompt-banner" data-testid="daily-prompt-banner">
+          {{ dailyPromptPhase }} phase, target band {{ dailyPromptTargetBand }}
+        </p>
+        <p class="daily-prompt-text" data-testid="daily-prompt-text">{{ dailyPromptText }}</p>
+      } @else {
+        <div class="selection-grid">
+          <label>
+            Speaking part
+            <select [value]="selectedPart" (change)="changePart($any($event.target).value)">
+              <option value="PART_1">Part 1</option>
+              <option value="PART_2">Part 2</option>
+              <option value="PART_3">Part 3</option>
+            </select>
+          </label>
+          <label>
+            Question
+            <select
+              [value]="selectedQuestionId"
+              (change)="selectedQuestionId = $any($event.target).value"
+            >
+              <option value="">Select a question</option>
+              @for (question of filteredQuestions; track question.id) {
+                <option [value]="question.id">{{ question.prompt }}</option>
+              }
+            </select>
+          </label>
+        </div>
+      }
 
       <div class="recording-panel">
         <div class="timer" [class.active]="recording">

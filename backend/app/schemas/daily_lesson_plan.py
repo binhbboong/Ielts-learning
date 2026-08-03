@@ -13,6 +13,7 @@ class SkillOverviewEntry(BaseModel):
     priority: str
     phase: str
     rationale: str
+    generated_prompt_text: str | None = None
 
 
 class CheckpointStatus(BaseModel):

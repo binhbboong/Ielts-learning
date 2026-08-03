@@ -61,6 +61,7 @@ def overview(
                 priority=entry.priority,
                 phase=entry.phase,
                 rationale=entry.rationale,
+                generated_prompt_text=entry.generated_prompt_text,
             )
             for entry in result.entries
         ]
@@ -92,4 +93,5 @@ def retry(
         priority=focus.priority,
         phase=focus.phase,
         rationale=focus.rationale,
+        generated_prompt_text=focus.generated_prompt_text,
     )

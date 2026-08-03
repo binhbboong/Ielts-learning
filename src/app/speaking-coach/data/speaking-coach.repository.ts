@@ -25,7 +25,7 @@ function submission(value: any): SpeakingSubmission {
     audioDurationSeconds: value.audio_duration_seconds,
     transcript: value.transcript,
     status: value.status,
-    fluencyAndCoherence: criterion(value.fluency_and_cohesion),
+    fluencyAndCoherence: criterion(value.fluency_and_coherence),
     lexicalResource: criterion(value.lexical_resource),
     grammaticalRangeAndAccuracy: criterion(value.grammatical_range_and_accuracy),
     pronunciation: 'Not assessed',
@@ -44,15 +44,19 @@ export class SpeakingCoachRepository {
     ));
   }
 
-  async create(
-    questionId: string,
-    audio: Blob,
-    durationSeconds: number,
-  ): Promise<SpeakingSubmission> {
+  async create(options: {
+    questionId?: string;
+    promptText?: string;
+    day?: string;
+    audio: Blob;
+    durationSeconds: number;
+  }): Promise<SpeakingSubmission> {
     const body = new FormData();
-    body.append('question_id', questionId);
-    body.append('duration_seconds', String(durationSeconds));
-    body.append('audio', audio, 'response.webm');
+    if (options.questionId) body.append('question_id', options.questionId);
+    if (options.promptText) body.append('prompt_text', options.promptText);
+    if (options.day) body.append('day', options.day);
+    body.append('duration_seconds', String(options.durationSeconds));
+    body.append('audio', options.audio, 'response.webm');
     return submission(await firstValueFrom(
       this.api.post<any>('/api/speaking-coach/submissions', body),
     ));

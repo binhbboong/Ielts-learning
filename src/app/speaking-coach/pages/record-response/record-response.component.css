@@ -5,6 +5,28 @@
   gap: 1.5rem;
 }
 
+.prompt-source-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.prompt-source-toggle button {
+  background: #f6f9f6;
+}
+
+.prompt-source-toggle button.active {
+  border-color: #276d39;
+  color: #fff;
+  background: #276d39;
+}
+
+.daily-prompt-text {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
 .selection-grid {
   display: grid;
   grid-template-columns: 12rem 1fr;

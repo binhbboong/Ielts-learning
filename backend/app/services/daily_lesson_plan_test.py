@@ -185,6 +185,54 @@ def test_generate_prompt_text_propagates_chat_failure(db_session_factory):
     session.close()
 
 
+def _focus_at_phase(skill: str, phase: str, target_band: float) -> DailyFocus:
+    return DailyFocus(
+        day=date(2026, 7, 30), skill=skill, focus_kind="default",
+        target_band=target_band, phase=phase, estimated_minutes=20,
+    )
+
+
+def test_beginner_phase_gets_part_1_speaking_and_short_writing_prompts():
+    provider = FakeAIProvider(
+        chat_result=ChatResult(status="ok", message="A generated prompt.")
+    )
+
+    generate_prompt_text(provider, _focus_at_phase("speaking", "foundation", 4.5))
+    generate_prompt_text(provider, _focus_at_phase("writing", "core_skills", 5.0))
+
+    speaking_instruction = provider.chat_requests[0].message
+    writing_instruction = provider.chat_requests[1].message
+    assert "Part 1" in speaking_instruction
+    assert "Part 2" not in speaking_instruction
+    assert "100-150 words" in writing_instruction
+    assert "Task 2" not in writing_instruction
+
+
+def test_standard_phase_keeps_part_2_speaking_and_full_essay_writing_prompts():
+    provider = FakeAIProvider(
+        chat_result=ChatResult(status="ok", message="A generated prompt.")
+    )
+
+    generate_prompt_text(provider, _focus_at_phase("speaking", "development", 5.5))
+    generate_prompt_text(provider, _focus_at_phase("writing", "consolidation", 6.0))
+
+    assert "Part 2" in provider.chat_requests[0].message
+    assert "Task 2" in provider.chat_requests[1].message
+    assert "100-150 words" not in provider.chat_requests[1].message
+
+
+def test_advanced_phase_gets_part_3_speaking_and_abstract_writing_prompts():
+    provider = FakeAIProvider(
+        chat_result=ChatResult(status="ok", message="A generated prompt.")
+    )
+
+    generate_prompt_text(provider, _focus_at_phase("speaking", "exam_readiness", 6.5))
+    generate_prompt_text(provider, _focus_at_phase("writing", "peak_performance", 6.5))
+
+    assert "Part 3" in provider.chat_requests[0].message
+    assert "abstract or policy-oriented" in provider.chat_requests[1].message
+
+
 def test_reading_status_generating_when_no_exercise_exists_yet(db_session_factory):
     session = db_session_factory()
     try:

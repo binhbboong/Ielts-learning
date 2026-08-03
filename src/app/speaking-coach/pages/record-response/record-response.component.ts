@@ -7,8 +7,11 @@ import {
   inject,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { DailyLessonFacade } from '../../../daily-lesson/state/daily-lesson.facade';
 import { SpeakingPart } from '../../models/speaking-question.model';
 import { SpeakingCoachFacade } from '../../state/speaking-coach.facade';
+
+export type SpeakingPromptSource = 'daily' | 'bank';
 
 @Component({
   selector: 'app-record-response',
@@ -21,8 +24,14 @@ import { SpeakingCoachFacade } from '../../state/speaking-coach.facade';
 export class RecordResponseComponent implements OnInit, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   readonly facade = inject(SpeakingCoachFacade);
+  private readonly dailyLessonFacade = inject(DailyLessonFacade);
   selectedPart: SpeakingPart = 'PART_1';
   selectedQuestionId = '';
+  promptSource: SpeakingPromptSource = 'bank';
+  dailyPromptText: string | null = null;
+  dailyPromptDay: string | null = null;
+  dailyPromptTargetBand: number | null = null;
+  dailyPromptPhase: string | null = null;
   recording = false;
   elapsedSeconds = 0;
   audio: Blob | null = null;
@@ -38,14 +47,36 @@ export class RecordResponseComponent implements OnInit, OnDestroy {
     } catch {
       this.recordingError = 'Questions could not be loaded.';
     }
+    if (this.dailyLessonFacade.state() === 'idle') {
+      await this.dailyLessonFacade.load().catch(() => undefined);
+    }
+    const overview = this.dailyLessonFacade.overview();
+    const entry = overview?.skills.find(
+      (s) => s.skill === 'speaking' && s.generatedPromptText,
+    );
+    if (entry?.generatedPromptText) {
+      this.dailyPromptText = entry.generatedPromptText;
+      this.dailyPromptDay = entry.day;
+      this.dailyPromptTargetBand = entry.targetBand;
+      this.dailyPromptPhase = entry.phase;
+      this.promptSource = 'daily';
+    }
   }
 
   get filteredQuestions() {
     return this.facade.questions().filter((item) => item.part === this.selectedPart);
   }
 
+  selectPromptSource(value: SpeakingPromptSource): void {
+    this.promptSource = value;
+  }
+
   get canSubmit(): boolean {
-    return Boolean(this.selectedQuestionId && this.audio && this.elapsedSeconds > 0);
+    const hasPrompt =
+      this.promptSource === 'daily'
+        ? Boolean(this.dailyPromptText)
+        : Boolean(this.selectedQuestionId);
+    return Boolean(hasPrompt && this.audio && this.elapsedSeconds > 0);
   }
 
   changePart(value: SpeakingPart): void {
@@ -101,11 +132,11 @@ export class RecordResponseComponent implements OnInit, OnDestroy {
   async submit(): Promise<void> {
     if (!this.canSubmit || !this.audio) return;
     try {
-      await this.facade.submit(
-        this.selectedQuestionId,
-        this.audio,
-        this.elapsedSeconds,
-      );
+      const options =
+        this.promptSource === 'daily' && this.dailyPromptText
+          ? { promptText: this.dailyPromptText, day: this.dailyPromptDay ?? undefined }
+          : { questionId: this.selectedQuestionId };
+      await this.facade.submit(options, this.audio, this.elapsedSeconds);
     } catch {
       this.recordingError = 'The recording could not be submitted.';
     }

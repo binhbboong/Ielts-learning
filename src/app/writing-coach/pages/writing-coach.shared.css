@@ -105,6 +105,15 @@ a {
   font-weight: 750;
 }
 
+.daily-prompt-banner {
+  margin: 0;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.5rem;
+  background: #eef6ef;
+  color: #226c37;
+  font-weight: 700;
+}
+
 .error-state {
   padding: 0.9rem;
   border: 1px solid #c98787;

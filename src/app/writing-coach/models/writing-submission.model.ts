@@ -18,6 +18,7 @@ export interface WritingSubmissionCreate {
   taskType: WritingTaskType;
   questionText: string;
   responseText: string;
+  day?: string;
 }
 
 export interface WritingSubmissionSummary {

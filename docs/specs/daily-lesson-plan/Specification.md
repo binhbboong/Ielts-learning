@@ -117,7 +117,10 @@ It corresponds to PRD Epic-1 (`docs/business/PRD.md`) and traces to Vision goals
   the word 'nevertheless'"), not an internal identifier.
 - FR-7: The system MUST supply today's Writing prompt to Writing Coaching (Epic-7) and today's
   Speaking prompt to Speaking Coaching (Epic-8), each derived from that skill's personalization
-  focus for the day, before the learner starts either.
+  focus for the day, before the learner starts either. The task type/complexity of each supplied
+  prompt MUST match the learner's current phase (foundation through peak-performance), per
+  `docs/adr/2026-08-03-writing-speaking-level-adaptation.md` — Writing-Coach's FR-18 and
+  Speaking-Coach's FR-17 own the exact per-phase mapping.
 - FR-8: The system MUST NOT impose a fixed end date or maximum number of days on this feature —
   a personalization focus MUST be computable for any future calendar day indefinitely, once that
   day becomes the effective day (FR-16).

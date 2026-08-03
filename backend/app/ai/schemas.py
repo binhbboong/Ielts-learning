@@ -3,6 +3,21 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
+def level_context_line(target_band: float | None, phase: str | None) -> str:
+    """Grading-prompt addendum so evaluation is calibrated to the learner's current
+    level rather than an implicit flat band-9 standard. Empty when no level is known
+    (e.g. free/ad hoc practice not tied to a daily-lesson-plan day) — grading then
+    falls back to the prior, level-agnostic behavior unchanged."""
+    if target_band is None or phase is None:
+        return ""
+    return (
+        f"\nThe learner's current target band is {target_band} "
+        f"({phase.replace('_', ' ')} phase). Grade fairly against realistic "
+        "expectations for this level, not a flat band-9 standard — still give an "
+        "honest overall_band and cite exact submitted wording."
+    )
+
+
 class _RequiredTextModel(BaseModel):
     @field_validator("*")
     @classmethod
@@ -32,6 +47,8 @@ class WritingEvaluationRequest(_RequiredTextModel):
     response_text: str
     task_type: Literal["task1", "task2"]
     question_text: str
+    target_band: float | None = None
+    phase: str | None = None
 
 
 class WritingEvaluationResult(BaseModel):
@@ -67,6 +84,8 @@ class WritingEvaluationResult(BaseModel):
 class SpeakingEvaluationRequest(_RequiredTextModel):
     transcript: str
     question_text: str
+    target_band: float | None = None
+    phase: str | None = None
 
 
 class SpeakingEvaluationResult(BaseModel):

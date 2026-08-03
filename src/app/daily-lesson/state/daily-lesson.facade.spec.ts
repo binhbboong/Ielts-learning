@@ -34,6 +34,7 @@ function skill(
     priority: 'primary',
     phase: 'foundation',
     rationale: 'Scheduled rotation',
+    generatedPromptText: null,
   };
 }
 

@@ -19,7 +19,10 @@ describe('SpeakingCoachFacade', () => {
     repository.evaluate.and.resolveTo({ ...processing, transcript: 'My answer.',
       status: 'COMPLETED' });
     const facade = new SpeakingCoachFacade(repository);
-    await facade.submit('q1', new Blob(['audio']), 10);
+    await facade.submit({ questionId: 'q1' }, new Blob(['audio']), 10);
+    expect(repository.create).toHaveBeenCalledWith(jasmine.objectContaining({
+      questionId: 'q1', durationSeconds: 10,
+    }));
     expect(repository.transcribe).toHaveBeenCalledOnceWith('s1');
     expect(repository.evaluate).toHaveBeenCalledOnceWith('s1');
     expect(facade.current()?.status).toBe('COMPLETED');

@@ -23,10 +23,14 @@ export class SpeakingCoachFacade {
     this.questionsSignal.set(await this.repository.questions());
   }
 
-  async submit(questionId: string, audio: Blob, durationSeconds: number): Promise<void> {
+  async submit(
+    options: { questionId?: string; promptText?: string; day?: string },
+    audio: Blob,
+    durationSeconds: number,
+  ): Promise<void> {
     this.stateSignal.set('loading');
     try {
-      const created = await this.repository.create(questionId, audio, durationSeconds);
+      const created = await this.repository.create({ ...options, audio, durationSeconds });
       this.currentSignal.set(created);
       await this.advanceProcessing(created);
       this.stateSignal.set('ready');
