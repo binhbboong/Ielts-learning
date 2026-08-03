@@ -8,6 +8,7 @@ import {
   VocabularyRecommendationFeed,
 } from '../models/vocabulary-word.model';
 import {
+  QuizState,
   ReviewOutcome,
   ReviewSessionState,
 } from '../models/review-session.model';
@@ -26,6 +27,8 @@ export class VocabularyFacade {
     signal<VocabularyLoadState>('idle');
   private readonly historySignal = signal<VocabularyHistory | null>(null);
   private readonly historyLoadStateSignal = signal<VocabularyLoadState>('idle');
+  private readonly quizStateSignal = signal<QuizState | null>(null);
+  private readonly quizLoadStateSignal = signal<VocabularyLoadState>('idle');
 
   readonly dueSummary = this.dueSummarySignal.asReadonly();
   readonly reviewState = this.reviewStateSignal.asReadonly();
@@ -36,6 +39,8 @@ export class VocabularyFacade {
     this.recommendationsLoadStateSignal.asReadonly();
   readonly history = this.historySignal.asReadonly();
   readonly historyLoadState = this.historyLoadStateSignal.asReadonly();
+  readonly quizState = this.quizStateSignal.asReadonly();
+  readonly quizLoadState = this.quizLoadStateSignal.asReadonly();
 
   constructor(private readonly repository: VocabularyRepository) {}
 
@@ -104,5 +109,23 @@ export class VocabularyFacade {
       this.historyLoadStateSignal.set('error');
       throw error;
     }
+  }
+
+  async startQuiz(): Promise<void> {
+    this.quizLoadStateSignal.set('loading');
+    try {
+      this.quizStateSignal.set(await this.repository.startQuiz());
+      this.quizLoadStateSignal.set('ready');
+    } catch (error) {
+      this.quizStateSignal.set(null);
+      this.quizLoadStateSignal.set('error');
+      throw error;
+    }
+  }
+
+  async answerQuizItem(selectedOptionIndex: number): Promise<void> {
+    this.quizStateSignal.set(
+      await this.repository.answerQuizItem(selectedOptionIndex),
+    );
   }
 }

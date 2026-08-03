@@ -10,10 +10,42 @@ import {
   VocabularyRecommendationFeed,
 } from '../models/vocabulary-word.model';
 import {
+  QuizState,
   ReviewItem,
   ReviewOutcome,
   ReviewSessionState,
 } from '../models/review-session.model';
+
+function mapQuizState(value: any): QuizState {
+  if (value.status === 'item') {
+    return {
+      status: 'item',
+      item: {
+        quizId: value.item.quiz_id,
+        itemId: value.item.item_id,
+        word: value.item.word,
+        options: value.item.options,
+        position: value.item.position,
+        total: value.item.total,
+      },
+    };
+  }
+  if (value.status === 'complete') {
+    const summary = value.summary;
+    return {
+      status: 'complete',
+      summary: summary
+        ? {
+            quizId: summary.quiz_id,
+            correct: summary.correct,
+            total: summary.total,
+            passed: summary.passed,
+          }
+        : undefined,
+    };
+  }
+  return { status: 'not_ready' };
+}
 
 function mapWord(value: any): VocabularyWord {
   return {
@@ -174,6 +206,28 @@ export class VocabularyRepository {
       await firstValueFrom(
         this.api.post<any>('/api/vocabulary/review/current/assess', {
           outcome,
+        }),
+      ),
+    );
+  }
+
+  async startQuiz(): Promise<QuizState> {
+    return mapQuizState(
+      await firstValueFrom(this.api.post<any>('/api/vocabulary/quiz/start', {})),
+    );
+  }
+
+  async getQuizCurrent(): Promise<QuizState> {
+    return mapQuizState(
+      await firstValueFrom(this.api.get<any>('/api/vocabulary/quiz/current')),
+    );
+  }
+
+  async answerQuizItem(selectedOptionIndex: number): Promise<QuizState> {
+    return mapQuizState(
+      await firstValueFrom(
+        this.api.post<any>('/api/vocabulary/quiz/current/answer', {
+          selected_option_index: selectedOptionIndex,
         }),
       ),
     );

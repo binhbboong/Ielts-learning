@@ -15,6 +15,15 @@ class SkillOverviewEntry(BaseModel):
     rationale: str
 
 
+class CheckpointStatus(BaseModel):
+    day: date
+    skills: dict[str, bool]
+    vocabulary_quiz: bool
+    passed_count: int
+    required_count: int
+    all_passed: bool
+
+
 class DailyOverviewResponse(BaseModel):
     exam_type: str
     week: int
@@ -22,4 +31,6 @@ class DailyOverviewResponse(BaseModel):
     target_band: float
     total_minutes: int
     review_minutes: int
+    effective_day: date
+    checkpoint: CheckpointStatus
     skills: list[SkillOverviewEntry]

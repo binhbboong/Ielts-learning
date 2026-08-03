@@ -1,6 +1,41 @@
 # Tasks: Vocabulary & Spaced Repetition Review
 Plan: docs/specs/vocabulary-review/ImplementationPlan.md
 
+## Revision-4 Task-24 — Post-review checkpoint quiz (backend)
+- [x] Status: Done
+- Depends on: Revision-3 backfill (session `day` column, once-per-day gate)
+- Goal: `VocabularyQuiz`/`VocabularyQuizItem` models + migration `0018`; `_build_quiz` (one quiz
+  per (user, day), only once that day's `ReviewSession` is completed; 4-option shuffled MCQ per
+  reviewed word, distractors from same-CEFR-level words, falling back to other reviewed words);
+  `get_or_start_quiz_item`/`answer_current_quiz_item` (resume/answer/auto-finalize, mirroring the
+  review session's current-item pattern); `get_quiz_result` for `daily-lesson-plan`'s checkpoint
+  to read. Router: `POST /quiz/start`, `GET /quiz/current`, `POST /quiz/current/answer`.
+- Files touched: `backend/app/models/vocabulary.py`,
+  `backend/alembic/versions/0018_vocabulary_quiz_tables.py`,
+  `backend/app/schemas/vocabulary.py`, `backend/app/services/vocabulary.py`,
+  `backend/app/routers/vocabulary.py`, `backend/tests/test_vocabulary_service.py`,
+  `backend/tests/test_vocabulary_router.py`, `backend/tests/test_vocabulary_models.py`,
+  `backend/tests/migrations_test.py`.
+- Definition of done: `test_quiz_not_ready_before_review_session_completes`,
+  `test_quiz_builds_items_and_answering_all_finalizes_score`,
+  `test_quiz_below_threshold_is_not_passed`, `test_quiz_cannot_be_rebuilt_once_submitted`, and
+  the router round-trip test all pass. Covers FR-36 through FR-41.
+
+## Revision-4 Task-25 — Frontend: checkpoint quiz page
+- [x] Status: Done
+- Depends on: Task-24
+- Goal: New `/vocabulary/quiz` page (recall word, 4 option buttons, pass/fail messaging,
+  not-ready state when review isn't complete yet); linked from the Review Session's
+  review-complete state and the Daily Overview's vocabulary warm-up complete state.
+- Files touched: `src/app/vocabulary/models/review-session.model.ts`,
+  `src/app/vocabulary/data/vocabulary.repository.ts`,
+  `src/app/vocabulary/state/vocabulary.facade.ts`,
+  `src/app/vocabulary/pages/vocabulary-quiz/*`, `src/app/vocabulary/vocabulary.routes.ts`,
+  `src/app/vocabulary/pages/vocabulary-review-session/*`,
+  `src/app/daily-lesson/pages/daily-overview/*`.
+- Definition of done: `vocabulary-quiz.component.spec.ts` covers start-on-init, answering,
+  pass/fail messaging, and the not-ready state.
+
 ## Revision-3 Task-18 — Expand curated word bank to 20/band + shared recommendation-candidate helper
 - [x] Status: Done
 - Depends on: none

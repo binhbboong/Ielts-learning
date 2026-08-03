@@ -12,7 +12,7 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
@@ -118,4 +118,61 @@ class ReviewSessionItem(Base):
         DateTime(timezone=True), nullable=True
     )
     session: Mapped[ReviewSession] = relationship(back_populates="items")
+    word: Mapped[VocabularyWord] = relationship()
+
+
+class VocabularyQuiz(Base):
+    __tablename__ = "vocabulary_quizzes"
+    __table_args__ = (
+        UniqueConstraint("user_id", "day", name="uq_vocabulary_quiz_user_day"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False, default=LEGACY_USER_ID,
+        server_default=text("'00000000-0000-0000-0000-000000000001'::uuid"),
+    )
+    day: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+    submitted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    correct: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    items: Mapped[list["VocabularyQuizItem"]] = relationship(
+        back_populates="quiz", cascade="all, delete-orphan"
+    )
+
+
+class VocabularyQuizItem(Base):
+    __tablename__ = "vocabulary_quiz_items"
+    __table_args__ = (
+        UniqueConstraint(
+            "quiz_id", "position", name="uq_vocabulary_quiz_item_position"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    quiz_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("vocabulary_quizzes.id", ondelete="CASCADE"), nullable=False
+    )
+    word_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("vocabulary_words.id"), nullable=False
+    )
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    options: Mapped[list] = mapped_column(JSONB, nullable=False)
+    correct_option_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    selected_option_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    quiz: Mapped[VocabularyQuiz] = relationship(back_populates="items")
     word: Mapped[VocabularyWord] = relationship()

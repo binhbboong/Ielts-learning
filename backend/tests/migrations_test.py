@@ -201,6 +201,28 @@ def test_upgrade_head_adds_review_session_day_then_downgrade_to_0016_removes_it(
         command.downgrade(cfg, "base")
 
 
+def test_upgrade_head_creates_vocabulary_quiz_tables_then_downgrade_to_0017_removes_them():
+    cfg = _alembic_config_for_test_db()
+    command.upgrade(cfg, "head")
+    try:
+        engine = create_engine(settings.TEST_DATABASE_URL)
+        inspector = inspect(engine)
+        table_names = inspector.get_table_names()
+        assert "vocabulary_quizzes" in table_names
+        assert "vocabulary_quiz_items" in table_names
+        engine.dispose()
+
+        command.downgrade(cfg, "0017")
+        engine = create_engine(settings.TEST_DATABASE_URL)
+        inspector = inspect(engine)
+        table_names = inspector.get_table_names()
+        assert "vocabulary_quizzes" not in table_names
+        assert "vocabulary_quiz_items" not in table_names
+        engine.dispose()
+    finally:
+        command.downgrade(cfg, "base")
+
+
 def test_upgrade_head_creates_reading_practice_tables_then_downgrade_to_0007_removes_them():
     cfg = _alembic_config_for_test_db()
     command.upgrade(cfg, "head")

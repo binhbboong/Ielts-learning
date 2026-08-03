@@ -1,8 +1,35 @@
 # Specification: Daily Personalized Lesson Plan
 Related UX: docs/ux/prototypes/daily-lesson-flow.md, docs/ux/wireframes/daily-overview.md
 
+## Revision 3 — All 4 skills daily, checkpoint gating
+
+Decision: `docs/adr/2026-08-03-daily-checkpoint-gating.md`.
+
+- FR-13: Every calendar day MUST generate content for all four skills (Reading, Listening,
+  Writing, Speaking), not a rotating subset — superseding FR-1's "select a primary and
+  supporting skill" (now: select which skill is primary, all four still generate).
+- FR-14: One skill per day MUST be designated primary (more allocated minutes) on a rotation;
+  the other three are support skills for that day (fewer minutes each), summing to the 50-minute
+  skill budget from FR-0C.
+- FR-15: A skill's checkpoint for a day is passed when: Reading/Listening reach ≥80% correct on
+  that day's submission; Writing's `overall_band` meets or exceeds the learner's
+  `minimum_skill_band`; Speaking's average of its three criterion band scores meets or exceeds
+  the learner's `minimum_skill_band`; Vocabulary's post-review quiz (Vocabulary Review revision
+  4) reaches ≥80% correct. A skill with no submission yet is "not yet passed," not failed — it
+  remains retryable within the day.
+- FR-16: The day the learner is generating/working on ("effective day") MUST be the earliest
+  calendar day since their plan start whose checkpoint (FR-15, all 4 skills + vocabulary quiz)
+  is not yet fully passed, capped at the real current calendar date — never generated ahead of
+  it. A learner who clears every day's checkpoint on time always has effective day = today,
+  identical to pre-revision-3 behavior.
+- FR-17: The overview MUST show the learner's checkpoint progress for the effective day (how
+  many of the 5 required checkpoints — 4 skills + vocabulary quiz — are passed) and MUST make
+  clear that tomorrow's content only becomes available once today's are all passed.
+- FR-18: The system MUST NOT generate or expose any day's content beyond the effective day (FR-16)
+  — no AI generation calls are spent on a locked-out future day.
+
 ## Status
-Approved — revision 2 (IELTS Academic adaptive allocation)
+Approved — revision 3 (all-4-skills-daily + checkpoint gating)
 
 ## Overview
 This feature decides, each calendar day, what the learner's practice should focus on across
@@ -45,15 +72,16 @@ It corresponds to PRD Epic-1 (`docs/business/PRD.md`) and traces to Vision goals
   study days per week.
 - FR-0C: For the default profile (3.5 to 6.5, minimum 6.0, 24 weeks, 60 minutes/day), each
   daily session MUST reserve 10 minutes for vocabulary/mistake review and allocate the
-  remaining 50 minutes to a primary and supporting skill.
+  remaining 50 minutes across all four skills (FR-13), with the day's primary skill (FR-14)
+  receiving more of that budget than the other three.
 - FR-0D: The daily overview MUST display exam type, current plan week/phase, target band,
   total minutes, review minutes, each allocated skill's minutes, priority, and selection
   rationale.
 - FR-0E: Generated prompts and exercises MUST explicitly target IELTS Academic, the phase's
   target band, and the learner's selected weakness or review focus.
-- FR-1: On each calendar day, the system MUST select a primary and supporting skill from
-  Reading, Listening, Writing, and Speaking, using the learner's plan phase, recent results,
-  mistake patterns, and due vocabulary.
+- FR-1: On each effective day (FR-16), the system MUST generate content for all four skills
+  (FR-13) and select which one is primary for that day (FR-14), using the learner's plan phase,
+  recent results, mistake patterns, and due vocabulary.
 - FR-2: When the learner has no recorded mistakes or due vocabulary yet (cold start), the
   system MUST still produce a personalization focus for each skill using a general-topic
   default, rather than blocking generation on personalization data that doesn't exist yet.
@@ -75,7 +103,8 @@ It corresponds to PRD Epic-1 (`docs/business/PRD.md`) and traces to Vision goals
   Speaking prompt to Speaking Coaching (Epic-8), each derived from that skill's personalization
   focus for the day, before the learner starts either.
 - FR-8: The system MUST NOT impose a fixed end date or maximum number of days on this feature —
-  a personalization focus MUST be computable for any future calendar day indefinitely.
+  a personalization focus MUST be computable for any future calendar day indefinitely, once that
+  day becomes the effective day (FR-16).
 - FR-9: Navigation from the overview to Vocabulary Review, Mistake Notebook, Progress, and Data
   Export MUST remain available regardless of any skill's generation state — a stuck or failed
   skill MUST NOT block access to these other features.
@@ -97,8 +126,11 @@ It corresponds to PRD Epic-1 (`docs/business/PRD.md`) and traces to Vision goals
 - Learner-editable/manual override of the computed personalization focus (e.g. "let me pick my
   own topic today") — not requested by the Vision/PRD; the system always chooses.
 - More than one lesson set per calendar day, or an explicit "start a new day early" action —
-  the boundary is the calendar day (see FR-1), not a learner-triggered advance.
+  the boundary is the effective day (FR-16), not a learner-triggered advance.
 - Notifications, reminders, or streak/gamification mechanics — not backed by a Vision goal.
+- Per-skill independent gating (a strong learner in one skill advancing that skill's next day
+  while behind in another) — the checkpoint gate (FR-15/FR-16) is whole-day, all 5 checkpoints
+  together, per `docs/adr/2026-08-03-daily-checkpoint-gating.md`.
 
 ## Open Questions
 None — resolved with the user: incomplete skills carry over and remain completable (FR-11,
@@ -106,7 +138,8 @@ FR-12) rather than being replaced.
 
 ## Acceptance Criteria
 - [ ] Opening the app shows one 60-minute IELTS Academic session with 10 review minutes and
-      two allocated skills totaling 50 minutes, including phase and target-band context.
+      all four skills allocated across the remaining 50 minutes, one marked primary, including
+      phase and target-band context (FR-0C, FR-13, FR-14).
 - [ ] Two registered learners cannot read, update, submit, or export each other's data.
 - [ ] With existing mistake/vocabulary data, at least one skill's displayed personalization
       note names a specific mistake pattern or vocabulary item (FR-6).
@@ -125,3 +158,12 @@ FR-12) rather than being replaced.
 - [ ] Leaving a skill not-yet-Done and advancing to the next calendar day still allows that
       skill to be opened and completed, clearly labeled as belonging to its original day rather
       than the current one (FR-11, FR-12).
+- [ ] Reaching ≥80% on Reading/Listening, meeting `minimum_skill_band` on Writing (`overall_band`)
+      and Speaking (avg of 3 criteria), and ≥80% on the vocabulary quiz all mark that day's
+      checkpoint passed; falling short on any one leaves the day's checkpoint incomplete (FR-15).
+- [ ] With today's checkpoint incomplete, tomorrow's content does not exist in the overview and
+      no generation call is made for it; the moment today's checkpoint completes, the next
+      calendar day (or the next not-yet-passed day if behind) generates on the next visit
+      (FR-16, FR-18).
+- [ ] The overview shows how many of today's 5 checkpoints (4 skills + vocabulary quiz) are
+      passed (FR-17).

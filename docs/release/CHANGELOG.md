@@ -6,6 +6,20 @@ All notable changes to this project are documented here, newest first. Entries a
 ## [Unreleased]
 
 ### Added
+- Daily checkpoint gating: each day now schedules all 4 skills (Reading, Listening, Writing,
+  Speaking) instead of a rotating 2-of-4 subset, plus a new auto-graded vocabulary quiz
+  (shuffled 4-option multiple choice over that day's reviewed words) after the existing
+  self-assessed review session. A day's checkpoint (all 4 skills at ≥80%, or ≥`minimum_skill_band`
+  for Writing/Speaking, plus the vocab quiz at ≥80%) must fully pass before the next calendar
+  day's lesson generates — computed live via an "effective day" (no persisted day-pointer), so no
+  AI-generation cost is spent on locked-out future days
+  (docs/adr/2026-08-03-daily-checkpoint-gating.md). Daily Overview now shows checkpoint
+  progress (X/5 passed) and a catching-up banner when behind. Top navigation redesigned:
+  removed a dead `/history` link and the standalone Writing/Speaking Coach entries (reached via
+  today's skill cards instead), added active-route highlighting, moved Export to a secondary
+  position.
+
+### Added (earlier this cycle)
 - Vocabulary daily minimum: each day's vocabulary review now targets at least 20 words —
   due words first, backfilled with curated level-matched words when the due count falls short
   (docs/specs/vocabulary-review/, docs/adr/2026-08-03-vocabulary-daily-minimum.md). Curated word

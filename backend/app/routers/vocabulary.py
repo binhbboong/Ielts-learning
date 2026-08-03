@@ -5,6 +5,7 @@ from app.core.db import get_db
 from app.core.security import require_learner
 from app.models.user import User
 from app.schemas.vocabulary import (
+    QuizAnswerRequest,
     ReviewAssessmentRequest,
     VocabularyHistoryDay,
     VocabularyHistoryResponse,
@@ -14,6 +15,7 @@ from app.schemas.vocabulary import (
     VocabularyWordCreate,
     VocabularyWordRead,
 )
+from app.core.clock import learner_today
 from app.services import vocabulary as service
 
 router = APIRouter(
@@ -33,6 +35,14 @@ def _unavailable(db: Session) -> None:
 def _current_body(result):
     if result.kind == "item":
         return {"status": "item", "item": result.item.model_dump(mode="json")}
+    return {"status": result.kind}
+
+
+def _quiz_body(result):
+    if result.kind == "item":
+        return {"status": "item", "item": result.item.model_dump(mode="json")}
+    if result.kind == "complete":
+        return {"status": "complete", "summary": result.summary.model_dump(mode="json")}
     return {"status": result.kind}
 
 
@@ -147,5 +157,41 @@ def assess(
         return _current_body(result)
     except HTTPException:
         raise
+    except Exception:
+        _unavailable(db)
+
+
+@router.post("/quiz/start")
+def start_quiz(db: Session = Depends(get_db), user: User = Depends(require_learner)):
+    try:
+        today = learner_today()
+        return _quiz_body(service.get_or_start_quiz_item(db, day=today, user_id=user.id))
+    except Exception:
+        _unavailable(db)
+
+
+@router.get("/quiz/current")
+def quiz_current(db: Session = Depends(get_db), user: User = Depends(require_learner)):
+    try:
+        today = learner_today()
+        return _quiz_body(service.get_or_start_quiz_item(db, day=today, user_id=user.id))
+    except Exception:
+        _unavailable(db)
+
+
+@router.post("/quiz/current/answer")
+def quiz_answer(
+    payload: QuizAnswerRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_learner),
+):
+    try:
+        today = learner_today()
+        result = service.answer_current_quiz_item(
+            db, payload.selected_option_index, day=today, user_id=user.id
+        )
+        return _quiz_body(result)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except Exception:
         _unavailable(db)

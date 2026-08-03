@@ -120,3 +120,23 @@ class VocabularyHistoryDay(BaseModel):
 
 class VocabularyHistoryResponse(BaseModel):
     days: list[VocabularyHistoryDay]
+
+
+class QuizCurrentItem(BaseModel):
+    quiz_id: uuid.UUID
+    item_id: uuid.UUID
+    word: str
+    options: list[str]
+    position: int
+    total: int
+
+
+class QuizAnswerRequest(BaseModel):
+    selected_option_index: int
+
+
+class QuizCompleteSummary(BaseModel):
+    quiz_id: uuid.UUID
+    correct: int
+    total: int
+    passed: bool

@@ -24,6 +24,44 @@
       </p>
     </section>
 
+    @if (overview.effectiveDay !== today) {
+      <section class="catch-up-banner" data-testid="catch-up-banner" role="status">
+        <strong>Catching up on {{ overview.effectiveDay }}</strong>
+        <p>
+          Clear all 5 checkpoints below to unlock the lessons you've missed since, up through
+          today.
+        </p>
+      </section>
+    }
+
+    <section class="checkpoint-summary" data-testid="checkpoint-summary">
+      <div class="checkpoint-summary__count">
+        <strong>{{ overview.checkpoint.passedCount }} / {{ overview.checkpoint.requiredCount }}</strong>
+        <span>checkpoints passed for {{ overview.effectiveDay }}</span>
+      </div>
+      <ul class="checkpoint-summary__list">
+        @for (skill of skillOrder; track skill) {
+          <li [class.checkpoint-summary__item--passed]="overview.checkpoint.skills[skill]">
+            {{ skill }}
+            <span aria-hidden="true">{{ overview.checkpoint.skills[skill] ? '✓' : '·' }}</span>
+          </li>
+        }
+        <li [class.checkpoint-summary__item--passed]="overview.checkpoint.vocabularyQuiz">
+          vocabulary quiz
+          <span aria-hidden="true">{{ overview.checkpoint.vocabularyQuiz ? '✓' : '·' }}</span>
+        </li>
+      </ul>
+      @if (overview.checkpoint.allPassed) {
+        <p class="checkpoint-summary__message checkpoint-summary__message--passed">
+          Today's checkpoint is complete — tomorrow's lesson is unlocked.
+        </p>
+      } @else {
+        <p class="checkpoint-summary__message">
+          Pass all 5 to unlock the next day.
+        </p>
+      }
+    </section>
+
     <section class="vocabulary-lesson" data-testid="daily-vocabulary-lesson">
       <header class="vocabulary-lesson__heading">
         <div>
@@ -98,8 +136,9 @@
               <h3>Vocabulary warm-up complete</h3>
               <p>
                 {{ review.summary.remembered }} remembered,
-                {{ review.summary.forgot }} to revisit. Continue with your first skill.
+                {{ review.summary.forgot }} to revisit.
               </p>
+              <a routerLink="/vocabulary/quiz">Take the checkpoint quiz</a>
             </div>
           </div>
         } @else if (review.status === 'nothing_due') {

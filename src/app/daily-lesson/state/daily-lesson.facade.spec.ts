@@ -9,6 +9,15 @@ const overviewContext = {
   targetBand: 4.5,
   totalMinutes: 60,
   reviewMinutes: 10,
+  effectiveDay: '2026-07-30',
+  checkpoint: {
+    day: '2026-07-30',
+    skills: { reading: false, listening: false, writing: false, speaking: false },
+    vocabularyQuiz: false,
+    passedCount: 0,
+    requiredCount: 5,
+    allPassed: false,
+  },
 };
 
 function skill(

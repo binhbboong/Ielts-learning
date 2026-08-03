@@ -73,6 +73,17 @@ button {
   cursor: pointer;
 }
 
+.review-page__quiz-link {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.65rem 1rem;
+  border-radius: 0.5rem;
+  color: #fff;
+  background: #15594d;
+  font-weight: 800;
+  text-decoration: none;
+}
+
 .recall-card__reveal,
 .recall-card__actions button:last-child {
   color: #fff;

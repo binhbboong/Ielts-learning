@@ -26,3 +26,24 @@ export type ReviewSessionState =
   | { status: 'nothing_due' }
   | { status: 'not_started' }
   | { status: 'complete'; summary?: ReviewCompleteSummary };
+
+export interface QuizItem {
+  quizId: string;
+  itemId: string;
+  word: string;
+  options: string[];
+  position: number;
+  total: number;
+}
+
+export interface QuizCompleteSummary {
+  quizId: string;
+  correct: number;
+  total: number;
+  passed: boolean;
+}
+
+export type QuizState =
+  | { status: 'item'; item: QuizItem }
+  | { status: 'not_ready' }
+  | { status: 'complete'; summary?: QuizCompleteSummary };

@@ -154,3 +154,50 @@ def test_history_route_rejects_unauthenticated_requests(db_session_factory):
     client = TestClient(app, base_url="https://testserver")
 
     assert client.get("/api/vocabulary/history").status_code == 401
+
+
+def test_quiz_not_ready_until_review_complete_then_start_answer_and_finish(
+    db_session_factory, monkeypatch
+):
+    monkeypatch.setattr("app.services.vocabulary.DAILY_REVIEW_TARGET", 1)
+    with db_session_factory() as session:
+        session.add(
+            VocabularyWord(
+                word="mitigate",
+                meaning="make less severe",
+                cefr_level="B2",
+                interval_index=0,
+                next_due_date=date.today(),
+            )
+        )
+        session.commit()
+    client = _client(db_session_factory)
+
+    not_ready = client.get("/api/vocabulary/quiz/current")
+    assert not_ready.json()["status"] == "not_ready"
+
+    client.post("/api/vocabulary/review/start")
+    client.post(
+        "/api/vocabulary/review/current/assess", json={"outcome": "remembered"}
+    )
+
+    started = client.post("/api/vocabulary/quiz/start")
+    assert started.status_code == 200
+    assert started.json()["status"] == "item"
+    item = started.json()["item"]
+    assert item["word"] == "mitigate"
+    correct_index = item["options"].index("make less severe")
+
+    answered = client.post(
+        "/api/vocabulary/quiz/current/answer",
+        json={"selected_option_index": correct_index},
+    )
+    assert answered.status_code == 200
+    assert answered.json()["status"] == "complete"
+    assert answered.json()["summary"]["correct"] == 1
+    assert answered.json()["summary"]["total"] == 1
+    assert answered.json()["summary"]["passed"] is True
+
+    again = client.get("/api/vocabulary/quiz/current")
+    assert again.json()["status"] == "complete"
+    assert again.json()["summary"]["correct"] == 1

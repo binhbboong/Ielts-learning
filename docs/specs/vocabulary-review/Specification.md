@@ -1,6 +1,30 @@
 # Specification: Vocabulary & Spaced Repetition Review
 Related UX: docs/ux/prototypes/vocabulary-review-flow.md
 
+## Revision 4 — Post-review quiz (checkpoint)
+
+Decision: `docs/adr/2026-08-03-daily-checkpoint-gating.md`.
+
+- FR-36: After a day's review session (FR-13–FR-24, self-assessed recall/reveal/assess) reaches
+  the review-complete state, the system MUST offer a quiz step covering every word reviewed that
+  session (due words and backfilled words alike, FR-31).
+- FR-37: Each quiz question MUST show one reviewed word and four shuffled meaning options: the
+  word's own correct meaning plus three distractors. Distractors MUST be drawn from the
+  learner's other owned words at the same CEFR level where at least three exist; when fewer than
+  three same-level words exist, the system MUST fall back to other words reviewed that session,
+  and MUST NOT block or error when the learner's vocabulary is too small for four full options —
+  it uses as many distinct distractors as are available.
+- FR-38: The learner MUST select exactly one option per question before advancing; the system
+  MUST NOT reveal correctness before a selection is made.
+- FR-39: The system MUST auto-grade the quiz (no self-assessment) and compute a
+  `correct / total` score once every question is answered.
+- FR-40: The quiz result MUST be persisted per (learner, day) and MUST NOT be retaken once
+  submitted for that day — matching the once-per-day nature of the review session itself
+  (`docs/adr/2026-08-03-vocabulary-daily-minimum.md`'s once-per-day backfill gate).
+- FR-41: The quiz score MUST be exposed (via the vocabulary API) for `daily-lesson-plan`'s
+  checkpoint evaluation to read — this feature does not itself decide pass/fail thresholds
+  (owned by `daily-lesson-plan`, FR-15) or gate anything; it only produces and persists the score.
+
 ## Revision 3 — Daily 20-word minimum
 
 Decision: `docs/adr/2026-08-03-vocabulary-daily-minimum.md`.
@@ -34,7 +58,7 @@ Decision: `docs/adr/2026-08-03-vocabulary-daily-minimum.md`.
 - FR-30: Recommendations and saved words MUST remain isolated by learner account.
 
 ## Status
-Approved — revision 3 (daily 20-word minimum)
+Approved — revision 4 (post-review quiz)
 
 ## Overview
 This feature lets the solo learner capture new vocabulary words as they encounter them and
@@ -220,3 +244,9 @@ if it isn't.
   including a shortfall indicator when applicable (FR-34).
 - [ ] The review-complete state additionally reports how many reviewed words were new backfilled
   words (FR-35).
+- [ ] Reaching review-complete offers a quiz covering every reviewed word, 4 shuffled options
+  each, correctness hidden until a selection is made (FR-36–FR-38).
+- [ ] The quiz auto-grades to a `correct/total` score, persists once per day, and cannot be
+  retaken that day (FR-39, FR-40).
+- [ ] The quiz score is readable via the API for `daily-lesson-plan`'s checkpoint to consume
+  (FR-41).

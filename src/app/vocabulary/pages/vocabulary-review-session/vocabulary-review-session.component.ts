@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { AddVocabularyWordPanelComponent } from '../../components/add-vocabulary-word-panel/add-vocabulary-word-panel.component';
 import { ReviewOutcome } from '../../models/review-session.model';
 import { VocabularyFacade } from '../../state/vocabulary.facade';
@@ -6,7 +7,7 @@ import { VocabularyFacade } from '../../state/vocabulary.facade';
 @Component({
   selector: 'app-vocabulary-review-session',
   standalone: true,
-  imports: [AddVocabularyWordPanelComponent],
+  imports: [AddVocabularyWordPanelComponent, RouterLink],
   templateUrl: './vocabulary-review-session.component.html',
   styleUrl: './vocabulary-review-session.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

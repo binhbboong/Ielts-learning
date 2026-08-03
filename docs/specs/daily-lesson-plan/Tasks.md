@@ -1,6 +1,47 @@
 # Tasks: Daily Personalized Lesson Plan
 Plan: docs/specs/daily-lesson-plan/ImplementationPlan.md
 
+## Revision-3 Task-15 — All-4-skills-daily + checkpoint evaluation + effective-day gating
+- [x] Status: Done
+- Depends on: vocabulary-review Revision-4 Task-24 (quiz mode, checkpoint input)
+- Goal: Replace the 2-skill weekday rotation (`_DAILY_ROTATION`) with all 4 skills generating
+  every effective day (`ALL_SKILLS`, `_PRIMARY_SKILL_BY_WEEKDAY` for minute weighting only);
+  add `evaluate_skill_checkpoint`/`evaluate_checkpoint` (Reading/Listening ≥80%, Writing/Speaking
+  ≥`minimum_skill_band`, vocab quiz ≥80%); add `get_effective_day` (scans from `start_date`,
+  capped at real `today`, no persisted pointer) and wire `get_overview`/`ensure_today_generated`
+  to operate on it instead of literal `today`.
+- Files touched: `backend/app/services/daily_lesson_plan.py`,
+  `backend/app/schemas/daily_lesson_plan.py`, `backend/app/routers/daily_lesson_plan.py`,
+  `backend/app/services/daily_lesson_plan_test.py`, `backend/tests/test_daily_lesson_plan_router.py`.
+- Definition of done: `test_ensure_today_generated_creates_all_four_skills_on_first_call`,
+  `test_effective_day_does_not_advance_past_an_incomplete_checkpoint`,
+  `test_effective_day_advances_once_checkpoint_fully_passed`,
+  `test_evaluate_checkpoint_reports_per_skill_and_vocabulary_quiz_pass`,
+  `test_evaluate_checkpoint_fails_writing_below_minimum_skill_band` all pass. Covers FR-13
+  through FR-18.
+
+## Revision-3 Task-16 — Frontend: checkpoint progress + catch-up banner on Daily Overview
+- [x] Status: Done
+- Depends on: Task-15
+- Goal: Surface `effectiveDay`/`checkpoint` from the overview response — a 5-item checkpoint
+  list (4 skills + vocab quiz, passed/unpassed), a passed-count summary, and a catch-up banner
+  when `effectiveDay !== today`.
+- Files touched: `src/app/daily-lesson/models/daily-focus.model.ts`,
+  `src/app/daily-lesson/data/daily-lesson.repository.ts`,
+  `src/app/daily-lesson/pages/daily-overview/*`.
+- Definition of done: `daily-lesson.repository.spec.ts` and `daily-overview.component.spec.ts`
+  pass with the new fields populated.
+
+## Revision-3 Task-17 — Tab bar redesign
+- [x] Status: Done
+- Depends on: none
+- Goal: Remove the dead `/history` link and the standalone Writing/Speaking Coach nav entries
+  (reachable via today's skill cards instead); add `routerLinkActive` highlighting; move Export
+  to a secondary position beside the auth controls.
+- Files touched: `src/app/app.html`, `src/app/app.ts`, `src/app/app.css`.
+- Definition of done: `app.spec.ts` (nav visibility/logout tests) still passes; manual visual
+  check via `ng build`.
+
 ## Revision-2 Task-11 — Learner identity and registration
 - [x] Status: Done
 - Depends on: none

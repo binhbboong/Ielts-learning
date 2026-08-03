@@ -1,3 +1,4 @@
+import random
 import uuid
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
@@ -10,11 +11,15 @@ from app.core.clock import learner_today
 from app.models.vocabulary import (
     ReviewSession,
     ReviewSessionItem,
+    VocabularyQuiz,
+    VocabularyQuizItem,
     VocabularyWord,
 )
 from app.models.study_profile import StudyProfile
 from app.schemas.vocabulary import (
     DueQueueSummary,
+    QuizCompleteSummary,
+    QuizCurrentItem,
     ReviewCompleteSummary,
     ReviewCurrentItem,
     ReviewOutcome,
@@ -22,6 +27,9 @@ from app.schemas.vocabulary import (
 )
 from app.services.export_utils import serialize_all, serialize_row
 from app.models.user import LEGACY_USER_ID
+
+QUIZ_PASS_THRESHOLD = 0.8
+QUIZ_OPTION_COUNT = 4
 
 INTERVAL_DAYS = (1, 3, 7, 14, 30)
 DAILY_REVIEW_TARGET = 20
@@ -652,3 +660,196 @@ def export_learner_data(session: Session, user_id=LEGACY_USER_ID) -> dict:
             .all()
         ],
     }
+
+
+@dataclass(frozen=True)
+class QuizItemResult:
+    kind: str
+    item: QuizCurrentItem | None = None
+    summary: QuizCompleteSummary | None = None
+
+
+def _quiz_summary(quiz: VocabularyQuiz) -> QuizCompleteSummary:
+    total = quiz.total or 0
+    correct = quiz.correct or 0
+    passed = total > 0 and (correct / total) >= QUIZ_PASS_THRESHOLD
+    return QuizCompleteSummary(
+        quiz_id=quiz.id, correct=correct, total=total, passed=passed
+    )
+
+
+def _build_quiz_options(
+    session: Session, user_id, word: VocabularyWord, other_words: list[VocabularyWord]
+) -> tuple[list[str], int]:
+    same_level = list(
+        session.scalars(
+            select(VocabularyWord).where(
+                VocabularyWord.user_id == user_id,
+                VocabularyWord.id != word.id,
+                VocabularyWord.cefr_level == word.cefr_level,
+            )
+        )
+    )
+    random.shuffle(same_level)
+    distractor_pool = list(same_level)
+    fallback = [w for w in other_words if w.id != word.id]
+    random.shuffle(fallback)
+    for candidate in fallback:
+        if candidate not in distractor_pool:
+            distractor_pool.append(candidate)
+
+    distractors = distractor_pool[: QUIZ_OPTION_COUNT - 1]
+    entries = [(word.meaning, True)] + [(w.meaning, False) for w in distractors]
+    random.shuffle(entries)
+    options = [meaning for meaning, _ in entries]
+    correct_option_index = next(
+        index for index, (_, is_correct) in enumerate(entries) if is_correct
+    )
+    return options, correct_option_index
+
+
+def _build_quiz(session: Session, user_id, day: date) -> VocabularyQuiz | None:
+    day_session = _session_for_day(session, user_id, day)
+    if day_session is None or day_session.completed_at is None:
+        return None
+
+    session_items = (
+        session.query(ReviewSessionItem)
+        .filter_by(session_id=day_session.id)
+        .order_by(ReviewSessionItem.position)
+        .all()
+    )
+    words = [item.word for item in session_items]
+    if not words:
+        return None
+
+    quiz = VocabularyQuiz(user_id=user_id, day=day)
+    session.add(quiz)
+    session.flush()
+
+    shuffled_words = list(words)
+    random.shuffle(shuffled_words)
+    quiz_items = []
+    for position, word in enumerate(shuffled_words):
+        options, correct_option_index = _build_quiz_options(
+            session, user_id, word, words
+        )
+        quiz_items.append(
+            VocabularyQuizItem(
+                quiz_id=quiz.id,
+                word_id=word.id,
+                position=position,
+                options=options,
+                correct_option_index=correct_option_index,
+            )
+        )
+    session.add_all(quiz_items)
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        existing = (
+            session.query(VocabularyQuiz).filter_by(user_id=user_id, day=day).one_or_none()
+        )
+        if existing is None:
+            raise
+        return existing
+    session.refresh(quiz)
+    return quiz
+
+
+def get_or_start_quiz_item(
+    session: Session, *, day: date, user_id=LEGACY_USER_ID
+) -> QuizItemResult:
+    quiz = session.query(VocabularyQuiz).filter_by(user_id=user_id, day=day).one_or_none()
+    if quiz is None:
+        quiz = _build_quiz(session, user_id, day)
+        if quiz is None:
+            return QuizItemResult(kind="not_ready")
+
+    if quiz.submitted_at is not None:
+        return QuizItemResult(kind="complete", summary=_quiz_summary(quiz))
+
+    item = (
+        session.query(VocabularyQuizItem)
+        .filter(
+            VocabularyQuizItem.quiz_id == quiz.id,
+            VocabularyQuizItem.selected_option_index.is_(None),
+        )
+        .order_by(VocabularyQuizItem.position)
+        .first()
+    )
+    if item is None:
+        return _finalize_quiz(session, quiz)
+
+    total = session.scalar(
+        select(func.count(VocabularyQuizItem.id)).where(
+            VocabularyQuizItem.quiz_id == quiz.id
+        )
+    )
+    return QuizItemResult(
+        kind="item",
+        item=QuizCurrentItem(
+            quiz_id=quiz.id,
+            item_id=item.id,
+            word=item.word.word,
+            options=item.options,
+            position=item.position,
+            total=total or 0,
+        ),
+    )
+
+
+def _finalize_quiz(session: Session, quiz: VocabularyQuiz) -> QuizItemResult:
+    items = session.query(VocabularyQuizItem).filter_by(quiz_id=quiz.id).all()
+    total = len(items)
+    correct = sum(
+        1 for item in items if item.selected_option_index == item.correct_option_index
+    )
+    quiz.total = total
+    quiz.correct = correct
+    quiz.submitted_at = datetime.now(timezone.utc)
+    session.commit()
+    return QuizItemResult(kind="complete", summary=_quiz_summary(quiz))
+
+
+def answer_current_quiz_item(
+    session: Session,
+    selected_option_index: int,
+    *,
+    day: date,
+    user_id=LEGACY_USER_ID,
+) -> QuizItemResult:
+    current = get_or_start_quiz_item(session, day=day, user_id=user_id)
+    if current.kind != "item" or current.item is None:
+        raise ValueError("There is no current quiz item")
+
+    item = session.get(VocabularyQuizItem, current.item.item_id)
+    item.selected_option_index = selected_option_index
+    session.flush()
+
+    quiz = session.get(VocabularyQuiz, current.item.quiz_id)
+    remaining = session.scalar(
+        select(func.count(VocabularyQuizItem.id)).where(
+            VocabularyQuizItem.quiz_id == quiz.id,
+            VocabularyQuizItem.selected_option_index.is_(None),
+        )
+    )
+    if remaining == 0:
+        return _finalize_quiz(session, quiz)
+
+    session.commit()
+    return get_or_start_quiz_item(session, day=day, user_id=user_id)
+
+
+def get_quiz_result(
+    session: Session, day: date, user_id=LEGACY_USER_ID
+) -> QuizCompleteSummary | None:
+    quiz = (
+        session.query(VocabularyQuiz)
+        .filter_by(user_id=user_id, day=day)
+        .one_or_none()
+    )
+    if quiz is None or quiz.submitted_at is None:
+        return None
+    return _quiz_summary(quiz)

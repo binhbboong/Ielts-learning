@@ -1,0 +1,54 @@
+<main class="quiz-page">
+  <header>
+    <p>Vocabulary review</p>
+    <h1>Checkpoint quiz</h1>
+  </header>
+
+  @if (facade.quizLoadState() === 'loading') {
+    <div class="quiz-page__loading" aria-label="Loading quiz"></div>
+  } @else if (facade.quizLoadState() === 'error') {
+    <section class="quiz-page__state quiz-page__state--error">
+      <h2>We could not load your quiz</h2>
+      <p>Try again when your connection is available.</p>
+    </section>
+  } @else if (facade.quizState(); as state) {
+    @if (state.status === 'item') {
+      <article data-testid="quiz-card" class="quiz-card">
+        <span>{{ state.item.position + 1 }} of {{ state.item.total }}</span>
+        <h2>{{ state.item.word }}</h2>
+        <p>What does this word mean?</p>
+        <div class="quiz-card__options">
+          @for (option of state.item.options; track $index) {
+            <button
+              type="button"
+              [disabled]="answering()"
+              (click)="answer($index)"
+            >
+              {{ option }}
+            </button>
+          }
+        </div>
+      </article>
+    } @else if (state.status === 'complete' && state.summary) {
+      <section class="quiz-page__state" data-testid="quiz-complete">
+        <h2>Quiz complete</h2>
+        <strong>{{ state.summary.correct }} / {{ state.summary.total }} correct</strong>
+        @if (state.summary.passed) {
+          <p class="quiz-page__pass">Checkpoint passed — nice work.</p>
+        } @else {
+          <p class="quiz-page__fail">
+            Below today's 80% checkpoint. Keep reviewing — tomorrow's lesson unlocks once
+            every checkpoint is passed.
+          </p>
+        }
+        <a routerLink="/">Back to today's lesson</a>
+      </section>
+    } @else if (state.status === 'not_ready') {
+      <section class="quiz-page__state">
+        <h2>Finish today's review first</h2>
+        <p>The checkpoint quiz unlocks once you've reviewed all of today's words.</p>
+        <a routerLink="/vocabulary/review">Go to review</a>
+      </section>
+    }
+  }
+</main>

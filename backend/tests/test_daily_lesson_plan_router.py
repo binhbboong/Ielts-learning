@@ -15,7 +15,6 @@ from app.core.db import get_db
 from app.core.security import SESSION_COOKIE_NAME, create_session_token
 from app.models import speaking_question  # noqa: F401 registers the FK target table
 from app.routers.daily_lesson_plan import router as daily_lesson_router
-from app.services.daily_lesson_plan import _DAILY_ROTATION
 from app.services.text_to_speech import (
     FakeTextToSpeech,
     SynthesisResult,
@@ -70,7 +69,7 @@ def test_daily_lesson_route_rejects_unauthenticated_requests(db_session_factory)
     assert client.get("/api/daily-lesson/overview").status_code == 401
 
 
-def test_overview_returns_allocated_skills_and_session_context(db_session_factory):
+def test_overview_returns_all_four_skills_and_session_context(db_session_factory):
     client = _client(db_session_factory)
 
     response = client.get("/api/daily-lesson/overview")
@@ -79,15 +78,19 @@ def test_overview_returns_allocated_skills_and_session_context(db_session_factor
     body = response.json()
     today = date.today().isoformat()
     todays_entries = [entry for entry in body["skills"] if entry["day"] == today]
-    # Rotation is weekday-driven (_DAILY_ROTATION), so which two skills are allocated
-    # depends on which day of the week the suite happens to run on.
-    expected_skills = {skill for skill, _minutes, _priority in _DAILY_ROTATION[date.today().weekday()]}
-    assert {entry["skill"] for entry in todays_entries} == expected_skills
+    assert {entry["skill"] for entry in todays_entries} == {
+        "reading", "listening", "writing", "speaking",
+    }
     assert body["exam_type"] == "ielts_academic"
     assert body["total_minutes"] == 60
     assert body["review_minutes"] == 10
     assert sum(entry["estimated_minutes"] for entry in todays_entries) == 50
+    assert sum(1 for e in todays_entries if e["priority"] == "primary") == 1
     assert all(entry["status"] == "ready" for entry in todays_entries)
+    assert body["effective_day"] == today
+    assert body["checkpoint"]["all_passed"] is False
+    assert body["checkpoint"]["passed_count"] == 0
+    assert body["checkpoint"]["required_count"] == 5
 
 
 def test_overview_is_idempotent_across_requests(db_session_factory):
@@ -113,9 +116,8 @@ def _failing_provider() -> FakeAIProvider:
 
 def test_retry_endpoint_recovers_a_failed_skill(db_session_factory):
     today = date.today().isoformat()
-    # Rotation is weekday-driven; pick a skill guaranteed to be allocated today
-    # rather than hardcoding one that may not appear in every day's rotation.
-    skill_to_retry = _DAILY_ROTATION[date.today().weekday()][0][0]
+    # All 4 skills are always allocated now, so any of them is a valid retry target.
+    skill_to_retry = "reading"
 
     failing_app = FastAPI()
     failing_app.include_router(daily_lesson_router)

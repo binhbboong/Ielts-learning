@@ -1,5 +1,6 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { VocabularyFacade } from '../../state/vocabulary.facade';
 import { VocabularyReviewSessionComponent } from './vocabulary-review-session.component';
 
@@ -34,7 +35,7 @@ describe('VocabularyReviewSessionComponent', () => {
     };
     TestBed.configureTestingModule({
       imports: [VocabularyReviewSessionComponent],
-      providers: [{ provide: VocabularyFacade, useValue: facade }],
+      providers: [provideRouter([]), { provide: VocabularyFacade, useValue: facade }],
     });
     const fixture = TestBed.createComponent(VocabularyReviewSessionComponent);
     fixture.detectChanges();
@@ -73,7 +74,7 @@ describe('VocabularyReviewSessionComponent', () => {
     };
     TestBed.configureTestingModule({
       imports: [VocabularyReviewSessionComponent],
-      providers: [{ provide: VocabularyFacade, useValue: facade }],
+      providers: [provideRouter([]), { provide: VocabularyFacade, useValue: facade }],
     });
     const fixture = TestBed.createComponent(VocabularyReviewSessionComponent);
     fixture.detectChanges();
@@ -109,7 +110,7 @@ describe('VocabularyReviewSessionComponent', () => {
     };
     TestBed.configureTestingModule({
       imports: [VocabularyReviewSessionComponent],
-      providers: [{ provide: VocabularyFacade, useValue: facade }],
+      providers: [provideRouter([]), { provide: VocabularyFacade, useValue: facade }],
     });
     const fixture = TestBed.createComponent(VocabularyReviewSessionComponent);
     fixture.detectChanges();
@@ -144,7 +145,7 @@ describe('VocabularyReviewSessionComponent', () => {
     };
     TestBed.configureTestingModule({
       imports: [VocabularyReviewSessionComponent],
-      providers: [{ provide: VocabularyFacade, useValue: facade }],
+      providers: [provideRouter([]), { provide: VocabularyFacade, useValue: facade }],
     });
     const fixture = TestBed.createComponent(VocabularyReviewSessionComponent);
     fixture.detectChanges();

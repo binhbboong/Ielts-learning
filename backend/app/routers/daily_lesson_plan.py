@@ -9,7 +9,11 @@ from app.core.db import get_db
 from app.core.security import require_learner
 from app.models.daily_lesson_plan import DailyFocus
 from app.models.user import User
-from app.schemas.daily_lesson_plan import DailyOverviewResponse, SkillOverviewEntry
+from app.schemas.daily_lesson_plan import (
+    CheckpointStatus,
+    DailyOverviewResponse,
+    SkillOverviewEntry,
+)
 from app.services import daily_lesson_plan as service
 from app.services.text_to_speech import TextToSpeech, get_text_to_speech
 
@@ -29,7 +33,7 @@ def overview(
     today = date.today()
     profile = service.get_or_create_profile(db, user.id, today)
     week, phase, target_band = service.plan_context(profile, today)
-    entries = service.get_overview(db, today, provider, tts, user.id)
+    result = service.get_overview(db, today, provider, tts, user.id)
     return DailyOverviewResponse(
         exam_type=profile.exam_type,
         week=week,
@@ -37,6 +41,15 @@ def overview(
         target_band=target_band,
         total_minutes=profile.daily_minutes,
         review_minutes=10,
+        effective_day=result.effective_day,
+        checkpoint=CheckpointStatus(
+            day=result.checkpoint.day,
+            skills=result.checkpoint.skills,
+            vocabulary_quiz=result.checkpoint.vocabulary_quiz,
+            passed_count=result.checkpoint.passed_count,
+            required_count=result.checkpoint.required_count,
+            all_passed=result.checkpoint.all_passed,
+        ),
         skills=[
             SkillOverviewEntry(
                 day=entry.day,
@@ -49,7 +62,7 @@ def overview(
                 phase=entry.phase,
                 rationale=entry.rationale,
             )
-            for entry in entries
+            for entry in result.entries
         ]
     )
 

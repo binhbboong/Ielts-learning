@@ -11,13 +11,17 @@ from app.schemas.vocabulary import ReviewOutcome, VocabularyWordCreate
 from app.services import vocabulary as vocabulary_service
 from app.services.vocabulary import (
     DAILY_REVIEW_TARGET,
+    QUIZ_PASS_THRESHOLD,
     _LEVEL_VOCABULARY,
     add_word,
+    answer_current_quiz_item,
     assess_current_item,
     get_current_item,
     get_due_summary,
     get_history,
     get_level_recommendations,
+    get_or_start_quiz_item,
+    get_quiz_result,
     get_review_complete_summary,
     reschedule,
     add_level_recommendation,
@@ -477,3 +481,121 @@ def test_history_is_scoped_per_user(db_session):
     all_words = {w.word for d in days for w in d.words_added}
     assert "mine" in all_words
     assert "theirs" not in all_words
+
+
+def _complete_review(db_session, today):
+    start_or_resume_review(db_session, today=today)
+    while True:
+        current = get_current_item(db_session, today=today)
+        if current.kind != "item":
+            break
+        assess_current_item(db_session, ReviewOutcome.remembered, today=today)
+
+
+def test_quiz_not_ready_before_review_session_completes(db_session, monkeypatch):
+    monkeypatch.setattr(vocabulary_service, "DAILY_REVIEW_TARGET", 3)
+    today = date(2026, 7, 29)
+    db_session.add_all([_due_word("a", today), _due_word("b", today), _due_word("c", today)])
+    db_session.commit()
+    start_or_resume_review(db_session, today=today)
+
+    result = get_or_start_quiz_item(db_session, day=today)
+
+    assert result.kind == "not_ready"
+
+
+def test_quiz_builds_items_and_answering_all_finalizes_score(db_session, monkeypatch):
+    monkeypatch.setattr(vocabulary_service, "DAILY_REVIEW_TARGET", 3)
+    today = date(2026, 7, 29)
+    db_session.add_all(
+        [
+            VocabularyWord(word="a", meaning="meaning-a", cefr_level="B1", interval_index=0, next_due_date=today),
+            VocabularyWord(word="b", meaning="meaning-b", cefr_level="B1", interval_index=0, next_due_date=today),
+            VocabularyWord(word="c", meaning="meaning-c", cefr_level="B1", interval_index=0, next_due_date=today),
+        ]
+    )
+    db_session.commit()
+    _complete_review(db_session, today)
+
+    first = get_or_start_quiz_item(db_session, day=today)
+    assert first.kind == "item"
+    assert first.item.total == 3
+    assert len(first.item.options) >= 2
+    assert first.item.word in {"a", "b", "c"}
+
+    seen_words = set()
+    result = first
+    while result.kind == "item":
+        seen_words.add(result.item.word)
+        correct_meaning = f"meaning-{result.item.word}"
+        correct_index = result.item.options.index(correct_meaning)
+        result = answer_current_quiz_item(
+            db_session, correct_index, day=today
+        )
+
+    assert result.kind == "complete"
+    assert seen_words == {"a", "b", "c"}
+    assert result.summary.total == 3
+    assert result.summary.correct == 3
+    assert result.summary.passed is True
+
+    stored = get_quiz_result(db_session, today)
+    assert stored is not None
+    assert stored.correct == 3
+    assert stored.total == 3
+
+
+def test_quiz_below_threshold_is_not_passed(db_session, monkeypatch):
+    monkeypatch.setattr(vocabulary_service, "DAILY_REVIEW_TARGET", 5)
+    today = date(2026, 7, 29)
+    db_session.add_all(
+        [
+            VocabularyWord(word=w, meaning=f"meaning-{w}", cefr_level="B1", interval_index=0, next_due_date=today)
+            for w in ["a", "b", "c", "d", "e"]
+        ]
+    )
+    db_session.commit()
+    _complete_review(db_session, today)
+
+    result = get_or_start_quiz_item(db_session, day=today)
+    while result.kind == "item":
+        wrong_index = next(
+            i for i, opt in enumerate(result.item.options)
+            if opt != f"meaning-{result.item.word}"
+        )
+        result = answer_current_quiz_item(db_session, wrong_index, day=today)
+
+    assert result.kind == "complete"
+    assert result.summary.correct == 0
+    assert result.summary.total == 5
+    assert result.summary.passed is False
+    assert 0 / 5 < QUIZ_PASS_THRESHOLD
+
+
+def test_quiz_result_is_none_before_submission(db_session, monkeypatch):
+    monkeypatch.setattr(vocabulary_service, "DAILY_REVIEW_TARGET", 1)
+    today = date(2026, 7, 29)
+    db_session.add(_due_word("solo", today))
+    db_session.commit()
+    _complete_review(db_session, today)
+    get_or_start_quiz_item(db_session, day=today)
+
+    assert get_quiz_result(db_session, today) is None
+
+
+def test_quiz_cannot_be_rebuilt_once_submitted(db_session, monkeypatch):
+    monkeypatch.setattr(vocabulary_service, "DAILY_REVIEW_TARGET", 1)
+    today = date(2026, 7, 29)
+    db_session.add(_due_word("solo", today))
+    db_session.commit()
+    _complete_review(db_session, today)
+
+    result = get_or_start_quiz_item(db_session, day=today)
+    while result.kind == "item":
+        result = answer_current_quiz_item(db_session, 0, day=today)
+    first_quiz_id = result.summary.quiz_id
+
+    again = get_or_start_quiz_item(db_session, day=today)
+
+    assert again.kind == "complete"
+    assert again.summary.quiz_id == first_quiz_id

@@ -8,7 +8,8 @@ from app.models.mistake import Mistake
 from app.models.reading_practice import ReadingExercise, ReadingSubmission
 from app.models import speaking_question  # noqa: F401 registers the FK target table
 from app.models.speaking_submission import SpeakingSubmission
-from app.models.vocabulary import VocabularyWord
+from app.models.user import LEGACY_USER_ID
+from app.models.vocabulary import VocabularyQuiz, VocabularyWord
 from app.models.writing_submission import WritingSubmission
 from app.ai.schemas import (
     GeneratedQuestion,
@@ -17,13 +18,52 @@ from app.ai.schemas import (
 )
 from app.services.daily_lesson_plan import (
     ensure_today_generated,
+    evaluate_checkpoint,
     generate_prompt_text,
+    get_effective_day,
     get_or_create_focus,
     get_overview,
     get_skill_status,
     retry_skill,
 )
 from app.services.text_to_speech import FakeTextToSpeech, SynthesisResult
+
+
+def _passing_criterion() -> dict:
+    return {"band_score": 6.5, "feedback": "ok", "strengths": [], "weaknesses": []}
+
+
+def _pass_all_checkpoints(session, day, provider, tts) -> None:
+    """Generate and fully pass all 4 skills + vocabulary quiz for `day`, so
+    get_effective_day() advances past it."""
+    ensure_today_generated(session, day, provider, tts)
+    reading_exercise = session.query(ReadingExercise).filter_by(day=day).one()
+    session.add(ReadingSubmission(exercise_id=reading_exercise.id, answers=[0], score=1))
+    listening_exercise = session.query(ListeningExercise).filter_by(day=day).one()
+    session.add(
+        ListeningSubmission(exercise_id=listening_exercise.id, answers=[0], score=1)
+    )
+    session.add(
+        WritingSubmission(
+            question_text="Some people believe...", task_type="task2",
+            response_text="Essay", status="complete", day=day, overall_band=6.5,
+        )
+    )
+    session.add(
+        SpeakingSubmission(
+            question_id=None, prompt_text="Describe a memorable trip.", day=day,
+            audio_storage_ref="ref", audio_duration_seconds=10, status="COMPLETE",
+            fluency_and_coherence=_passing_criterion(),
+            lexical_resource=_passing_criterion(),
+            grammatical_range_and_accuracy=_passing_criterion(),
+        )
+    )
+    session.add(
+        VocabularyQuiz(
+            day=day, submitted_at=datetime.now(timezone.utc), correct=1, total=1
+        )
+    )
+    session.commit()
 
 
 def test_selects_a_recent_mistake_for_the_skill_when_one_exists(db_session_factory):
@@ -306,7 +346,7 @@ def _full_provider() -> FakeAIProvider:
     )
 
 
-def test_ensure_today_generated_creates_two_allocated_skills_on_first_call(
+def test_ensure_today_generated_creates_all_four_skills_on_first_call(
     db_session_factory,
 ):
     session = db_session_factory()
@@ -318,11 +358,16 @@ def test_ensure_today_generated_creates_two_allocated_skills_on_first_call(
 
         ensure_today_generated(session, date(2026, 7, 30), provider, tts)
 
+        assert get_skill_status(session, date(2026, 7, 30), "reading") == "ready"
         assert get_skill_status(session, date(2026, 7, 30), "listening") == "ready"
+        assert get_skill_status(session, date(2026, 7, 30), "writing") == "ready"
         assert get_skill_status(session, date(2026, 7, 30), "speaking") == "ready"
         focuses = session.query(DailyFocus).filter_by(day=date(2026, 7, 30)).all()
-        assert {focus.skill for focus in focuses} == {"listening", "speaking"}
+        assert {focus.skill for focus in focuses} == {
+            "reading", "listening", "writing", "speaking",
+        }
         assert sum(focus.estimated_minutes for focus in focuses) == 50
+        assert sum(1 for f in focuses if f.priority == "primary") == 1
     finally:
         session.close()
 
@@ -340,14 +385,14 @@ def test_ensure_today_generated_is_idempotent_and_triggers_no_further_generation
         ensure_today_generated(session, date(2026, 7, 30), provider, tts)
         ensure_today_generated(session, date(2026, 7, 30), provider, tts)
 
-        assert len(provider.reading_exercise_requests) == 0
+        assert len(provider.reading_exercise_requests) == 1
         assert len(provider.listening_script_requests) == 1
-        assert len(provider.chat_requests) == 1
+        assert len(provider.chat_requests) == 2
     finally:
         session.close()
 
 
-def test_get_overview_includes_allocated_skills_for_today(db_session_factory):
+def test_get_overview_includes_all_four_skills_for_the_effective_day(db_session_factory):
     session = db_session_factory()
     try:
         provider = _full_provider()
@@ -355,16 +400,19 @@ def test_get_overview_includes_allocated_skills_for_today(db_session_factory):
             SynthesisResult(status="ok", audio_bytes=b"audio", content_type="audio/mpeg")
         )
 
-        entries = get_overview(session, date(2026, 7, 30), provider, tts)
+        result = get_overview(session, date(2026, 7, 30), provider, tts)
 
-        skills_seen = {entry.skill for entry in entries}
-        assert skills_seen == {"listening", "speaking"}
-        assert all(entry.day == date(2026, 7, 30) for entry in entries)
+        skills_seen = {entry.skill for entry in result.entries}
+        assert skills_seen == {"reading", "listening", "writing", "speaking"}
+        assert all(entry.day == date(2026, 7, 30) for entry in result.entries)
+        assert result.effective_day == date(2026, 7, 30)
+        assert result.checkpoint.passed_count == 0
+        assert result.checkpoint.all_passed is False
     finally:
         session.close()
 
 
-def test_get_overview_carries_over_an_earlier_incomplete_skill(db_session_factory):
+def test_effective_day_does_not_advance_past_an_incomplete_checkpoint(db_session_factory):
     session = db_session_factory()
     try:
         provider = _full_provider()
@@ -372,20 +420,20 @@ def test_get_overview_carries_over_an_earlier_incomplete_skill(db_session_factor
             SynthesisResult(status="ok", audio_bytes=b"audio", content_type="audio/mpeg")
         )
 
-        # Generate an earlier day, but never submit anything for it.
+        # Day 29 generated but nothing submitted -> its checkpoint is incomplete.
         get_overview(session, date(2026, 7, 29), provider, tts)
 
-        entries = get_overview(session, date(2026, 7, 30), provider, tts)
+        result = get_overview(session, date(2026, 7, 30), provider, tts)
 
-        carried_over = [e for e in entries if e.day == date(2026, 7, 29)]
-        assert len(carried_over) == 2
-        today_entries = [e for e in entries if e.day == date(2026, 7, 30)]
-        assert len(today_entries) == 2
+        # Effective day stays pinned to the unfinished 29th — the 30th never generates.
+        assert result.effective_day == date(2026, 7, 29)
+        assert {e.day for e in result.entries} == {date(2026, 7, 29)}
+        assert session.query(DailyFocus).filter_by(day=date(2026, 7, 30)).count() == 0
     finally:
         session.close()
 
 
-def test_get_overview_does_not_carry_over_a_completed_earlier_skill(db_session_factory):
+def test_effective_day_advances_once_checkpoint_fully_passed(db_session_factory):
     session = db_session_factory()
     try:
         provider = _full_provider()
@@ -393,17 +441,66 @@ def test_get_overview_does_not_carry_over_a_completed_earlier_skill(db_session_f
             SynthesisResult(status="ok", audio_bytes=b"audio", content_type="audio/mpeg")
         )
 
-        get_overview(session, date(2026, 7, 29), provider, tts)
-        exercise = session.query(ReadingExercise).filter_by(day=date(2026, 7, 29)).one()
-        session.add(ReadingSubmission(exercise_id=exercise.id, answers=[0], score=1))
+        _pass_all_checkpoints(session, date(2026, 7, 29), provider, tts)
+
+        assert get_effective_day(session, LEGACY_USER_ID, date(2026, 7, 30)) == date(
+            2026, 7, 30
+        )
+
+        result = get_overview(session, date(2026, 7, 30), provider, tts)
+
+        assert result.effective_day == date(2026, 7, 30)
+        today_entries = [e for e in result.entries if e.day == date(2026, 7, 30)]
+        assert {e.skill for e in today_entries} == {
+            "reading", "listening", "writing", "speaking",
+        }
+        # The now-fully-passed prior day's skills do not carry over into the view.
+        assert all(e.day == date(2026, 7, 30) for e in result.entries)
+    finally:
+        session.close()
+
+
+def test_evaluate_checkpoint_reports_per_skill_and_vocabulary_quiz_pass(
+    db_session_factory,
+):
+    session = db_session_factory()
+    try:
+        provider = _full_provider()
+        tts = FakeTextToSpeech(
+            SynthesisResult(status="ok", audio_bytes=b"audio", content_type="audio/mpeg")
+        )
+        _pass_all_checkpoints(session, date(2026, 7, 29), provider, tts)
+
+        checkpoint = evaluate_checkpoint(session, date(2026, 7, 29))
+
+        assert checkpoint.skills == {
+            "reading": True, "listening": True, "writing": True, "speaking": True,
+        }
+        assert checkpoint.vocabulary_quiz is True
+        assert checkpoint.passed_count == 5
+        assert checkpoint.all_passed is True
+    finally:
+        session.close()
+
+
+def test_evaluate_checkpoint_fails_writing_below_minimum_skill_band(db_session_factory):
+    session = db_session_factory()
+    try:
+        provider = _full_provider()
+        tts = FakeTextToSpeech(
+            SynthesisResult(status="ok", audio_bytes=b"audio", content_type="audio/mpeg")
+        )
+        _pass_all_checkpoints(session, date(2026, 7, 29), provider, tts)
+        low_band_submission = (
+            session.query(WritingSubmission).filter_by(day=date(2026, 7, 29)).one()
+        )
+        low_band_submission.overall_band = 5.0
         session.commit()
 
-        entries = get_overview(session, date(2026, 7, 30), provider, tts)
+        checkpoint = evaluate_checkpoint(session, date(2026, 7, 29))
 
-        carried_over_reading = [
-            e for e in entries if e.day == date(2026, 7, 29) and e.skill == "reading"
-        ]
-        assert carried_over_reading == []
+        assert checkpoint.skills["writing"] is False
+        assert checkpoint.all_passed is False
     finally:
         session.close()
 

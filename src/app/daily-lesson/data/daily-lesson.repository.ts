@@ -1,7 +1,22 @@
 import { Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { ApiClient } from '../../core/api/api-client';
-import { DailyOverview, SkillOverviewEntry } from '../models/daily-focus.model';
+import {
+  CheckpointStatus,
+  DailyOverview,
+  SkillOverviewEntry,
+} from '../models/daily-focus.model';
+
+function checkpoint(value: any): CheckpointStatus {
+  return {
+    day: value.day,
+    skills: value.skills,
+    vocabularyQuiz: value.vocabulary_quiz,
+    passedCount: value.passed_count,
+    requiredCount: value.required_count,
+    allPassed: value.all_passed,
+  };
+}
 
 function entry(value: any): SkillOverviewEntry {
   return {
@@ -32,6 +47,8 @@ export class DailyLessonRepository {
       targetBand: value.target_band,
       totalMinutes: value.total_minutes,
       reviewMinutes: value.review_minutes,
+      effectiveDay: value.effective_day,
+      checkpoint: checkpoint(value.checkpoint),
       skills: (value.skills ?? []).map(entry),
     };
   }

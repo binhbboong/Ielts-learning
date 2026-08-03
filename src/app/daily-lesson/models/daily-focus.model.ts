@@ -13,6 +13,15 @@ export interface SkillOverviewEntry {
   rationale: string;
 }
 
+export interface CheckpointStatus {
+  day: string;
+  skills: Record<Skill, boolean>;
+  vocabularyQuiz: boolean;
+  passedCount: number;
+  requiredCount: number;
+  allPassed: boolean;
+}
+
 export interface DailyOverview {
   examType: string;
   week: number;
@@ -20,5 +29,7 @@ export interface DailyOverview {
   targetBand: number;
   totalMinutes: number;
   reviewMinutes: number;
+  effectiveDay: string;
+  checkpoint: CheckpointStatus;
   skills: SkillOverviewEntry[];
 }

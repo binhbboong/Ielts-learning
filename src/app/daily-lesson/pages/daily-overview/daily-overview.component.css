@@ -34,6 +34,81 @@
   text-transform: uppercase;
 }
 
+.catch-up-banner {
+  padding: 1rem 1.25rem;
+  border: 1px solid #e4c68a;
+  border-radius: 0.75rem;
+  background: #fff7ee;
+  color: #8a5a1f;
+}
+
+.catch-up-banner strong {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.catch-up-banner p {
+  margin: 0;
+}
+
+.checkpoint-summary {
+  padding: 1.25rem;
+  border: 1px solid #d5dfdc;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.checkpoint-summary__count {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.checkpoint-summary__count strong {
+  font-size: 1.75rem;
+}
+
+.checkpoint-summary__count span {
+  color: #61716c;
+}
+
+.checkpoint-summary__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.checkpoint-summary__list li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: #edf1f0;
+  color: #61716c;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.checkpoint-summary__item--passed {
+  background: #dff1ea;
+  color: #15594d;
+}
+
+.checkpoint-summary__message {
+  margin: 0;
+  color: #61716c;
+  font-weight: 700;
+}
+
+.checkpoint-summary__message--passed {
+  color: #15594d;
+}
+
 .vocabulary-lesson {
   overflow: hidden;
   border: 1px solid #b8cec8;

@@ -6,6 +6,15 @@ describe('DailyLessonRepository', () => {
   it('maps the overview and retry endpoints', async () => {
     const api = jasmine.createSpyObj<ApiClient>('ApiClient', ['get', 'post']);
     api.get.and.returnValue(of({
+      effective_day: '2026-07-30',
+      checkpoint: {
+        day: '2026-07-30',
+        skills: { reading: false, listening: false, writing: false, speaking: false },
+        vocabulary_quiz: false,
+        passed_count: 0,
+        required_count: 5,
+        all_passed: false,
+      },
       skills: [
         { day: '2026-07-30', skill: 'reading', status: 'ready', focus_reference: "the word 'nevertheless'" },
         { day: '2026-07-30', skill: 'listening', status: 'generating', focus_reference: null },
@@ -19,6 +28,9 @@ describe('DailyLessonRepository', () => {
     const overview = await repository.getOverview();
     expect(overview.skills.length).toBe(2);
     expect(overview.skills[0].focusReference).toBe("the word 'nevertheless'");
+    expect(overview.effectiveDay).toBe('2026-07-30');
+    expect(overview.checkpoint.requiredCount).toBe(5);
+    expect(overview.checkpoint.allPassed).toBe(false);
 
     const retried = await repository.retry('reading', '2026-07-30');
     expect(retried.status).toBe('ready');

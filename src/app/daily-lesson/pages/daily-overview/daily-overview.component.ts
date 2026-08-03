@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 import { RouterLink } from '@angular/router';
 import { ReviewOutcome } from '../../../vocabulary/models/review-session.model';
 import { VocabularyFacade } from '../../../vocabulary/state/vocabulary.facade';
-import { SkillOverviewEntry } from '../../models/daily-focus.model';
+import { Skill, SkillOverviewEntry } from '../../models/daily-focus.model';
 import { DailyLessonFacade } from '../../state/daily-lesson.facade';
 
 function todayIso(): string {
@@ -21,6 +21,7 @@ export class DailyOverviewComponent implements OnInit {
   readonly facade = inject(DailyLessonFacade);
   readonly vocabulary = inject(VocabularyFacade);
   readonly today = todayIso();
+  readonly skillOrder: readonly Skill[] = ['reading', 'listening', 'writing', 'speaking'];
   readonly vocabularyRevealed = signal(false);
   readonly vocabularyAssessing = signal(false);
   readonly addingRecommendation = signal<string | null>(null);

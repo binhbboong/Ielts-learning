@@ -1,17 +1,31 @@
 @if (authState.authenticated()) {
   <header class="app-header">
     <nav class="app-nav" data-testid="app-nav" aria-label="Study navigation">
-      <a data-testid="nav-today" routerLink="/">Today</a>
-      <a data-testid="nav-history" routerLink="/history">History</a>
-      <a data-testid="nav-mistakes" routerLink="/mistakes">Mistakes</a>
-      <a data-testid="nav-vocabulary" routerLink="/vocabulary">Vocabulary</a>
-      <a data-testid="nav-progress" routerLink="/progress">Progress</a>
-      <a data-testid="nav-writing" routerLink="/writing">Writing Coach</a>
-      <a data-testid="nav-speaking" routerLink="/speaking">Speaking Coach</a>
-      <a data-testid="nav-export" routerLink="/export">Export</a>
+      <a
+        data-testid="nav-today"
+        routerLink="/"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+      >Today</a>
+      <a
+        data-testid="nav-vocabulary"
+        routerLink="/vocabulary"
+        routerLinkActive="active"
+      >Vocabulary</a>
+      <a
+        data-testid="nav-mistakes"
+        routerLink="/mistakes"
+        routerLinkActive="active"
+      >Mistakes</a>
+      <a
+        data-testid="nav-progress"
+        routerLink="/progress"
+        routerLinkActive="active"
+      >Progress</a>
     </nav>
 
     <div class="auth-controls">
+      <a data-testid="nav-export" class="export-link" routerLink="/export" routerLinkActive="active">Export</a>
       <span data-testid="auth-indicator">Recognized as learner</span>
       <button data-testid="logout" type="button" [disabled]="loggingOut" (click)="logout()">
         {{ loggingOut ? 'Logging out...' : 'Log out' }}

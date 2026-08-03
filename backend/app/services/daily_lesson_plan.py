@@ -1,7 +1,8 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, timedelta
 import uuid
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.ai.provider import AIProvider
@@ -9,24 +10,32 @@ from app.ai.schemas import ChatRequest, ChatResult
 from app.models.daily_lesson_plan import DailyFocus
 from app.models.study_profile import StudyProfile
 from app.models.user import LEGACY_USER_ID
-from app.models.listening_practice import ListeningExercise, ListeningSubmission
+from app.models.listening_practice import (
+    ListeningExercise,
+    ListeningQuestion,
+    ListeningSubmission,
+)
 from app.models.mistake import Mistake
-from app.models.reading_practice import ReadingExercise, ReadingSubmission
+from app.models.reading_practice import ReadingExercise, ReadingQuestion, ReadingSubmission
 from app.models.speaking_submission import SpeakingSubmission
 from app.models.vocabulary import VocabularyWord
 from app.models.writing_submission import WritingSubmission
-from app.services import listening_practice, reading_practice
+from app.services import listening_practice, reading_practice, vocabulary as vocabulary_service
 from app.services.text_to_speech import TextToSpeech
 
 _LISTENING_FAILED_STATES = {"script_failed", "audio_failed"}
-_DAILY_ROTATION = {
-    0: (("reading", 35, "primary"), ("listening", 15, "support")),
-    1: (("listening", 35, "primary"), ("speaking", 15, "support")),
-    2: (("writing", 40, "primary"), ("reading", 10, "support")),
-    3: (("speaking", 35, "primary"), ("listening", 15, "support")),
-    4: (("reading", 25, "primary"), ("writing", 25, "support")),
-    5: (("listening", 25, "primary"), ("speaking", 25, "support")),
-    6: (("writing", 25, "primary"), ("reading", 25, "support")),
+ALL_SKILLS = ("reading", "listening", "writing", "speaking")
+CHECKPOINT_PASS_RATIO = 0.8
+PRIMARY_SKILL_MINUTES = 20
+SUPPORT_SKILL_MINUTES = 10
+_PRIMARY_SKILL_BY_WEEKDAY = {
+    0: "reading",
+    1: "listening",
+    2: "writing",
+    3: "speaking",
+    4: "reading",
+    5: "listening",
+    6: "writing",
 }
 _PHASES = (
     ("foundation", 4.5),
@@ -213,6 +222,13 @@ def get_skill_status(
     raise ValueError(f"unknown skill: {skill}")
 
 
+def _skill_minutes_and_priority(day: date, skill: str) -> tuple[int, str]:
+    primary_skill = _PRIMARY_SKILL_BY_WEEKDAY[day.weekday()]
+    if skill == primary_skill:
+        return PRIMARY_SKILL_MINUTES, "primary"
+    return SUPPORT_SKILL_MINUTES, "support"
+
+
 def ensure_today_generated(
     db: Session,
     day: date,
@@ -220,7 +236,8 @@ def ensure_today_generated(
     tts: TextToSpeech,
     user_id: uuid.UUID = LEGACY_USER_ID,
 ) -> None:
-    for skill, minutes, priority in _DAILY_ROTATION[day.weekday()]:
+    for skill in ALL_SKILLS:
+        minutes, priority = _skill_minutes_and_priority(day, skill)
         existing = (
             db.query(DailyFocus)
             .filter_by(user_id=user_id, day=day, skill=skill)
@@ -276,6 +293,122 @@ def retry_skill(
             db.commit()
 
 
+def _reading_or_listening_checkpoint(
+    db: Session, day: date, exercise_model, question_model, submission_model,
+    user_id: uuid.UUID,
+) -> bool:
+    exercise = db.query(exercise_model).filter_by(user_id=user_id, day=day).one_or_none()
+    if exercise is None:
+        return False
+    submission = (
+        db.query(submission_model).filter_by(exercise_id=exercise.id).one_or_none()
+    )
+    if submission is None:
+        return False
+    total = db.query(func.count(question_model.id)).filter_by(
+        exercise_id=exercise.id
+    ).scalar()
+    if not total:
+        return False
+    return (submission.score / total) >= CHECKPOINT_PASS_RATIO
+
+
+def _writing_checkpoint(
+    db: Session, day: date, user_id: uuid.UUID, profile: StudyProfile
+) -> bool:
+    return (
+        db.query(WritingSubmission)
+        .filter(
+            WritingSubmission.user_id == user_id,
+            WritingSubmission.day == day,
+            WritingSubmission.overall_band.isnot(None),
+            WritingSubmission.overall_band >= profile.minimum_skill_band,
+        )
+        .first()
+        is not None
+    )
+
+
+def _speaking_checkpoint(
+    db: Session, day: date, user_id: uuid.UUID, profile: StudyProfile
+) -> bool:
+    submissions = (
+        db.query(SpeakingSubmission).filter_by(user_id=user_id, day=day).all()
+    )
+    for submission in submissions:
+        criteria = (
+            submission.fluency_and_coherence,
+            submission.lexical_resource,
+            submission.grammatical_range_and_accuracy,
+        )
+        if not all(criteria):
+            continue
+        average = sum(c["band_score"] for c in criteria) / len(criteria)
+        if average >= profile.minimum_skill_band:
+            return True
+    return False
+
+
+def evaluate_skill_checkpoint(
+    db: Session, day: date, skill: str, user_id: uuid.UUID, profile: StudyProfile
+) -> bool:
+    if skill == "reading":
+        return _reading_or_listening_checkpoint(
+            db, day, ReadingExercise, ReadingQuestion, ReadingSubmission, user_id
+        )
+    if skill == "listening":
+        return _reading_or_listening_checkpoint(
+            db, day, ListeningExercise, ListeningQuestion, ListeningSubmission, user_id
+        )
+    if skill == "writing":
+        return _writing_checkpoint(db, day, user_id, profile)
+    if skill == "speaking":
+        return _speaking_checkpoint(db, day, user_id, profile)
+    raise ValueError(f"unknown skill: {skill}")
+
+
+@dataclass
+class CheckpointStatus:
+    day: date
+    skills: dict = field(default_factory=dict)
+    vocabulary_quiz: bool = False
+    passed_count: int = 0
+    required_count: int = len(ALL_SKILLS) + 1
+    all_passed: bool = False
+
+
+def evaluate_checkpoint(
+    db: Session, day: date, user_id: uuid.UUID = LEGACY_USER_ID
+) -> CheckpointStatus:
+    profile = get_or_create_profile(db, user_id, day)
+    skills = {
+        skill: evaluate_skill_checkpoint(db, day, skill, user_id, profile)
+        for skill in ALL_SKILLS
+    }
+    quiz_result = vocabulary_service.get_quiz_result(db, day, user_id)
+    vocabulary_passed = quiz_result is not None and quiz_result.passed
+    passed_count = sum(skills.values()) + (1 if vocabulary_passed else 0)
+    return CheckpointStatus(
+        day=day,
+        skills=skills,
+        vocabulary_quiz=vocabulary_passed,
+        passed_count=passed_count,
+        all_passed=passed_count == len(ALL_SKILLS) + 1,
+    )
+
+
+def get_effective_day(
+    db: Session, user_id: uuid.UUID, today: date
+) -> date:
+    profile = get_or_create_profile(db, user_id, today)
+    day = profile.start_date
+    while day < today:
+        if not evaluate_checkpoint(db, day, user_id).all_passed:
+            return day
+        day += timedelta(days=1)
+    return today
+
+
 @dataclass
 class SkillOverviewEntry:
     day: date
@@ -289,22 +422,30 @@ class SkillOverviewEntry:
     rationale: str
 
 
+@dataclass
+class DailyOverviewResult:
+    entries: list[SkillOverviewEntry]
+    effective_day: date
+    checkpoint: CheckpointStatus
+
+
 def get_overview(
     db: Session, today: date, provider: AIProvider, tts: TextToSpeech,
     user_id: uuid.UUID = LEGACY_USER_ID,
-) -> list[SkillOverviewEntry]:
-    ensure_today_generated(db, today, provider, tts, user_id)
+) -> DailyOverviewResult:
+    effective_day = get_effective_day(db, user_id, today)
+    ensure_today_generated(db, effective_day, provider, tts, user_id)
 
     entries: list[SkillOverviewEntry] = []
     focuses = (
         db.query(DailyFocus)
-        .filter(DailyFocus.user_id == user_id, DailyFocus.day <= today)
+        .filter(DailyFocus.user_id == user_id, DailyFocus.day <= effective_day)
         .order_by(DailyFocus.day, DailyFocus.skill)
         .all()
     )
     for focus in focuses:
         status = get_skill_status(db, focus.day, focus.skill, user_id)
-        if focus.day == today or status != "done":
+        if focus.day == effective_day or status != "done":
             entries.append(
                 SkillOverviewEntry(
                     day=focus.day,
@@ -318,4 +459,7 @@ def get_overview(
                     rationale=focus.rationale,
                 )
             )
-    return entries
+    checkpoint = evaluate_checkpoint(db, effective_day, user_id)
+    return DailyOverviewResult(
+        entries=entries, effective_day=effective_day, checkpoint=checkpoint
+    )
