@@ -9,6 +9,7 @@ export interface ReviewItem {
   example: string | null;
   position: number;
   total: number;
+  isNew: boolean;
 }
 
 export interface ReviewCompleteSummary {
@@ -16,6 +17,7 @@ export interface ReviewCompleteSummary {
   totalReviewed: number;
   forgot: number;
   remembered: number;
+  newWordsIncluded: number;
   reviewDatesUpdated: boolean;
 }
 

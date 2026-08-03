@@ -1,0 +1,371 @@
+.overview-page {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: clamp(1rem, 4vw, 2.5rem);
+  color: #18201e;
+}
+
+.overview-heading h1 {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 3.6rem);
+  letter-spacing: -0.04em;
+}
+
+.session-summary {
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #d5dfdc;
+}
+
+.session-summary h2,
+.session-summary p {
+  margin-bottom: 0;
+}
+
+.eyebrow,
+.step-label {
+  margin: 0 0 0.35rem;
+  color: #1f6f5f;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vocabulary-lesson {
+  overflow: hidden;
+  border: 1px solid #b8cec8;
+  border-radius: 0.9rem;
+  background: #f2f8f6;
+  box-shadow: 0 1rem 3rem rgba(24, 85, 73, 0.08);
+}
+
+.vocabulary-lesson__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: clamp(1.25rem, 4vw, 2rem);
+  border-bottom: 1px solid #cdded9;
+}
+
+.vocabulary-lesson__heading h2,
+.vocabulary-lesson__heading p {
+  margin: 0;
+}
+
+.vocabulary-lesson__heading h2 {
+  margin-bottom: 0.35rem;
+  font-size: clamp(1.5rem, 4vw, 2.25rem);
+  letter-spacing: -0.025em;
+}
+
+.vocabulary-lesson__heading a {
+  flex: 0 0 auto;
+  color: #15594d;
+  font-weight: 800;
+}
+
+.daily-recall-card,
+.recommendation-panel,
+.vocabulary-state {
+  padding: clamp(1.25rem, 4vw, 2rem);
+}
+
+.daily-recall-card__progress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  color: #60716d;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.daily-recall-card__badge {
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: #edf1f0;
+  color: #445450;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.daily-recall-card__badge--new {
+  background: #dff1ea;
+  color: #15594d;
+}
+
+.daily-recall-card h3 {
+  margin: 2rem 0;
+  font-size: clamp(2.5rem, 8vw, 4.75rem);
+  letter-spacing: -0.045em;
+  line-height: 1;
+}
+
+.daily-recall-card__answer {
+  margin-bottom: 1.5rem;
+  padding: 1.25rem 0 0.25rem;
+  border-top: 1px solid #cdded9;
+}
+
+.daily-recall-card__answer strong {
+  font-size: 1.15rem;
+}
+
+.daily-recall-card__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.primary-button,
+.secondary-button,
+.skill-card button {
+  min-height: 2.8rem;
+  padding: 0.65rem 1rem;
+  border: 1px solid #15594d;
+  border-radius: 0.55rem;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.primary-button {
+  color: #fff;
+  background: #15594d;
+}
+
+.secondary-button,
+.skill-card button {
+  color: #15594d;
+  background: #fff;
+}
+
+.primary-button:active,
+.secondary-button:active,
+.button-link:active,
+.skill-card button:active {
+  transform: translateY(1px);
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.vocabulary-state--complete {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.vocabulary-state h3,
+.vocabulary-state p,
+.recommendation-panel h3,
+.recommendation-panel p {
+  margin: 0;
+}
+
+.vocabulary-state p,
+.recommendation-panel > div > p {
+  margin-top: 0.35rem;
+}
+
+.completion-mark {
+  display: grid;
+  flex: 0 0 2.75rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #15594d;
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+.vocabulary-state--error {
+  color: #8c2f28;
+  background: #fff7f6;
+}
+
+.recommended-word {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 1.5rem;
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #cdded9;
+}
+
+.recommended-word span {
+  color: #1f6f5f;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.recommended-word h3 {
+  margin-top: 0.25rem;
+  font-size: 2rem;
+}
+
+.vocabulary-skeleton {
+  display: grid;
+  gap: 0.8rem;
+  padding: 2rem;
+}
+
+.vocabulary-skeleton span {
+  display: block;
+  width: 45%;
+  height: 1rem;
+  border-radius: 0.4rem;
+  background: linear-gradient(90deg, #dfeae7, #f8faf9, #dfeae7);
+  background-size: 200% 100%;
+  animation: vocabulary-shimmer 1.5s infinite linear;
+}
+
+.vocabulary-skeleton span:nth-child(2) {
+  width: 70%;
+  height: 3.5rem;
+}
+
+.skills-section > header {
+  margin-bottom: 1rem;
+}
+
+.skills-section > header h2 {
+  margin: 0;
+}
+
+.skill-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+}
+
+.skill-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.25rem;
+  border: 1px solid #d5dfdc;
+  border-radius: 0.8rem;
+  background: #fff;
+}
+
+.skill-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.skill-card h2 {
+  margin: 0;
+  text-transform: capitalize;
+}
+
+.carried-over-badge {
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  color: #92400e;
+  background: #fef3c7;
+  font-size: 0.75rem;
+}
+
+.focus-note {
+  color: #555;
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.status {
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-ready {
+  color: #15594d;
+}
+
+.status-generating {
+  color: #92400e;
+}
+
+.status-done {
+  color: #167447;
+}
+
+.status-failed {
+  color: #b42318;
+}
+
+.error-state {
+  padding: 1rem;
+  border: 1px solid #b42318;
+  border-radius: 0.8rem;
+  background: #fff7f6;
+}
+
+.button-link {
+  display: inline-block;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid #c3cfcc;
+  border-radius: 0.55rem;
+  color: #15594d;
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.button-link.primary {
+  border-color: #15594d;
+  color: #fff;
+  background: #15594d;
+}
+
+.secondary-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #d5dfdc;
+}
+
+.secondary-links a {
+  color: #15594d;
+}
+
+@keyframes vocabulary-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vocabulary-skeleton span {
+    animation: none;
+  }
+}
+
+@media (max-width: 38rem) {
+  .vocabulary-lesson__heading,
+  .daily-recall-card__progress {
+    flex-direction: column;
+  }
+
+  .daily-recall-card__actions,
+  .recommended-word {
+    grid-template-columns: 1fr;
+  }
+
+  .recommended-word .primary-button {
+    width: 100%;
+  }
+}

@@ -1,5 +1,6 @@
 import base64
 import uuid
+from datetime import date
 from pathlib import Path
 
 from sqlalchemy.orm import Session
@@ -10,20 +11,29 @@ from app.models.speaking_question import SpeakingQuestion
 from app.models.speaking_submission import SpeakingSubmission
 from app.services.speech_to_text import SpeechToText
 from app.services.export_utils import serialize_all
+from app.models.user import LEGACY_USER_ID
 
 
 def create_submission(
     db: Session,
-    question_id: uuid.UUID,
+    question_id: uuid.UUID | None,
     audio_storage_ref: str,
     duration_seconds: int,
+    prompt_text: str | None = None,
+    day: date | None = None,
+    user_id=LEGACY_USER_ID,
 ) -> SpeakingSubmission:
     if duration_seconds <= 0 or duration_seconds > 120:
         raise ValueError("audio duration must be between 1 and 120 seconds")
-    if db.get(SpeakingQuestion, question_id) is None:
+    if question_id is None and not prompt_text:
+        raise ValueError("either question_id or prompt_text is required")
+    if question_id is not None and db.get(SpeakingQuestion, question_id) is None:
         raise LookupError("speaking question not found")
     value = SpeakingSubmission(
+        user_id=user_id,
         question_id=question_id,
+        prompt_text=prompt_text,
+        day=day,
         audio_storage_ref=audio_storage_ref,
         audio_duration_seconds=duration_seconds,
         status="PROCESSING",
@@ -38,8 +48,9 @@ def run_transcription(
     db: Session,
     submission_id: uuid.UUID,
     speech_to_text: SpeechToText,
+    user_id=LEGACY_USER_ID,
 ) -> SpeakingSubmission:
-    value = db.get(SpeakingSubmission, submission_id)
+    value = db.query(SpeakingSubmission).filter_by(id=submission_id, user_id=user_id).one_or_none()
     if value is None:
         raise LookupError("speaking submission not found")
     result = speech_to_text.transcribe(value.audio_storage_ref)
@@ -59,16 +70,20 @@ def run_evaluation(
     db: Session,
     submission_id: uuid.UUID,
     provider: AIProvider,
+    user_id=LEGACY_USER_ID,
 ) -> SpeakingSubmission:
-    value = db.get(SpeakingSubmission, submission_id)
+    value = db.query(SpeakingSubmission).filter_by(id=submission_id, user_id=user_id).one_or_none()
     if value is None:
         raise LookupError("speaking submission not found")
     if not value.transcript:
         raise ValueError("transcript is required before evaluation")
-    question = db.get(SpeakingQuestion, value.question_id)
+    if value.question_id is not None:
+        question_text = db.get(SpeakingQuestion, value.question_id).prompt
+    else:
+        question_text = value.prompt_text
     result = provider.evaluate_speaking(
         SpeakingEvaluationRequest(
-            transcript=value.transcript, question_text=question.prompt
+            transcript=value.transcript, question_text=question_text
         )
     )
     if result.status == "ok":
@@ -91,16 +106,23 @@ def list_questions(db: Session) -> list[SpeakingQuestion]:
     return db.query(SpeakingQuestion).order_by(SpeakingQuestion.part, SpeakingQuestion.prompt).all()
 
 
-def list_submissions(db: Session) -> list[SpeakingSubmission]:
-    return db.query(SpeakingSubmission).order_by(SpeakingSubmission.created_at.desc()).all()
+def list_submissions(db: Session, user_id=LEGACY_USER_ID) -> list[SpeakingSubmission]:
+    return (
+        db.query(SpeakingSubmission)
+        .filter(SpeakingSubmission.user_id == user_id)
+        .order_by(SpeakingSubmission.created_at.desc())
+        .all()
+    )
 
 
-def get_submission(db: Session, submission_id: uuid.UUID) -> SpeakingSubmission | None:
-    return db.get(SpeakingSubmission, submission_id)
+def get_submission(
+    db: Session, submission_id: uuid.UUID, user_id=LEGACY_USER_ID
+) -> SpeakingSubmission | None:
+    return db.query(SpeakingSubmission).filter_by(id=submission_id, user_id=user_id).one_or_none()
 
 
-def export_learner_data(db: Session) -> dict:
-    submissions = serialize_all(db, SpeakingSubmission)
+def export_learner_data(db: Session, user_id=LEGACY_USER_ID) -> dict:
+    submissions = serialize_all(db, SpeakingSubmission, user_id)
     for item in submissions:
         path = Path(item["audio_storage_ref"])
         item["audio_base64"] = (

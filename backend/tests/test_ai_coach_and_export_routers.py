@@ -145,6 +145,31 @@ def test_speaking_route_runs_separate_steps_and_synthesizes_pronunciation(
         audio_path.unlink()
 
 
+def test_speaking_route_accepts_an_ai_generated_prompt_text_instead_of_a_question_id(
+    db_session_factory,
+):
+    client = _client(db_session_factory)
+    response = client.post(
+        "/api/speaking-coach/submissions",
+        data={
+            "prompt_text": "Describe a memorable trip.",
+            "day": "2026-07-30",
+            "duration_seconds": "10",
+        },
+        files={"audio": ("response.webm", b"audio bytes", "audio/webm")},
+    )
+    assert response.status_code == 201
+    created = response.json()
+    assert created["question_id"] is None
+    assert created["question"] == "Describe a memorable trip."
+
+    with db_session_factory() as session:
+        stored = session.get(SpeakingSubmission, uuid.UUID(created["id"]))
+        audio_path = Path(stored.audio_storage_ref)
+    if audio_path.is_file():
+        audio_path.unlink()
+
+
 def test_export_route_returns_complete_downloadable_document(db_session_factory):
     client = _client(db_session_factory)
     first = client.post("/api/data-portability/export")
@@ -154,5 +179,5 @@ def test_export_route_returns_complete_downloadable_document(db_session_factory)
     assert "attachment;" in first.headers["content-disposition"]
     body = first.json()
     assert body["complete"] is True
-    assert body["category_count"] == 8
+    assert body["category_count"] == 7
     assert set(body["categories"]) == set(body["data"])

@@ -8,6 +8,7 @@ from app.ai.provider import AIProvider
 from app.core.db import get_db
 from app.core.security import require_learner
 from app.models.listening_practice import ListeningExercise, ListeningSubmission
+from app.models.user import User
 from app.schemas.listening_practice import (
     ListeningAnswerResult,
     ListeningExerciseAnswering,
@@ -29,8 +30,9 @@ def get_exercise(
     db: Session = Depends(get_db),
     provider: AIProvider = Depends(get_ai_provider),
     tts: TextToSpeech = Depends(get_text_to_speech),
+    user: User = Depends(require_learner),
 ) -> ListeningExerciseAnswering:
-    exercise = service.get_or_create_exercise(db, day, None, provider, tts)
+    exercise = service.get_or_create_exercise(db, day, None, provider, tts, user.id)
     has_submission = (
         db.query(ListeningSubmission).filter_by(exercise_id=exercise.id).first()
         is not None
@@ -45,8 +47,10 @@ def get_exercise(
 
 
 @router.get("/{day}/audio")
-def get_audio(day: date, db: Session = Depends(get_db)) -> Response:
-    exercise = db.query(ListeningExercise).filter_by(day=day).one_or_none()
+def get_audio(
+    day: date, db: Session = Depends(get_db), user: User = Depends(require_learner)
+) -> Response:
+    exercise = db.query(ListeningExercise).filter_by(user_id=user.id, day=day).one_or_none()
     if exercise is None or exercise.audio_bytes is None:
         raise HTTPException(status_code=404, detail="Audio not found")
     return Response(
@@ -60,8 +64,9 @@ def submit(
     day: date,
     payload: ListeningSubmitRequest,
     db: Session = Depends(get_db),
+    user: User = Depends(require_learner),
 ) -> ListeningSubmissionResult:
-    exercise = db.query(ListeningExercise).filter_by(day=day).one_or_none()
+    exercise = db.query(ListeningExercise).filter_by(user_id=user.id, day=day).one_or_none()
     if exercise is None:
         raise HTTPException(status_code=404, detail="Listening exercise not found")
 
@@ -91,8 +96,9 @@ def retry_script(
     day: date,
     db: Session = Depends(get_db),
     provider: AIProvider = Depends(get_ai_provider),
+    user: User = Depends(require_learner),
 ) -> ListeningExerciseAnswering:
-    exercise = service.retry_script(db, day, provider)
+    exercise = service.retry_script(db, day, provider, user.id)
     return ListeningExerciseAnswering(
         day=exercise.day,
         status=exercise.status,
@@ -107,8 +113,9 @@ def retry_audio(
     day: date,
     db: Session = Depends(get_db),
     tts: TextToSpeech = Depends(get_text_to_speech),
+    user: User = Depends(require_learner),
 ) -> ListeningExerciseAnswering:
-    exercise = service.retry_audio(db, day, tts)
+    exercise = service.retry_audio(db, day, tts, user.id)
     return ListeningExerciseAnswering(
         day=exercise.day,
         status=exercise.status,

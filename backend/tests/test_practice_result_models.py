@@ -11,6 +11,7 @@ def test_practice_result_schema_has_documented_columns_and_index(db_session):
     }
     assert set(columns) == {
         "id",
+        "user_id",
         "skill",
         "source",
         "score",

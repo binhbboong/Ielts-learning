@@ -32,8 +32,9 @@ The example local password is `changeme123`. Replace the example password hash a
 secret before using any non-local environment.
 
 The example environment uses `AI_PROVIDER=local`, a zero-cost deterministic provider that keeps
-both coach flows runnable and labels its output as demo feedback. For genuine AI evaluation,
-set `AI_PROVIDER=claude` and provide `ANTHROPIC_API_KEY`.
+both coach flows runnable and labels its output as demo feedback. For genuine AI evaluation
+with OpenAI, set `AI_PROVIDER=openai`, provide `OPENAI_API_KEY`, and optionally override
+`OPENAI_MODEL`.
 
 Speaking transcription also defaults to a local demo adapter because the AI-SDLC plan leaves
 the external speech-to-text vendor intentionally swappable. The recording, 120-second cap,

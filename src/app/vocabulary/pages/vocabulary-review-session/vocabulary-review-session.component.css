@@ -27,6 +27,24 @@ h1 {
   font-weight: 700;
 }
 
+.recall-card__badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: #edf1f0;
+  color: #445450 !important;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.recall-card__badge--new {
+  background: #dff1ea;
+  color: #15594d !important;
+}
+
 .recall-card h2 {
   margin: 1.5rem 0;
   font-size: clamp(2rem, 7vw, 3.5rem);

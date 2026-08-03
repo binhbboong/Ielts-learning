@@ -10,8 +10,9 @@ from app.models.listening_practice import (
     ListeningQuestion,
     ListeningSubmission,
 )
-from app.services.export_utils import serialize_all
+from app.services.export_utils import serialize_all, serialize_row
 from app.services.text_to_speech import TextToSpeech
+from app.models.user import LEGACY_USER_ID
 
 _DEFAULT_FOCUS = "general IELTS listening practice"
 
@@ -87,12 +88,14 @@ def get_or_create_exercise(
     focus_reference: str | None,
     provider: AIProvider,
     tts: TextToSpeech,
+    user_id=LEGACY_USER_ID,
 ) -> ListeningExercise:
-    existing = db.query(ListeningExercise).filter_by(day=day).one_or_none()
+    existing = db.query(ListeningExercise).filter_by(user_id=user_id, day=day).one_or_none()
     if existing is not None:
         return existing
 
     exercise = ListeningExercise(
+        user_id=user_id,
         day=day,
         script_text="",
         audio_bytes=None,
@@ -111,14 +114,18 @@ def get_or_create_exercise(
     return exercise
 
 
-def retry_script(db: Session, day: date, provider: AIProvider) -> ListeningExercise:
-    exercise = db.query(ListeningExercise).filter_by(day=day).one()
+def retry_script(
+    db: Session, day: date, provider: AIProvider, user_id=LEGACY_USER_ID
+) -> ListeningExercise:
+    exercise = db.query(ListeningExercise).filter_by(user_id=user_id, day=day).one()
     _generate_script(db, exercise, provider)
     return exercise
 
 
-def retry_audio(db: Session, day: date, tts: TextToSpeech) -> ListeningExercise:
-    exercise = db.query(ListeningExercise).filter_by(day=day).one()
+def retry_audio(
+    db: Session, day: date, tts: TextToSpeech, user_id=LEGACY_USER_ID
+) -> ListeningExercise:
+    exercise = db.query(ListeningExercise).filter_by(user_id=user_id, day=day).one()
     _generate_audio(db, exercise, tts)
     return exercise
 
@@ -141,10 +148,23 @@ def score_submission(
     return submission
 
 
-def export_learner_data(db: Session) -> dict:
+def export_learner_data(db: Session, user_id=LEGACY_USER_ID) -> dict:
+    exercise_ids = [
+        row.id for row in db.query(ListeningExercise).filter_by(user_id=user_id).all()
+    ]
     return {
         "category": "listening_practice",
-        "exercises": serialize_all(db, ListeningExercise),
-        "questions": serialize_all(db, ListeningQuestion),
-        "submissions": serialize_all(db, ListeningSubmission),
+        "exercises": serialize_all(db, ListeningExercise, user_id),
+        "questions": [
+            serialize_row(row)
+            for row in db.query(ListeningQuestion)
+            .filter(ListeningQuestion.exercise_id.in_(exercise_ids))
+            .all()
+        ],
+        "submissions": [
+            serialize_row(row)
+            for row in db.query(ListeningSubmission)
+            .filter(ListeningSubmission.exercise_id.in_(exercise_ids))
+            .all()
+        ],
     }

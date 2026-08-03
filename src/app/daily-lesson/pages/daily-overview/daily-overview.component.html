@@ -1,0 +1,191 @@
+<main class="overview-page">
+  <header class="overview-heading">
+    <h1>IELTS Daily Lessons</h1>
+  </header>
+
+  @if (facade.state() === 'loading') {
+    <p role="status">Loading today's lesson...</p>
+  }
+
+  @if (facade.state() === 'error') {
+    <div class="error-state" role="alert">
+      <strong>Couldn't load today's lesson.</strong>
+    </div>
+  }
+
+  @if (facade.state() === 'ready' && facade.overview(); as overview) {
+    <section class="session-summary" data-testid="session-summary">
+      <p class="eyebrow">IELTS Academic · Week {{ overview.week }}</p>
+      <h2>{{ overview.phase.replace('_', ' ') }} · target band {{ overview.targetBand }}</h2>
+      <p>
+        {{ overview.totalMinutes }} minutes today. Start with
+        {{ overview.reviewMinutes }} minutes of vocabulary, then
+        {{ overview.totalMinutes - overview.reviewMinutes }} minutes of focused skills.
+      </p>
+    </section>
+
+    <section class="vocabulary-lesson" data-testid="daily-vocabulary-lesson">
+      <header class="vocabulary-lesson__heading">
+        <div>
+          <p class="step-label">Start here · {{ overview.reviewMinutes }} min</p>
+          <h2>Vocabulary warm-up</h2>
+          <p>Recall first, then continue into today's focused skills.</p>
+        </div>
+        <a routerLink="/vocabulary">Open word library</a>
+      </header>
+
+      @if (vocabulary.reviewLoadState() === 'loading') {
+        <div class="vocabulary-skeleton" role="status" aria-label="Loading vocabulary warm-up">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      } @else if (vocabulary.reviewLoadState() === 'error') {
+        <div class="vocabulary-state vocabulary-state--error" role="alert">
+          <strong>Vocabulary could not be loaded.</strong>
+          <p>Your skill lessons are still available below.</p>
+        </div>
+      } @else if (vocabulary.reviewState(); as review) {
+        @if (review.status === 'item') {
+          <article class="daily-recall-card">
+            <div class="daily-recall-card__progress">
+              <span>Word {{ review.item.position + 1 }} of {{ review.item.total }}</span>
+              <span
+                class="daily-recall-card__badge"
+                [class.daily-recall-card__badge--new]="review.item.isNew"
+              >
+                {{ review.item.isNew ? 'New word' : 'Review' }}
+              </span>
+              <span>Say the meaning before revealing it</span>
+            </div>
+            <h3>{{ review.item.word }}</h3>
+
+            @if (vocabularyRevealed()) {
+              <div class="daily-recall-card__answer" aria-live="polite">
+                <strong>{{ review.item.meaning }}</strong>
+                @if (review.item.example) {
+                  <p>{{ review.item.example }}</p>
+                }
+              </div>
+              <div class="daily-recall-card__actions">
+                <button
+                  type="button"
+                  class="secondary-button"
+                  [disabled]="vocabularyAssessing()"
+                  (click)="assessVocabulary('forgot')"
+                >
+                  I forgot
+                </button>
+                <button
+                  type="button"
+                  class="primary-button"
+                  [disabled]="vocabularyAssessing()"
+                  (click)="assessVocabulary('remembered')"
+                >
+                  I remembered
+                </button>
+              </div>
+            } @else {
+              <button type="button" class="primary-button" (click)="revealVocabulary()">
+                Reveal meaning
+              </button>
+            }
+          </article>
+        } @else if (review.status === 'complete' && review.summary) {
+          <div class="vocabulary-state vocabulary-state--complete" role="status">
+            <span class="completion-mark" aria-hidden="true">✓</span>
+            <div>
+              <h3>Vocabulary warm-up complete</h3>
+              <p>
+                {{ review.summary.remembered }} remembered,
+                {{ review.summary.forgot }} to revisit. Continue with your first skill.
+              </p>
+            </div>
+          </div>
+        } @else if (review.status === 'nothing_due') {
+          <div class="recommendation-panel">
+            <div>
+              <h3>No words are due today</h3>
+              <p>Add one band-matched word now, then it will enter your review schedule.</p>
+            </div>
+            @if (vocabulary.recommendationsLoadState() === 'loading') {
+              <p role="status">Finding a word for your level...</p>
+            } @else if (vocabulary.recommendations()?.recommendations?.[0]; as recommendation) {
+              <article class="recommended-word">
+                <div>
+                  <span>{{ recommendation.cefrLevel }} · {{ recommendation.topic }}</span>
+                  <h3>{{ recommendation.word }}</h3>
+                  <p><strong>{{ recommendation.meaning }}</strong></p>
+                  <p>{{ recommendation.example }}</p>
+                </div>
+                <button
+                  type="button"
+                  class="primary-button"
+                  [disabled]="addingRecommendation() !== null"
+                  (click)="addVocabularyRecommendation(recommendation.key)"
+                >
+                  {{ addingRecommendation() === recommendation.key ? 'Adding...' : 'Add to my words' }}
+                </button>
+              </article>
+            } @else {
+              <p>All level recommendations are already in your word library.</p>
+            }
+          </div>
+        }
+      }
+    </section>
+
+    @if (overview.skills.length === 0) {
+      <p role="status">Generating today's lesson...</p>
+    } @else {
+      <section class="skills-section">
+        <header>
+          <p class="step-label">Continue learning</p>
+          <h2>Today's focused skills</h2>
+        </header>
+        <div class="skill-grid">
+          @for (entry of overview.skills; track entry.skill + entry.day) {
+            <article class="skill-card" [attr.data-testid]="'skill-' + entry.skill + '-' + entry.day">
+              <header>
+                <h2>{{ entry.skill }}</h2>
+                @if (isCarriedOver(entry)) {
+                  <span class="carried-over-badge">from {{ entry.day }}</span>
+                }
+              </header>
+              @if (entry.focusReference) {
+                <p class="focus-note">Targets: {{ entry.focusReference }}</p>
+              }
+              <p class="status" [class]="'status-' + entry.status">{{ entry.status }}</p>
+              <p>
+                <strong>{{ entry.priority }}</strong> · {{ entry.estimatedMinutes }} minutes ·
+                target band {{ entry.targetBand }}
+              </p>
+              <p class="focus-note">{{ entry.rationale }}</p>
+              @switch (entry.status) {
+                @case ('ready') {
+                  <a class="button-link primary" [routerLink]="skillRoute(entry.skill)">Start</a>
+                }
+                @case ('done') {
+                  <a class="button-link" [routerLink]="skillRoute(entry.skill)">Review</a>
+                }
+                @case ('generating') {
+                  <span class="hint">Generating...</span>
+                }
+                @case ('failed') {
+                  <button type="button" (click)="retry(entry.skill, entry.day)">Retry</button>
+                }
+              }
+            </article>
+          }
+        </div>
+      </section>
+    }
+  }
+
+  <nav class="secondary-links">
+    <a routerLink="/vocabulary">Vocabulary Review</a>
+    <a routerLink="/mistakes">Mistake Notebook</a>
+    <a routerLink="/progress">Progress</a>
+    <a routerLink="/export">Export My Data</a>
+  </nav>
+</main>

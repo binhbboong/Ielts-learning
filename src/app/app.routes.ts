@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
 import { authRoutes } from './core/auth/auth.routes';
-import { studyPlanRoutes } from './study-plan/study-plan.routes';
+import { dailyLessonRoutes } from './daily-lesson/daily-lesson.routes';
 import { routes as mistakeRoutes } from './mistakes/mistakes.routes';
 import { vocabularyRoutes } from './vocabulary/vocabulary.routes';
 import { progressRoutes } from './progress/progress.routes';
@@ -11,14 +11,14 @@ import { dataPortabilityRoutes } from './data-portability/data-portability.route
 import { readingPracticeRoutes } from './reading-practice/reading-practice.routes';
 import { listeningPracticeRoutes } from './listening-practice/listening-practice.routes';
 
-const protectedStudyPlanRoutes: Routes = studyPlanRoutes.map((route) => ({
+const protectedDailyLessonRoutes: Routes = dailyLessonRoutes.map((route) => ({
   ...route,
   canActivate: [authGuard, ...(route.canActivate ?? [])],
 }));
 
 export const routes: Routes = [
   ...authRoutes,
-  ...protectedStudyPlanRoutes,
+  ...protectedDailyLessonRoutes,
   {
     path: 'mistakes',
     canActivate: [authGuard],

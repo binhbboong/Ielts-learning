@@ -66,9 +66,102 @@ h1 {
   background: #fff7f6;
 }
 
+.due-page__backfill {
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.5rem;
+  background: #f4faf8;
+  color: #1f6f5f;
+  font-weight: 700;
+}
+
+.due-page__shortfall {
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.5rem;
+  background: #fff7ee;
+  color: #8a5a1f;
+  font-weight: 700;
+}
+
 .due-page__loading {
   width: 100%;
   height: 10rem;
   border-radius: 0.75rem;
   background: linear-gradient(90deg, #edf1f0, #f8faf9, #edf1f0);
+}
+
+.level-vocabulary {
+  margin-bottom: 1.5rem;
+  padding: 1.4rem;
+  border: 1px solid #b9d2cb;
+  border-radius: 0.9rem;
+  background: #f4faf8;
+}
+
+.level-vocabulary h2 {
+  margin: 0.2rem 0 0.5rem;
+}
+
+.level-vocabulary__eyebrow {
+  margin: 0;
+  color: #1f6f5f;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.level-vocabulary__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.level-vocabulary__card {
+  display: grid;
+  align-content: start;
+  gap: 0.65rem;
+  padding: 1rem;
+  border: 1px solid #d5dfdc;
+  border-radius: 0.7rem;
+  background: #fff;
+}
+
+.level-vocabulary__card div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.level-vocabulary__card span {
+  color: #61716c;
+  font-size: 0.78rem;
+}
+
+.level-vocabulary__card strong {
+  font-size: 1.25rem;
+}
+
+.level-vocabulary__card p {
+  margin: 0;
+}
+
+.level-vocabulary__example {
+  color: #52615d;
+  font-style: italic;
+}
+
+.level-vocabulary__card button {
+  align-self: end;
+  min-height: 2.5rem;
+  border: 1px solid #15594d;
+  border-radius: 0.5rem;
+  color: #fff;
+  background: #15594d;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.level-vocabulary__card button:disabled {
+  opacity: 0.65;
 }

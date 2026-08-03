@@ -1,6 +1,64 @@
 # Implementation Plan: Vocabulary & Spaced Repetition Review
 Spec: docs/specs/vocabulary-review/Specification.md
 
+## Revision 3 — Daily 20-word minimum backfill
+
+ADR: `docs/adr/2026-08-03-vocabulary-daily-minimum.md`. Implements FR-31 through FR-35.
+
+**Approach.** Add a module constant `DAILY_REVIEW_TARGET = 20` in
+`backend/app/services/vocabulary.py`, referenced (not defaulted-at-def-time) inside the affected
+functions so tests can `monkeypatch` it to keep pre-existing due-count-driven test scenarios
+unchanged in behavior. Three service functions change:
+
+- `get_due_summary` gains three computed fields (no new columns/migration): `daily_target`
+  (constant, 20), `backfill_count` (how many recommended words would be added to reach the
+  target, capped by how many remain unowned for the learner's band), `shortfall` (bool, true
+  when fewer recommended words remain than needed). This reuses the existing
+  `get_level_recommendations` candidate-selection logic (refactored into a private
+  `_band_recommendation_candidates` helper shared by both the recommendation feed and backfill,
+  so "what's recommended" and "what's available to backfill" can never drift apart).
+- `start_or_resume_review` computes `due_words` as before, and if `len(due_words) <
+  DAILY_REVIEW_TARGET`, calls a new `_backfill_daily_words(session, user_id, needed, today=...)`
+  that persists up to `needed` `VocabularyWord` rows from `_band_recommendation_candidates`
+  (`source="daily_backfill"`, `interval_index=0`, `next_due_date=today` — due immediately, unlike
+  a manually-added word which starts tomorrow per FR-4). The session snapshot is built from
+  `due_words + backfilled`, due words first, preserving all existing position/resume guarantees
+  (FR-22) unchanged — backfill only ever affects session *creation*, never resume.
+- `get_current_item`'s "nothing to review" branch now checks `get_due_summary(...).backfill_count
+  == 0` in addition to `total_due == 0` (FR-10's redefinition), reusing the due-summary
+  computation instead of duplicating the recommendation-availability check.
+- `get_review_complete_summary` gains `new_words_included`, a `COUNT` of that session's
+  `review_session_items` joined to `vocabulary_words` where `source = 'daily_backfill'` (FR-35).
+- `ReviewCurrentItem` gains `is_new: bool` (word's `source == 'daily_backfill'`) so the frontend
+  can visually distinguish a new word from a review word *during* the session, not just at
+  completion — a UX improvement beyond the letter of FR-35 but directly in its spirit.
+
+**Curated word bank.** `_LEVEL_VOCABULARY` expands from 5 to 20 hand-curated words per band (100
+total) — see the ADR's Decision point 2 for why this over an `AIProvider` extension. Pure data
+change, no schema impact (words still land in the existing `vocabulary_words` table via the
+existing `source` column, just with a new value `daily_backfill` alongside `manual` and
+`level_recommendation`).
+
+**No migration needed.** `source`, `interval_index`, `next_due_date` already exist on
+`vocabulary_words` (revision 2). `daily_backfill` is just a new string value in an already-`Text`
+column.
+
+**Frontend.** `DueQueueSummary` model gains `dailyTarget`/`backfillCount`/`shortfall`;
+`ReviewItem` gains `isNew`; `ReviewCompleteSummary` gains `newWordsIncluded`. Due List
+(`vocabulary-due-list.component`) shows the backfill preview and shortfall messaging next to the
+existing due-count summary. Review Session (`vocabulary-review-session.component`) tags the
+current recall card "New word" vs "Review" using `isNew`, and the Review-complete sub-view adds
+the new-words-included count next to the existing remembered/forgot breakdown.
+
+## Revision 2 — Level-aware recommendation feed
+
+Add level metadata (`target_band`, `cefr_level`, `source`) to `vocabulary_words`. The backend
+derives week, phase, band, and CEFR from `StudyProfile`, selects from a curated IELTS Academic
+bank, and excludes words already owned by the learner. `GET /api/vocabulary/recommendations`
+returns the feed; `POST /api/vocabulary/recommendations/{key}/add` adds a server-validated
+recommendation to spaced repetition. Angular renders the level context and recommendation
+cards without changing manual-add or active-review behavior.
+
 **Supersedes** the prior version of this plan, which was written against the client-only
 IndexedDB architecture (`docs/adr/2026-07-29-v1-no-backend-architecture.md`, now Superseded).
 No code exists against either version — nothing was implemented under the old plan, so this is
@@ -142,6 +200,13 @@ constraints and query behavior are exercised, not assumed.
 | FR-23 (nothing-due state distinct from review-complete) | `test_vocabulary_router.py::test_get_current_with_zero_due_and_no_active_session_returns_nothing_due_not_complete`; `vocabulary-review-session.component.spec.ts` asserts the nothing-due and session-complete states render distinctly. |
 | FR-24 (read failure during review → explicit error, never a word) | `test_vocabulary_router.py::test_get_current_db_error_returns_explicit_error_no_word_body`; `vocabulary-review-session.component.spec.ts` — Error state shown, no recall card. |
 
+| FR-31 (backfill to 20-word floor) | `test_vocabulary_service.py::test_start_or_resume_backfills_to_daily_target_when_due_below_target`. |
+| FR-32 (backfill persisted + due today, not tomorrow) | `test_vocabulary_service.py::test_backfilled_word_is_persisted_source_daily_backfill_due_today`. |
+| FR-33 (shortfall when recommendations exhausted) | `test_vocabulary_service.py::test_backfill_reports_shortfall_when_band_recommendations_exhausted`. |
+| FR-34 (due-list preview shows backfill/shortfall) | `test_vocabulary_service.py::test_due_summary_reports_daily_target_and_backfill_preview`; `test_vocabulary_router.py::test_due_endpoint_includes_backfill_preview`; `vocabulary-due-list.component.spec.ts`. |
+| FR-35 (review-complete reports new-words-included) | `test_vocabulary_service.py::test_review_complete_summary_reports_new_words_included`; `vocabulary-review-session.component.spec.ts`. |
+| FR-10 redefinition (zero due + backfill available -> still offers review) | `test_vocabulary_router.py::test_zero_due_with_backfill_available_is_not_started_not_nothing_due`; `test_vocabulary_router.py::test_zero_due_and_zero_backfill_is_nothing_due`. |
+
 ## Risks / Open Questions
 
 - **Add-word return destination (resolved 2026-07-29).** Due List and Review Complete retain
@@ -174,6 +239,8 @@ constraints and query behavior are exercised, not assumed.
 
 ## Related ADRs
 
+- `docs/adr/2026-08-03-vocabulary-daily-minimum.md` (new — the 20-word daily floor and
+  curated-bank-expansion-over-AIProvider tradeoff decided by this plan revision)
 - `docs/adr/2026-07-29-fullstack-vercel-claude-architecture.md`
 - `docs/adr/2026-07-29-vocab-forgot-resets-interval.md` (rule unchanged; storage framing it was
   originally written against is superseded by this plan)

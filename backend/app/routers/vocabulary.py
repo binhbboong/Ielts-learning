@@ -3,8 +3,14 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.security import require_learner
+from app.models.user import User
 from app.schemas.vocabulary import (
     ReviewAssessmentRequest,
+    VocabularyHistoryDay,
+    VocabularyHistoryResponse,
+    VocabularyHistoryReview,
+    VocabularyHistoryWord,
+    VocabularyRecommendationFeed,
     VocabularyWordCreate,
     VocabularyWordRead,
 )
@@ -31,9 +37,9 @@ def _current_body(result):
 
 
 @router.post("/words", status_code=status.HTTP_201_CREATED)
-def add_word(payload: VocabularyWordCreate, db: Session = Depends(get_db)):
+def add_word(payload: VocabularyWordCreate, db: Session = Depends(get_db), user: User = Depends(require_learner)):
     try:
-        word = service.add_word(db, payload)
+        word = service.add_word(db, payload, user_id=user.id)
     except Exception:
         _unavailable(db)
     return {
@@ -43,26 +49,78 @@ def add_word(payload: VocabularyWordCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/due")
-def due(db: Session = Depends(get_db)):
+def due(db: Session = Depends(get_db), user: User = Depends(require_learner)):
     try:
-        return service.get_due_summary(db)
+        return service.get_due_summary(db, user_id=user.id)
     except Exception:
         _unavailable(db)
 
 
-@router.post("/review/start")
-def start_review(db: Session = Depends(get_db)):
+@router.get("/history", response_model=VocabularyHistoryResponse)
+def history(db: Session = Depends(get_db), user: User = Depends(require_learner)):
     try:
-        service.start_or_resume_review(db)
-        return _current_body(service.get_current_item(db))
+        days = service.get_history(db, user_id=user.id)
+    except Exception:
+        _unavailable(db)
+    return VocabularyHistoryResponse(
+        days=[
+            VocabularyHistoryDay(
+                day=day.day,
+                words_added=[
+                    VocabularyHistoryWord(word=w.word, meaning=w.meaning)
+                    for w in day.words_added
+                ],
+                words_reviewed=[
+                    VocabularyHistoryReview(
+                        word=r.word, outcome=r.outcome, assessed_at=r.assessed_at
+                    )
+                    for r in day.words_reviewed
+                ],
+            )
+            for day in days
+        ]
+    )
+
+
+@router.get("/recommendations", response_model=VocabularyRecommendationFeed)
+def recommendations(
+    db: Session = Depends(get_db), user: User = Depends(require_learner)
+):
+    try:
+        return service.get_level_recommendations(db, user.id)
+    except Exception:
+        _unavailable(db)
+
+
+@router.post("/recommendations/{key}/add", status_code=status.HTTP_201_CREATED)
+def add_recommendation(
+    key: str, db: Session = Depends(get_db), user: User = Depends(require_learner)
+):
+    try:
+        word = service.add_level_recommendation(db, key, user.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception:
+        _unavailable(db)
+    return {
+        "saved": True,
+        "word": VocabularyWordRead.model_validate(word).model_dump(mode="json"),
+    }
+
+
+@router.post("/review/start")
+def start_review(db: Session = Depends(get_db), user: User = Depends(require_learner)):
+    try:
+        service.start_or_resume_review(db, user_id=user.id)
+        return _current_body(service.get_current_item(db, user_id=user.id))
     except Exception:
         _unavailable(db)
 
 
 @router.get("/review/current")
-def current_item(db: Session = Depends(get_db)):
+def current_item(db: Session = Depends(get_db), user: User = Depends(require_learner)):
     try:
-        return _current_body(service.get_current_item(db))
+        return _current_body(service.get_current_item(db, user_id=user.id))
     except Exception:
         _unavailable(db)
 
@@ -71,18 +129,19 @@ def current_item(db: Session = Depends(get_db)):
 def assess(
     payload: ReviewAssessmentRequest,
     db: Session = Depends(get_db),
+    user: User = Depends(require_learner),
 ):
     try:
-        current = service.get_current_item(db)
+        current = service.get_current_item(db, user_id=user.id)
         if current.kind != "item":
             raise HTTPException(status_code=409, detail="No current review item")
         session_id = current.item.session_id
-        result = service.assess_current_item(db, payload.outcome)
+        result = service.assess_current_item(db, payload.outcome, user_id=user.id)
         if result.kind == "complete":
             return {
                 "status": "complete",
                 "summary": service.get_review_complete_summary(
-                    db, session_id
+                    db, session_id, user.id
                 ).model_dump(mode="json"),
             }
         return _current_body(result)

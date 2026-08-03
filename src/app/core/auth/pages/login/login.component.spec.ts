@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuthRepository } from '../../data/auth.repository';
 import { AuthState } from '../../state/auth.state';
@@ -10,20 +10,17 @@ describe('LoginComponent', () => {
   let fixture: ComponentFixture<LoginComponent>;
   let repository: jasmine.SpyObj<AuthRepository>;
   let authState: jasmine.SpyObj<AuthState>;
-  let router: jasmine.SpyObj<Router>;
+  let router: Router;
 
   function configure(reason?: string): void {
     repository = jasmine.createSpyObj<AuthRepository>('AuthRepository', ['login']);
     authState = jasmine.createSpyObj<AuthState>('AuthState', ['setAuthenticated']);
-    router = jasmine.createSpyObj<Router>('Router', ['navigateByUrl']);
-    router.navigateByUrl.and.resolveTo(true);
-
     TestBed.configureTestingModule({
       imports: [LoginComponent],
       providers: [
+        provideRouter([]),
         { provide: AuthRepository, useValue: repository },
         { provide: AuthState, useValue: authState },
-        { provide: Router, useValue: router },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -35,11 +32,18 @@ describe('LoginComponent', () => {
       ],
     });
 
+    router = TestBed.inject(Router);
+    spyOn(router, 'navigateByUrl').and.resolveTo(true);
     fixture = TestBed.createComponent(LoginComponent);
     fixture.detectChanges();
   }
 
   function submitPassword(password: string): void {
+    const email: HTMLInputElement = fixture.nativeElement.querySelector(
+      '[data-testid="email-input"]',
+    );
+    email.value = 'developer@example.com';
+    email.dispatchEvent(new Event('input'));
     const input: HTMLInputElement = fixture.nativeElement.querySelector(
       '[data-testid="password-input"]',
     );
@@ -55,7 +59,10 @@ describe('LoginComponent', () => {
 
     submitPassword('correct password');
 
-    expect(repository.login).toHaveBeenCalledOnceWith('correct password');
+    expect(repository.login).toHaveBeenCalledOnceWith(
+      'developer@example.com',
+      'correct password',
+    );
     expect(authState.setAuthenticated).toHaveBeenCalledOnceWith(true);
     expect(router.navigateByUrl).toHaveBeenCalledOnceWith('/');
   });
@@ -76,7 +83,7 @@ describe('LoginComponent', () => {
 
     const error = fixture.nativeElement.querySelector('[data-testid="login-error"]');
     expect(error.textContent.trim()).toBe('Authentication failed');
-    expect(fixture.nativeElement.textContent).not.toContain('username');
+    expect(fixture.nativeElement.textContent).not.toContain('does not exist');
     expect(fixture.nativeElement.textContent).not.toContain('does not exist');
   });
 

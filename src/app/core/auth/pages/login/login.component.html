@@ -13,6 +13,15 @@
       <p class="login-intro">Enter your learner password to continue to your study plan.</p>
 
       <form (submit)="$event.preventDefault(); submit()">
+        <label for="learner-email">Email</label>
+        <input
+          id="learner-email"
+          data-testid="email-input"
+          type="email"
+          autocomplete="email"
+          [formControl]="email"
+        />
+
         <label for="learner-password">Password</label>
         <input
           id="learner-password"
@@ -34,10 +43,11 @@
           </p>
         }
 
-        <button type="submit" [disabled]="password.invalid || submitting">
+        <button type="submit" [disabled]="email.invalid || password.invalid || submitting">
           {{ submitting ? 'Logging in...' : 'Log in' }}
         </button>
       </form>
+      <p>New learner? <a routerLink="/register">Create an account</a></p>
     </section>
   </main>
 </div>

@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 from app.ai.provider import AIProvider
 from app.ai.schemas import ReadingExerciseGenerationRequest
 from app.models.reading_practice import ReadingExercise, ReadingQuestion, ReadingSubmission
-from app.services.export_utils import serialize_all
+from app.services.export_utils import serialize_all, serialize_row
+from app.models.user import LEGACY_USER_ID
 
 _DEFAULT_FOCUS = "general IELTS reading practice"
 
@@ -21,9 +22,10 @@ def get_questions(db: Session, exercise_id: uuid.UUID) -> list[ReadingQuestion]:
 
 
 def get_or_create_exercise(
-    db: Session, day: date, focus_reference: str | None, provider: AIProvider
+    db: Session, day: date, focus_reference: str | None, provider: AIProvider,
+    user_id=LEGACY_USER_ID,
 ) -> ReadingExercise:
-    existing = db.query(ReadingExercise).filter_by(day=day).one_or_none()
+    existing = db.query(ReadingExercise).filter_by(user_id=user_id, day=day).one_or_none()
     if existing is not None:
         return existing
 
@@ -35,6 +37,7 @@ def get_or_create_exercise(
 
     if result.status != "ok":
         exercise = ReadingExercise(
+            user_id=user_id,
             day=day,
             passage_text="",
             focus_reference=focus_reference,
@@ -46,6 +49,7 @@ def get_or_create_exercise(
         return exercise
 
     exercise = ReadingExercise(
+        user_id=user_id,
         day=day,
         passage_text=result.passage_text,
         focus_reference=focus_reference,
@@ -68,8 +72,10 @@ def get_or_create_exercise(
     return exercise
 
 
-def retry_exercise(db: Session, day: date, provider: AIProvider) -> ReadingExercise:
-    exercise = db.query(ReadingExercise).filter_by(day=day).one()
+def retry_exercise(
+    db: Session, day: date, provider: AIProvider, user_id=LEGACY_USER_ID
+) -> ReadingExercise:
+    exercise = db.query(ReadingExercise).filter_by(user_id=user_id, day=day).one()
 
     result = provider.generate_reading_exercise(
         ReadingExerciseGenerationRequest(
@@ -120,10 +126,23 @@ def score_submission(
     return submission
 
 
-def export_learner_data(db: Session) -> dict:
+def export_learner_data(db: Session, user_id=LEGACY_USER_ID) -> dict:
+    exercise_ids = [
+        row.id for row in db.query(ReadingExercise).filter_by(user_id=user_id).all()
+    ]
     return {
         "category": "reading_practice",
-        "exercises": serialize_all(db, ReadingExercise),
-        "questions": serialize_all(db, ReadingQuestion),
-        "submissions": serialize_all(db, ReadingSubmission),
+        "exercises": serialize_all(db, ReadingExercise, user_id),
+        "questions": [
+            serialize_row(row)
+            for row in db.query(ReadingQuestion)
+            .filter(ReadingQuestion.exercise_id.in_(exercise_ids))
+            .all()
+        ],
+        "submissions": [
+            serialize_row(row)
+            for row in db.query(ReadingSubmission)
+            .filter(ReadingSubmission.exercise_id.in_(exercise_ids))
+            .all()
+        ],
     }

@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
@@ -11,6 +11,7 @@ class WritingSubmissionCreate(BaseModel):
     response_text: str
     task_type: Literal["task1", "task2"]
     question_text: str
+    day: date | None = None
 
     @field_validator("response_text", "question_text")
     @classmethod

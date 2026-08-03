@@ -4,6 +4,11 @@
 A software engineer with no prior IELTS preparation, studying continuously (no fixed end date) to reach working proficiency in professional English. Wants to open the app each day and get straight to practicing — not spend time finding or preparing material first. Builds and uses their own tool rather than adopting a generic IELTS app, because they want practice that targets their own actual weaknesses and full ownership of their learning data.
 
 ## Goals
+- Prepare specifically for IELTS Academic, improving from approximately band 3.5 to overall
+  6.5 with no skill below 6.0 within 24 weeks.
+- Complete a coherent 60-minute daily session whose workload is allocated by priority rather
+  than receiving four unrelated exercises every day.
+- See the target band, phase, time allocation, and reason each activity was selected.
 - Open the app and immediately have a full day's practice ready across all four skills (Reading, Listening, Writing, Speaking) — no external material to find or prepare first.
 - Have that practice actually target their own recurring mistakes and vocabulary gaps, not a generic curriculum everyone gets.
 - Catch and fix recurring mistakes before they become habits.
@@ -20,6 +25,8 @@ A software engineer with no prior IELTS preparation, studying continuously (no f
 - Reluctant to hand personal study data and submissions to a third-party SaaS — wants a tool they can inspect, export from, and fully control.
 
 ## Context of Use
+- Each learner has an individual account; all goals, generated lessons, answers, feedback,
+  vocabulary, mistakes, and progress belong only to that account.
 - Daily, self-scheduled study sessions — typically fit around a full-time engineering job (e.g. evenings), so picking up today's ready-made practice with minimal friction matters more than a guided onboarding flow.
 - Primarily a desktop/laptop browser. The app is now a hosted client-server product (Angular frontend + FastAPI backend + Postgres), reached over the network — unlike the original client-only design, daily use now requires connectivity and a login.
 - Sessions can be interrupted, so all progress must persist reliably server-side without the learner needing to remember to save.

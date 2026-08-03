@@ -3,7 +3,9 @@ import { VocabularyRepository } from '../data/vocabulary.repository';
 import {
   AddWordResult,
   DueQueueSummary,
+  VocabularyHistory,
   VocabularyWordCreate,
+  VocabularyRecommendationFeed,
 } from '../models/vocabulary-word.model';
 import {
   ReviewOutcome,
@@ -18,11 +20,22 @@ export class VocabularyFacade {
   private readonly reviewStateSignal = signal<ReviewSessionState | null>(null);
   private readonly dueLoadStateSignal = signal<VocabularyLoadState>('idle');
   private readonly reviewLoadStateSignal = signal<VocabularyLoadState>('idle');
+  private readonly recommendationsSignal =
+    signal<VocabularyRecommendationFeed | null>(null);
+  private readonly recommendationsLoadStateSignal =
+    signal<VocabularyLoadState>('idle');
+  private readonly historySignal = signal<VocabularyHistory | null>(null);
+  private readonly historyLoadStateSignal = signal<VocabularyLoadState>('idle');
 
   readonly dueSummary = this.dueSummarySignal.asReadonly();
   readonly reviewState = this.reviewStateSignal.asReadonly();
   readonly dueLoadState = this.dueLoadStateSignal.asReadonly();
   readonly reviewLoadState = this.reviewLoadStateSignal.asReadonly();
+  readonly recommendations = this.recommendationsSignal.asReadonly();
+  readonly recommendationsLoadState =
+    this.recommendationsLoadStateSignal.asReadonly();
+  readonly history = this.historySignal.asReadonly();
+  readonly historyLoadState = this.historyLoadStateSignal.asReadonly();
 
   constructor(private readonly repository: VocabularyRepository) {}
 
@@ -36,6 +49,25 @@ export class VocabularyFacade {
       this.dueLoadStateSignal.set('error');
       throw error;
     }
+  }
+
+  async loadRecommendations(): Promise<void> {
+    this.recommendationsLoadStateSignal.set('loading');
+    try {
+      this.recommendationsSignal.set(
+        await this.repository.getRecommendations(),
+      );
+      this.recommendationsLoadStateSignal.set('ready');
+    } catch (error) {
+      this.recommendationsSignal.set(null);
+      this.recommendationsLoadStateSignal.set('error');
+      throw error;
+    }
+  }
+
+  async addRecommendation(key: string): Promise<void> {
+    await this.repository.addRecommendation(key);
+    await Promise.all([this.loadRecommendations(), this.loadDueSummary()]);
   }
 
   async startOrResumeReview(): Promise<void> {
@@ -60,5 +92,17 @@ export class VocabularyFacade {
 
   addWord(value: VocabularyWordCreate): Promise<AddWordResult> {
     return this.repository.addWord(value);
+  }
+
+  async loadHistory(): Promise<void> {
+    this.historyLoadStateSignal.set('loading');
+    try {
+      this.historySignal.set(await this.repository.getHistory());
+      this.historyLoadStateSignal.set('ready');
+    } catch (error) {
+      this.historySignal.set(null);
+      this.historyLoadStateSignal.set('error');
+      throw error;
+    }
   }
 }

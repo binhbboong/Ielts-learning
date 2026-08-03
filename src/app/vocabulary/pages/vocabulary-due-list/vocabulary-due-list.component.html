@@ -1,8 +1,53 @@
 <main class="due-page">
   <header>
-    <p>Vocabulary review</p>
-    <h1>Words due today</h1>
+    <div>
+      <p>Vocabulary review</p>
+      <h1>Words due today</h1>
+    </div>
+    <a routerLink="/vocabulary/history">History</a>
   </header>
+
+  @if (facade.recommendations(); as feed) {
+    <section class="level-vocabulary" aria-labelledby="level-vocabulary-heading">
+      <p class="level-vocabulary__eyebrow">
+        Week {{ feed.week }} · {{ feed.phase.replace('_', ' ') }}
+      </p>
+      <h2 id="level-vocabulary-heading">Vocabulary for your level</h2>
+      <p>
+        IELTS band {{ feed.currentBand }} · CEFR {{ feed.cefrLevel }}.
+        These words prepare you for the language expected in your current phase.
+      </p>
+      @if (feed.recommendations.length === 0) {
+        <p>You have added all recommendations for this level.</p>
+      } @else {
+        <div class="level-vocabulary__grid">
+          @for (item of feed.recommendations; track item.key) {
+            <article class="level-vocabulary__card">
+              <div>
+                <span>{{ item.topic }}</span>
+                <strong>{{ item.word }}</strong>
+              </div>
+              <p>{{ item.meaning }}</p>
+              <p class="level-vocabulary__example">{{ item.example }}</p>
+              <button
+                type="button"
+                [disabled]="addingRecommendation() !== null"
+                (click)="addRecommendation(item.key)"
+              >
+                {{ addingRecommendation() === item.key ? 'Adding...' : 'Add to review' }}
+              </button>
+            </article>
+          }
+        </div>
+      }
+    </section>
+  } @else if (facade.recommendationsLoadState() === 'loading') {
+    <div class="due-page__loading" aria-label="Loading level vocabulary"></div>
+  } @else if (facade.recommendationsLoadState() === 'error') {
+    <section class="due-page__message due-page__message--error">
+      <h2>Level vocabulary is temporarily unavailable</h2>
+    </section>
+  }
 
   @if (facade.dueLoadState() === 'loading') {
     <div class="due-page__loading" aria-label="Loading due words"></div>
@@ -12,7 +57,7 @@
       <p>Try again when your connection is available.</p>
     </section>
   } @else if (facade.dueSummary(); as summary) {
-    @if (summary.totalDue === 0) {
+    @if (summary.totalDue === 0 && summary.backfillCount === 0) {
       <section class="due-page__message">
         <h2>You are on schedule</h2>
         <p>No vocabulary is due today.</p>
@@ -32,6 +77,18 @@
             <span>{{ entry[0] }}: {{ entry[1] }}</span>
           }
         </div>
+        @if (summary.backfillCount > 0) {
+          <p class="due-page__backfill" data-testid="backfill-preview">
+            + {{ summary.backfillCount }} new word{{ summary.backfillCount === 1 ? '' : 's' }}
+            will be added to reach today's target of {{ summary.dailyTarget }}.
+          </p>
+        }
+        @if (summary.shortfall) {
+          <p class="due-page__shortfall" data-testid="backfill-shortfall">
+            Not enough level-matched words remain to fully reach today's target — you'll get as
+            many as are available.
+          </p>
+        }
         <a href="/vocabulary/review">Start review</a>
       </section>
     }

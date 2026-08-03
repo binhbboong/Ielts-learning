@@ -16,7 +16,6 @@ from app.core.db import Base  # noqa: E402
 # (needed for autogenerate support later; hand-written migrations don't
 # strictly require it, but keeping this current avoids surprises).
 from app.models import access_protection  # noqa: E402,F401
-from app.models import study_plan  # noqa: E402,F401
 from app.models import mistake  # noqa: E402,F401
 from app.models import vocabulary  # noqa: E402,F401
 from app.models import practice_result  # noqa: E402,F401
@@ -27,6 +26,8 @@ from app.models import speaking_submission  # noqa: E402,F401
 from app.models import reading_practice  # noqa: E402,F401
 from app.models import listening_practice  # noqa: E402,F401
 from app.models import daily_lesson_plan  # noqa: E402,F401
+from app.models import user  # noqa: E402,F401
+from app.models import study_profile  # noqa: E402,F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

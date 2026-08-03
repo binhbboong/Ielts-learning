@@ -1,7 +1,20 @@
 # Vision: Personal IELTS Learning Dashboard (Bảng điều khiển học IELTS cá nhân)
 
 ## Status
-Draft (revision 3 — chuyển trọng tâm từ "theo dõi tiến độ tự học" sang "app tự sinh bài học 4 kỹ năng theo từng ngày bằng AI", thay thế khung 180 ngày cố định bằng học liên tục không giới hạn)
+Draft (revision 4 — IELTS Academic adaptive plan, target 6.5 in 24 weeks, 60 minutes/day, multi-user)
+
+## Revision 4 Product Direction
+- The product serves individual IELTS Academic learners with separate accounts and fully
+  isolated learning histories.
+- The initial target profile is a software engineer starting near band 3.5, aiming for overall
+  6.5 with no skill below 6.0 in 24 weeks, studying 60 minutes per day.
+- The product outcome is no longer "four exercises every day." It is one coherent daily
+  session: 10 minutes of vocabulary/mistake review plus 50 minutes allocated across the
+  highest-value primary and supporting skills.
+- Difficulty progresses through six four-week phases and is recalibrated from assessed
+  performance rather than inferred from elapsed time alone.
+- Registration, login, account ownership, and per-user data isolation are product-level
+  requirements because multiple learners may use the hosted application.
 
 ## Vấn đề
 Một người học tự học IELTS từ con số 0 đang gặp phải hai vấn đề cộng hưởng. Thứ nhất là sự phân mảnh: tiến độ học tập, việc ôn từ vựng và nhật ký lỗi sai nằm rải rác ở nhiều công cụ khác nhau, hoặc không được ghi lại ở đâu cả. Thứ hai, nghiêm trọng hơn, là **thiếu nội dung luyện tập thực sự**: một công cụ chỉ theo dõi "hôm nay đã học chưa" không giải quyết được việc mỗi ngày người học vẫn phải tự đi tìm đề Reading, tự tìm audio Listening, tự nghĩ đề Writing/Speaking ở nơi khác — tức là công cụ theo dõi tiến độ không hề làm giảm gánh nặng chuẩn bị bài học hằng ngày, nó chỉ ghi lại kết quả sau khi người học đã tự xoay sở xong. Nếu không có một nơi vừa cung cấp bài luyện tập cụ thể cho cả bốn kỹ năng (Reading/Listening/Writing/Speaking) mỗi ngày, vừa nhắm đúng lỗi sai và từ vựng cá nhân đang yếu, người học rất dễ mất động lực vì tốn thời gian chuẩn bị hơn là luyện tập, lặp lại cùng một lỗi, và để việc ôn từ vựng bị trễ hạn. Riêng với Writing và Speaking, người tự học gần như không có cách nào biết mình đang ở band điểm nào hay cần sửa gì cụ thể nếu không có người chấm.

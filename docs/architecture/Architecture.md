@@ -2,6 +2,26 @@
 PRD: docs/business/PRD.md
 Last updated: 2026-07-30
 
+## Revision 4 Current State
+
+The product is an Angular single-page application backed by FastAPI and PostgreSQL. The
+backend exclusively owns learner data and AI credentials. Revision 4 adds email/password
+learner accounts, per-user ownership for every learning aggregate, an IELTS Academic study
+profile, and a 24-week allocator for the 3.5 to 6.5 goal at 60 minutes per day. The current
+local build passes 228 backend and 123 frontend tests.
+
+The AI boundary is provider-neutral. OpenAI is the currently configured runtime provider for
+content generation and MP3 text-to-speech; Claude and deterministic local/test providers remain
+available behind the same backend-only abstraction. No API key is exposed to Angular.
+
+Each daily session reserves 10 minutes for vocabulary and mistake review, then allocates the
+remaining 50 minutes to a primary and supporting skill. Phase and target band advance over six
+four-week phases. Daily content, submissions, mistakes, vocabulary, progress, and exports are
+scoped to the authenticated user.
+
+This section supersedes older statements below that describe single-learner authentication,
+Claude as the only production provider, or Reading, Listening, and Text-to-Speech as unbuilt.
+
 ## Overview
 The full-stack architecture per `docs/adr/2026-07-29-fullstack-vercel-claude-architecture.md` is built and passing (143 backend / 105 frontend tests): an Angular single-page frontend that talks only to a FastAPI backend over a REST API; the backend is the sole owner of the Postgres database and the sole caller of any AI provider or Speech-to-Text service. No frontend code ever holds a database connection or an AI provider API key. It has been verified running end-to-end locally (backend on Postgres in Docker, frontend proxying `/api` to it) but has **not yet been deployed** to Vercel/Neon — see Known Constraints. This revision also reflects the PRD revision-3 pivot from a self-directed progress tracker to an AI-generated daily lesson engine: two new epics (Reading, Listening practice generation) and one new integration (Text-to-Speech) join the previously-built set.
 

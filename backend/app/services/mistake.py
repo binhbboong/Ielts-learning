@@ -11,10 +11,11 @@ from app.schemas.mistake import (
     ReasonCategory,
 )
 from app.services.export_utils import serialize_all
+from app.models.user import LEGACY_USER_ID
 
 
-def create_mistake(session: Session, payload: MistakeCreate) -> Mistake:
-    mistake = Mistake(**payload.model_dump())
+def create_mistake(session: Session, payload: MistakeCreate, user_id=LEGACY_USER_ID) -> Mistake:
+    mistake = Mistake(user_id=user_id, **payload.model_dump())
     session.add(mistake)
     session.commit()
     session.refresh(mistake)
@@ -46,30 +47,30 @@ def mistake_to_read(mistake: Mistake) -> MistakeRead:
 
 
 def list_mistakes(
-    session: Session, start: datetime, end: datetime
+    session: Session, start: datetime, end: datetime, user_id=LEGACY_USER_ID
 ) -> list[Mistake]:
     statement = (
         select(Mistake)
-        .where(Mistake.logged_at.between(start, end))
+        .where(Mistake.user_id == user_id, Mistake.logged_at.between(start, end))
         .order_by(Mistake.logged_at.desc())
     )
     return list(session.scalars(statement))
 
 
-def export_learner_data(session: Session) -> dict:
+def export_learner_data(session: Session, user_id=LEGACY_USER_ID) -> dict:
     return {
         "category": "mistakes",
-        "entries": serialize_all(session, Mistake),
+        "entries": serialize_all(session, Mistake, user_id),
     }
 
 
 def list_grouped_by_reason(
-    session: Session, start: datetime, end: datetime
+    session: Session, start: datetime, end: datetime, user_id=LEGACY_USER_ID
 ) -> list[MistakeGroupedCategory]:
     count = func.count(Mistake.id)
     statement = (
         select(Mistake.reason_category, count)
-        .where(Mistake.logged_at.between(start, end))
+        .where(Mistake.user_id == user_id, Mistake.logged_at.between(start, end))
         .group_by(Mistake.reason_category)
         .order_by(count.desc(), Mistake.reason_category)
     )
@@ -84,11 +85,13 @@ def get_category_detail(
     reason_category: ReasonCategory,
     start: datetime,
     end: datetime,
+    user_id=LEGACY_USER_ID,
 ) -> list[Mistake]:
     statement = (
         select(Mistake)
         .where(
             Mistake.reason_category == reason_category,
+            Mistake.user_id == user_id,
             Mistake.logged_at.between(start, end),
         )
         .order_by(Mistake.logged_at.desc())

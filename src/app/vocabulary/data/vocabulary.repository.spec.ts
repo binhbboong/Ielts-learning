@@ -33,6 +33,7 @@ describe('VocabularyRepository', () => {
           example: null,
           position: 0,
           total: 1,
+          is_new: false,
         },
       }),
     );
@@ -41,6 +42,9 @@ describe('VocabularyRepository', () => {
         total_due: 2,
         by_interval: { '1_day': 2 },
         by_topic: { Environment: 2 },
+        daily_target: 20,
+        backfill_count: 18,
+        shortfall: false,
       }),
       of({ status: 'nothing_due' }),
     );
@@ -54,6 +58,9 @@ describe('VocabularyRepository', () => {
       totalDue: 2,
       byInterval: { '1_day': 2 },
       byTopic: { Environment: 2 },
+      dailyTarget: 20,
+      backfillCount: 18,
+      shortfall: false,
     });
     expect(await repository.startOrResumeReview()).toEqual({
       status: 'nothing_due',
@@ -79,5 +86,28 @@ describe('VocabularyRepository', () => {
     api.get.and.returnValue(throwError(() => new Error('offline')));
     const repository = new VocabularyRepository(api);
     await expectAsync(repository.getDueSummary()).toBeRejected();
+  });
+
+  it('maps the history endpoint', async () => {
+    const api = jasmine.createSpyObj<ApiClient>('ApiClient', ['get', 'post']);
+    api.get.and.returnValue(of({
+      days: [
+        {
+          day: '2026-07-30',
+          words_added: [{ word: 'mitigate', meaning: 'make less severe' }],
+          words_reviewed: [
+            { word: 'mitigate', outcome: 'remembered', assessed_at: '2026-07-30T10:00:00Z' },
+          ],
+        },
+      ],
+    }));
+    const repository = new VocabularyRepository(api);
+
+    const history = await repository.getHistory();
+
+    expect(api.get).toHaveBeenCalledWith('/api/vocabulary/history');
+    expect(history.days.length).toBe(1);
+    expect(history.days[0].wordsAdded[0].word).toBe('mitigate');
+    expect(history.days[0].wordsReviewed[0].outcome).toBe('remembered');
   });
 });

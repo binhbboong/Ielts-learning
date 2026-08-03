@@ -1,0 +1,28 @@
+<main class="register-page">
+  <section class="register-panel" aria-labelledby="register-heading">
+    <h1 id="register-heading">Create account</h1>
+    <p>Your IELTS Academic plan and progress stay private to this account.</p>
+    <form (submit)="$event.preventDefault(); submit()">
+      <label for="display-name">Display name</label>
+      <input id="display-name" type="text" autocomplete="name" [formControl]="displayName" />
+      <label for="register-email">Email</label>
+      <input id="register-email" type="email" autocomplete="email" [formControl]="email" />
+      <label for="register-password">Password</label>
+      <input
+        id="register-password"
+        type="password"
+        autocomplete="new-password"
+        [formControl]="password"
+      />
+      @if (errorMessage) {
+        <p role="alert">{{ errorMessage }}</p>
+      }
+      <button
+        type="submit"
+        [disabled]="displayName.invalid || email.invalid || password.invalid || submitting">
+        {{ submitting ? 'Creating account...' : 'Create account' }}
+      </button>
+    </form>
+    <p>Already registered? <a routerLink="/login">Log in</a></p>
+  </section>
+</main>

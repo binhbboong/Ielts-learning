@@ -138,12 +138,35 @@ def test_login_locked_out_returns_429_even_with_correct_password_and_never_evalu
     assert was_called["value"] is False
 
 
-def test_no_register_route_exists_in_openapi_schema(db_session_factory):
+def test_register_route_exists_in_openapi_schema(db_session_factory):
     client = _client(db_session_factory)
 
     schema = client.get("/openapi.json").json()
 
-    assert not any("register" in path for path in schema["paths"])
+    assert "/api/auth/register" in schema["paths"]
+
+
+def test_register_creates_account_sets_cookie_and_rejects_duplicate(
+    db_session_factory, monkeypatch
+):
+    monkeypatch.setattr(
+        "app.routers.access_protection.settings.SESSION_COOKIE_SECURE", False
+    )
+    client = _client(db_session_factory, base_url="http://testserver")
+    payload = {
+        "email": "developer@example.com",
+        "password": "correct-horse",
+        "display_name": "Developer",
+    }
+
+    created = client.post("/api/auth/register", json=payload)
+    duplicate = client.post("/api/auth/register", json=payload)
+
+    assert created.status_code == 201
+    assert created.json()["email"] == "developer@example.com"
+    assert created.json()["authenticated"] is True
+    assert SESSION_COOKIE_NAME in created.cookies
+    assert duplicate.status_code == 409
 
 
 def test_logout_with_valid_session_clears_cookie_via_max_age_zero(db_session_factory):

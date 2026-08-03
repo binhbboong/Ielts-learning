@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.security import require_learner
+from app.models.user import User
 from app.schemas.mistake import (
     MistakeCategoryDetail,
     MistakeCreate,
@@ -21,8 +22,8 @@ router = APIRouter(
 
 
 @router.post("", response_model=MistakeRead, status_code=status.HTTP_201_CREATED)
-def create(payload: MistakeCreate, db: Session = Depends(get_db)):
-    return service.mistake_to_read(service.create_mistake(db, payload))
+def create(payload: MistakeCreate, db: Session = Depends(get_db), user: User = Depends(require_learner)):
+    return service.mistake_to_read(service.create_mistake(db, payload, user.id))
 
 
 @router.get("", response_model=list[MistakeRead])
@@ -30,10 +31,11 @@ def chronological(
     start: datetime,
     end: datetime,
     db: Session = Depends(get_db),
+    user: User = Depends(require_learner),
 ):
     return [
         service.mistake_to_read(row)
-        for row in service.list_mistakes(db, start, end)
+        for row in service.list_mistakes(db, start, end, user.id)
     ]
 
 
@@ -42,8 +44,9 @@ def grouped(
     start: datetime,
     end: datetime,
     db: Session = Depends(get_db),
+    user: User = Depends(require_learner),
 ):
-    return service.list_grouped_by_reason(db, start, end)
+    return service.list_grouped_by_reason(db, start, end, user.id)
 
 
 @router.get(
@@ -55,7 +58,8 @@ def category_detail(
     start: datetime,
     end: datetime,
     db: Session = Depends(get_db),
+    user: User = Depends(require_learner),
 ):
     return service.get_category_detail(
-        db, reason_category, start, end
+        db, reason_category, start, end, user.id
     )

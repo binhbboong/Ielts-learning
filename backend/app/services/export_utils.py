@@ -32,5 +32,8 @@ def serialize_row(value) -> dict:
     }
 
 
-def serialize_all(db, model) -> list[dict]:
-    return [serialize_row(row) for row in db.query(model).all()]
+def serialize_all(db, model, user_id=None) -> list[dict]:
+    query = db.query(model)
+    if user_id is not None and hasattr(model, "user_id"):
+        query = query.filter(model.user_id == user_id)
+    return [serialize_row(row) for row in query.all()]

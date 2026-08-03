@@ -8,15 +8,43 @@ from app.models.vocabulary import (
     VocabularyWord,
 )
 from app.schemas.vocabulary import ReviewOutcome, VocabularyWordCreate
+from app.services import vocabulary as vocabulary_service
 from app.services.vocabulary import (
+    DAILY_REVIEW_TARGET,
+    _LEVEL_VOCABULARY,
     add_word,
     assess_current_item,
     get_current_item,
     get_due_summary,
+    get_history,
+    get_level_recommendations,
     get_review_complete_summary,
     reschedule,
+    add_level_recommendation,
     start_or_resume_review,
 )
+
+
+def test_level_recommendations_follow_profile_and_exclude_existing(db_session):
+    today = date(2026, 7, 30)
+    feed = get_level_recommendations(db_session, today=today)
+    assert feed["current_band"] == 4.5
+    assert feed["cefr_level"] == "B1"
+    assert feed["phase"] == "foundation"
+    assert len(feed["recommendations"]) == 20
+
+    saved = add_level_recommendation(
+        db_session, "4.5:essential", today=today
+    )
+    assert saved.target_band == 4.5
+    assert saved.cefr_level == "B1"
+    assert saved.source == "level_recommendation"
+
+    refreshed = get_level_recommendations(db_session, today=today)
+    assert "essential" not in {
+        item["word"] for item in refreshed["recommendations"]
+    }
+    assert len(refreshed["recommendations"]) == 19
 
 
 def test_add_word_minimal_fields_sets_initial_schedule(db_session):
@@ -95,6 +123,42 @@ def test_due_summary_counts_and_breaks_down_due_words(db_session):
     ).total_due == 0
 
 
+def test_due_summary_reports_daily_target_and_backfill_preview(db_session):
+    today = date(2026, 7, 29)
+    db_session.add_all([_due_word("a", today), _due_word("b", today), _due_word("c", today)])
+    db_session.commit()
+
+    summary = get_due_summary(db_session, today=today)
+
+    assert summary.total_due == 3
+    assert summary.daily_target == DAILY_REVIEW_TARGET
+    assert summary.backfill_count == DAILY_REVIEW_TARGET - 3
+    assert summary.shortfall is False
+
+
+def test_backfill_reports_shortfall_when_band_recommendations_exhausted(db_session):
+    today = date(2026, 7, 29)
+    for word, meaning, example, topic in _LEVEL_VOCABULARY[4.5]:
+        db_session.add(
+            VocabularyWord(
+                word=word,
+                meaning=meaning,
+                example=example,
+                topic=topic,
+                source="level_recommendation",
+                interval_index=2,
+                next_due_date=today + timedelta(days=30),
+            )
+        )
+    db_session.commit()
+
+    summary = get_due_summary(db_session, today=today)
+
+    assert summary.total_due == 0
+    assert summary.backfill_count == 0
+    assert summary.shortfall is True
+
+
 @pytest.mark.parametrize(
     "current,expected_index,days",
     [(0, 1, 3), (1, 2, 7), (2, 3, 14), (3, 4, 30), (4, 4, 30)],
@@ -125,7 +189,68 @@ def _due_word(label: str, today: date) -> VocabularyWord:
     )
 
 
-def test_start_or_resume_snapshots_due_queue_without_rewriting_it(db_session):
+def test_start_or_resume_backfills_to_daily_target_when_due_below_target(db_session):
+    today = date(2026, 7, 29)
+    db_session.add_all([_due_word("a", today), _due_word("b", today), _due_word("c", today)])
+    db_session.commit()
+
+    session_row = start_or_resume_review(db_session, today=today)
+
+    items = (
+        db_session.query(ReviewSessionItem)
+        .filter_by(session_id=session_row.id)
+        .order_by(ReviewSessionItem.position)
+        .all()
+    )
+    assert len(items) == DAILY_REVIEW_TARGET
+    assert {item.word.word for item in items[:3]} == {"a", "b", "c"}
+    backfilled_words = [item.word for item in items[3:]]
+    assert len(backfilled_words) == DAILY_REVIEW_TARGET - 3
+    assert all(word.source == "daily_backfill" for word in backfilled_words)
+    assert all(word.next_due_date == today for word in backfilled_words)
+    assert all(word.interval_index == 0 for word in backfilled_words)
+    assert len({word.word for word in backfilled_words}) == len(backfilled_words)
+
+
+def test_backfilled_word_is_persisted_source_daily_backfill_due_today(db_session):
+    today = date(2026, 7, 29)
+
+    session_row = start_or_resume_review(db_session, today=today)
+
+    stored = (
+        db_session.query(VocabularyWord)
+        .filter_by(source="daily_backfill")
+        .all()
+    )
+    assert len(stored) == DAILY_REVIEW_TARGET
+    assert all(word.next_due_date == today for word in stored)
+    assert all(word.interval_index == 0 for word in stored)
+    assert session_row is not None
+
+
+def test_start_or_resume_does_not_backfill_again_same_day_after_completion(db_session):
+    today = date(2026, 7, 29)
+    db_session.add(_due_word("a", today))
+    db_session.commit()
+
+    start_or_resume_review(db_session, today=today)
+    while True:
+        current = get_current_item(db_session, today=today)
+        if current.kind != "item":
+            break
+        assess_current_item(db_session, ReviewOutcome.remembered, today=today)
+
+    again = start_or_resume_review(db_session, today=today)
+
+    assert again is None
+    total_backfilled = (
+        db_session.query(VocabularyWord).filter_by(source="daily_backfill").count()
+    )
+    assert total_backfilled == DAILY_REVIEW_TARGET - 1
+
+
+def test_start_or_resume_snapshots_due_queue_without_rewriting_it(db_session, monkeypatch):
+    monkeypatch.setattr(vocabulary_service, "DAILY_REVIEW_TARGET", 2)
     today = date(2026, 7, 29)
     db_session.add_all([_due_word("a", today), _due_word("b", today)])
     db_session.commit()
@@ -148,7 +273,8 @@ def test_start_or_resume_snapshots_due_queue_without_rewriting_it(db_session):
     ]
 
 
-def test_resume_returns_exact_first_unassessed_item(db_session):
+def test_resume_returns_exact_first_unassessed_item(db_session, monkeypatch):
+    monkeypatch.setattr(vocabulary_service, "DAILY_REVIEW_TARGET", 3)
     today = date(2026, 7, 29)
     db_session.add_all(
         [_due_word("a", today), _due_word("b", today), _due_word("c", today)]
@@ -173,13 +299,36 @@ def test_resume_returns_exact_first_unassessed_item(db_session):
     assert current.item.total == 3
 
 
-def test_get_current_item_distinguishes_nothing_due(db_session):
+def test_zero_due_with_backfill_available_is_not_started_not_nothing_due(db_session):
     result = get_current_item(db_session, today=date(2026, 7, 29))
+    assert result.kind == "not_started"
+    assert result.item is None
+
+
+def test_zero_due_and_zero_backfill_is_nothing_due(db_session):
+    today = date(2026, 7, 29)
+    for word, meaning, example, topic in _LEVEL_VOCABULARY[4.5]:
+        db_session.add(
+            VocabularyWord(
+                word=word,
+                meaning=meaning,
+                example=example,
+                topic=topic,
+                source="level_recommendation",
+                interval_index=2,
+                next_due_date=today + timedelta(days=30),
+            )
+        )
+    db_session.commit()
+
+    result = get_current_item(db_session, today=today)
+
     assert result.kind == "nothing_due"
     assert result.item is None
 
 
-def test_assessment_commits_reschedule_and_advances_then_completes(db_session):
+def test_assessment_commits_reschedule_and_advances_then_completes(db_session, monkeypatch):
+    monkeypatch.setattr(vocabulary_service, "DAILY_REVIEW_TARGET", 2)
     today = date(2026, 7, 29)
     db_session.add_all([_due_word("a", today), _due_word("b", today)])
     db_session.commit()
@@ -209,7 +358,26 @@ def test_assessment_commits_reschedule_and_advances_then_completes(db_session):
     assert summary.forgot == 1
 
 
-def test_add_word_during_active_session_does_not_change_snapshot(db_session):
+def test_review_complete_summary_reports_new_words_included(db_session):
+    today = date(2026, 7, 29)
+    db_session.add_all([_due_word("a", today), _due_word("b", today)])
+    db_session.commit()
+    session_row = start_or_resume_review(db_session, today=today)
+
+    while True:
+        current = get_current_item(db_session, today=today)
+        if current.kind != "item":
+            break
+        assess_current_item(db_session, ReviewOutcome.remembered, today=today)
+
+    summary = get_review_complete_summary(db_session, session_row.id)
+
+    assert summary.total_reviewed == DAILY_REVIEW_TARGET
+    assert summary.new_words_included == DAILY_REVIEW_TARGET - 2
+
+
+def test_add_word_during_active_session_does_not_change_snapshot(db_session, monkeypatch):
+    monkeypatch.setattr(vocabulary_service, "DAILY_REVIEW_TARGET", 1)
     today = date(2026, 7, 29)
     db_session.add(_due_word("existing", today))
     db_session.commit()
@@ -239,3 +407,73 @@ def test_add_word_during_active_session_does_not_change_snapshot(db_session):
         get_current_item(db_session, today=today).item.item_id
         == current_before.item.item_id
     )
+
+
+def test_history_groups_added_and_reviewed_words_by_day_most_recent_first(
+    db_session, monkeypatch,
+):
+    monkeypatch.setattr(vocabulary_service, "DAILY_REVIEW_TARGET", 1)
+    # created_at/assessed_at come from real wall-clock (DB server_default / datetime.now()),
+    # so "today" here must be the real learner-local day, not an arbitrary simulated date,
+    # for the history buckets asserted below to line up.
+    today = clock.learner_today()
+    db_session.add(_due_word("yesterdaysword", today - timedelta(days=1)))
+    added_today = add_word(
+        db_session,
+        VocabularyWordCreate(word="todaysword", meaning="added today"),
+        today=today,
+    )
+    db_session.commit()
+    older = db_session.get(VocabularyWord, db_session.query(VocabularyWord).filter_by(
+        word="yesterdaysword"
+    ).one().id)
+    older.created_at = datetime.combine(
+        today - timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc
+    )
+    db_session.commit()
+
+    session = start_or_resume_review(db_session, today=today)
+    assess_current_item(db_session, ReviewOutcome.remembered, today=today)
+
+    days = get_history(db_session)
+
+    assert [d.day for d in days] == sorted(
+        {d.day for d in days}, reverse=True
+    )
+    today_bucket = next(d for d in days if d.day == today)
+    assert {w.word for w in today_bucket.words_added} == {"todaysword"}
+    assert len(today_bucket.words_reviewed) == 1
+    assert today_bucket.words_reviewed[0].outcome == "remembered"
+
+    yesterday_bucket = next(d for d in days if d.day == today - timedelta(days=1))
+    assert {w.word for w in yesterday_bucket.words_added} == {"yesterdaysword"}
+
+
+def test_history_is_scoped_per_user(db_session):
+    other_user_id = "00000000-0000-0000-0000-000000000099"
+    from app.models.user import User
+
+    db_session.add(
+        User(
+            id=other_user_id, email="other@example.com",
+            display_name="Other", password_hash="unused",
+        )
+    )
+    db_session.commit()
+    add_word(
+        db_session,
+        VocabularyWordCreate(word="mine", meaning="mine"),
+        today=date(2026, 7, 30),
+    )
+    add_word(
+        db_session,
+        VocabularyWordCreate(word="theirs", meaning="theirs"),
+        today=date(2026, 7, 30),
+        user_id=other_user_id,
+    )
+
+    days = get_history(db_session)
+
+    all_words = {w.word for d in days for w in d.words_added}
+    assert "mine" in all_words
+    assert "theirs" not in all_words

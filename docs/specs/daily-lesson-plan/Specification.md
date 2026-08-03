@@ -2,7 +2,7 @@
 Related UX: docs/ux/prototypes/daily-lesson-flow.md, docs/ux/wireframes/daily-overview.md
 
 ## Status
-Draft
+Approved — revision 2 (IELTS Academic adaptive allocation)
 
 ## Overview
 This feature decides, each calendar day, what the learner's practice should focus on across
@@ -35,9 +35,25 @@ It corresponds to PRD Epic-1 (`docs/business/PRD.md`) and traces to Vision goals
   blocks me from the rest of the app.
 
 ## Functional Requirements
-- FR-1: On each calendar day, the system MUST determine one personalization focus per skill
-  (Reading, Listening, Writing, Speaking), derived from the learner's recent mistake patterns
-  and vocabulary due for review, for that skill's content generator to target.
+- FR-0: Every daily plan, generated exercise, submission, mistake, vocabulary item, result,
+  and export MUST belong to exactly one authenticated learner and MUST be inaccessible to
+  every other learner.
+- FR-0A: A learner MUST be able to register and log in with a unique email and password; the
+  authenticated session MUST identify the learner by an immutable account identifier.
+- FR-0B: The system MUST maintain an IELTS Academic goal profile per learner with baseline
+  band, target overall band, minimum skill band, plan start/end dates, daily minutes, and
+  study days per week.
+- FR-0C: For the default profile (3.5 to 6.5, minimum 6.0, 24 weeks, 60 minutes/day), each
+  daily session MUST reserve 10 minutes for vocabulary/mistake review and allocate the
+  remaining 50 minutes to a primary and supporting skill.
+- FR-0D: The daily overview MUST display exam type, current plan week/phase, target band,
+  total minutes, review minutes, each allocated skill's minutes, priority, and selection
+  rationale.
+- FR-0E: Generated prompts and exercises MUST explicitly target IELTS Academic, the phase's
+  target band, and the learner's selected weakness or review focus.
+- FR-1: On each calendar day, the system MUST select a primary and supporting skill from
+  Reading, Listening, Writing, and Speaking, using the learner's plan phase, recent results,
+  mistake patterns, and due vocabulary.
 - FR-2: When the learner has no recorded mistakes or due vocabulary yet (cold start), the
   system MUST still produce a personalization focus for each skill using a general-topic
   default, rather than blocking generation on personalization data that doesn't exist yet.
@@ -89,8 +105,9 @@ None — resolved with the user: incomplete skills carry over and remain complet
 FR-12) rather than being replaced.
 
 ## Acceptance Criteria
-- [ ] Opening the app on a given day shows a status (Ready/Generating/Done/Failed) for all four
-      skills, without the learner needing to trigger anything manually (FR-1, FR-4).
+- [ ] Opening the app shows one 60-minute IELTS Academic session with 10 review minutes and
+      two allocated skills totaling 50 minutes, including phase and target-band context.
+- [ ] Two registered learners cannot read, update, submit, or export each other's data.
 - [ ] With existing mistake/vocabulary data, at least one skill's displayed personalization
       note names a specific mistake pattern or vocabulary item (FR-6).
 - [ ] With no mistake/vocabulary data at all (fresh account), all four skills still reach a

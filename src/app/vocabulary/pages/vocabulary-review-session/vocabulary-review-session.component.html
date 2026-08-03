@@ -15,6 +15,13 @@
     @if (state.status === 'item') {
       <article data-testid="recall-card" class="recall-card">
         <span>{{ state.item.position + 1 }} of {{ state.item.total }}</span>
+        <span
+          data-testid="recall-card-badge"
+          class="recall-card__badge"
+          [class.recall-card__badge--new]="state.item.isNew"
+        >
+          {{ state.item.isNew ? 'New word' : 'Review' }}
+        </span>
         <h2>{{ state.item.word }}</h2>
         @if (revealed()) {
           <div class="recall-card__answer">
@@ -45,6 +52,11 @@
           {{ state.summary.remembered }} remembered,
           {{ state.summary.forgot }} forgot
         </p>
+        @if (state.summary.newWordsIncluded > 0) {
+          <p data-testid="new-words-included">
+            {{ state.summary.newWordsIncluded }} of these were new words added today.
+          </p>
+        }
         <p>Review dates were updated.</p>
       </section>
     } @else if (state.status === 'nothing_due') {

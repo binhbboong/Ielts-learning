@@ -9,8 +9,16 @@ const AUTH_API_URL = '/api/auth';
 export class AuthRepository {
   constructor(private readonly http: HttpClient) {}
 
-  login(password: string): Observable<AuthStatusResponse> {
-    return this.http.post<AuthStatusResponse>(`${AUTH_API_URL}/login`, { password });
+  login(email: string, password: string): Observable<AuthStatusResponse> {
+    return this.http.post<AuthStatusResponse>(`${AUTH_API_URL}/login`, { email, password });
+  }
+
+  register(email: string, password: string, displayName: string): Observable<AuthStatusResponse> {
+    return this.http.post<AuthStatusResponse>(`${AUTH_API_URL}/register`, {
+      email,
+      password,
+      display_name: displayName,
+    });
   }
 
   logout(): Observable<AuthStatusResponse> {

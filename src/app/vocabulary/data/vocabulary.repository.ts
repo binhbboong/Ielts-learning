@@ -4,8 +4,10 @@ import { ApiClient } from '../../core/api/api-client';
 import {
   AddWordResult,
   DueQueueSummary,
+  VocabularyHistory,
   VocabularyWord,
   VocabularyWordCreate,
+  VocabularyRecommendationFeed,
 } from '../models/vocabulary-word.model';
 import {
   ReviewItem,
@@ -20,6 +22,9 @@ function mapWord(value: any): VocabularyWord {
     meaning: value.meaning,
     example: value.example,
     topic: value.topic,
+    targetBand: value.target_band ?? null,
+    cefrLevel: value.cefr_level ?? null,
+    source: value.source ?? 'manual',
     intervalIndex: value.interval_index,
     nextDueDate: value.next_due_date,
     createdAt: value.created_at,
@@ -37,6 +42,7 @@ function mapItem(value: any): ReviewItem {
     example: value.example,
     position: value.position,
     total: value.total,
+    isNew: value.is_new,
   };
 }
 
@@ -54,6 +60,7 @@ function mapReviewState(value: any): ReviewSessionState {
             totalReviewed: summary.total_reviewed,
             forgot: summary.forgot,
             remembered: summary.remembered,
+            newWordsIncluded: summary.new_words_included,
             reviewDatesUpdated: summary.review_dates_updated,
           }
         : undefined,
@@ -87,6 +94,60 @@ export class VocabularyRepository {
       totalDue: result.total_due,
       byInterval: result.by_interval,
       byTopic: result.by_topic,
+      dailyTarget: result.daily_target,
+      backfillCount: result.backfill_count,
+      shortfall: result.shortfall,
+    };
+  }
+
+  async getRecommendations(): Promise<VocabularyRecommendationFeed> {
+    const result = await firstValueFrom(
+      this.api.get<any>('/api/vocabulary/recommendations'),
+    );
+    return {
+      currentBand: result.current_band,
+      cefrLevel: result.cefr_level,
+      phase: result.phase,
+      week: result.week,
+      recommendations: result.recommendations.map((item: any) => ({
+        key: item.key,
+        word: item.word,
+        meaning: item.meaning,
+        example: item.example,
+        topic: item.topic,
+        targetBand: item.target_band,
+        cefrLevel: item.cefr_level,
+      })),
+    };
+  }
+
+  async addRecommendation(key: string): Promise<AddWordResult> {
+    const result = await firstValueFrom(
+      this.api.post<any>(
+        `/api/vocabulary/recommendations/${encodeURIComponent(key)}/add`,
+        {},
+      ),
+    );
+    return { saved: true, word: mapWord(result.word) };
+  }
+
+  async getHistory(): Promise<VocabularyHistory> {
+    const result = await firstValueFrom(
+      this.api.get<any>('/api/vocabulary/history'),
+    );
+    return {
+      days: (result.days ?? []).map((day: any) => ({
+        day: day.day,
+        wordsAdded: (day.words_added ?? []).map((w: any) => ({
+          word: w.word,
+          meaning: w.meaning,
+        })),
+        wordsReviewed: (day.words_reviewed ?? []).map((r: any) => ({
+          word: r.word,
+          outcome: r.outcome,
+          assessedAt: r.assessed_at,
+        })),
+      })),
     };
   }
 

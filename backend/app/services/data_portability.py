@@ -5,21 +5,20 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from app.schemas.data_portability import ExportDocument
+from app.models.user import LEGACY_USER_ID
 from app.services import (
     listening_practice,
     mistake,
     practice_result,
     reading_practice,
     speaking_coach,
-    study_plan,
     vocabulary,
     writing_coach,
 )
 
-ExportSource = Callable[[Session], dict]
+ExportSource = Callable[[Session, uuid.UUID], dict]
 
 EXPORT_SOURCES: list[ExportSource] = [
-    study_plan.export_learner_data,
     vocabulary.export_learner_data,
     mistake.export_learner_data,
     practice_result.export_learner_data,
@@ -30,7 +29,6 @@ EXPORT_SOURCES: list[ExportSource] = [
 ]
 
 REQUIRED_CATEGORIES = (
-    "study_plan",
     "vocabulary",
     "mistakes",
     "practice_results",
@@ -45,10 +43,12 @@ class ExportAssemblyError(RuntimeError):
     pass
 
 
-def assemble_export(db: Session) -> ExportDocument:
+def assemble_export(
+    db: Session, user_id: uuid.UUID = LEGACY_USER_ID
+) -> ExportDocument:
     data: dict[str, dict] = {}
     for source in EXPORT_SOURCES:
-        result = source(db)
+        result = source(db, user_id)
         if not isinstance(result, dict) or not isinstance(result.get("category"), str):
             raise ExportAssemblyError("Every export source must return a category-tagged dict")
         category = result["category"]

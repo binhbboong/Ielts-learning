@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel
@@ -15,9 +15,10 @@ class SpeakingQuestionRead(BaseModel):
 
 class SpeakingSubmissionRead(BaseModel):
     id: uuid.UUID
-    question_id: uuid.UUID
+    question_id: uuid.UUID | None
     question: str
-    part: str
+    part: str | None
+    day: date | None = None
     audio_duration_seconds: int
     transcript: str | None
     status: Literal[

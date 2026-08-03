@@ -1,8 +1,40 @@
 # Specification: Vocabulary & Spaced Repetition Review
 Related UX: docs/ux/prototypes/vocabulary-review-flow.md
 
+## Revision 3 — Daily 20-word minimum
+
+Decision: `docs/adr/2026-08-03-vocabulary-daily-minimum.md`.
+
+- FR-31: Each day's review session MUST target a minimum of 20 words: due words first (existing
+  behavior, unchanged), backfilled with additional curated, level-appropriate recommended words
+  (per FR-27) up to a total of 20 when the due count is below 20.
+- FR-32: A backfilled word MUST be persisted to the learner's vocabulary (source
+  `daily_backfill`) and included in that day's review queue at creation time — not merely
+  displayed as a suggestion requiring a separate manual "add" action.
+- FR-33: When fewer than 20 unowned recommended words remain for the learner's current band, the
+  system MUST use as many as are available and MUST communicate the shortfall, rather than
+  blocking session start or silently presenting fewer than 20 without explanation.
+- FR-34: The due-review entry point (before starting a session) MUST show, alongside the due
+  count (FR-8), how many additional words will be backfilled to reach today's 20-word target,
+  and MUST indicate when a shortfall (FR-33) means today's target cannot be fully reached.
+- FR-35: The review-complete state (FR-20) MUST additionally report how many of the words
+  reviewed in that session were new backfilled words (distinct from due words), so the learner
+  can see today's practice was not just previously-seen review.
+
+## Revision 2 — Level-aware IELTS Academic vocabulary
+
+- FR-25: The system MUST derive the learner's vocabulary level from the authenticated
+  learner's study profile, current week, phase, and target band.
+- FR-26: The vocabulary page MUST show the current IELTS band and corresponding CEFR level.
+- FR-27: The system MUST recommend curated IELTS Academic words for that level, including
+  meaning, example sentence, and topic.
+- FR-28: Words already present in the learner's vocabulary MUST NOT be recommended again.
+- FR-29: A recommended word MUST be addable directly to spaced repetition and retain its
+  target band, CEFR level, and recommendation source.
+- FR-30: Recommendations and saved words MUST remain isolated by learner account.
+
 ## Status
-Draft
+Approved — revision 3 (daily 20-word minimum)
 
 ## Overview
 This feature lets the solo learner capture new vocabulary words as they encounter them and
@@ -68,9 +100,12 @@ if it isn't.
   due for review as of the current day.
 - FR-9: The system MUST show the learner a breakdown of the due count (e.g., by review interval
   or topic) alongside the raw number, so the number is never presented without context.
-- FR-10: When no words are due, the system MUST present this as a neutral, positive state (the
-  learner is on schedule) rather than an empty or broken-looking screen, and MUST NOT offer a
-  "start review" action when there is nothing to review.
+- FR-10: When no words are due AND no backfill words are available to reach today's 20-word
+  target (FR-31, FR-33) — i.e. there is genuinely nothing left to review or learn today — the
+  system MUST present this as a neutral, positive state (the learner is on schedule) rather than
+  an empty or broken-looking screen, and MUST NOT offer a "start review" action. When no words
+  are due but backfill words are available, the system MUST still offer "start review" — zero
+  due no longer implies nothing to do once FR-31's floor is in effect.
 - FR-11: When the due count cannot be determined (e.g., a local data read failure), the system
   MUST NOT display a fabricated or zero count, and MUST clearly communicate that the count
   could not be loaded, distinct from there genuinely being nothing due.
@@ -111,7 +146,10 @@ if it isn't.
 
 ## Out of Scope
 - Audio pronunciation of vocabulary words.
-- AI-generated or AI-suggested vocabulary (words the learner did not enter themselves).
+- Free-form AI-generated vocabulary (e.g. an LLM inventing words on the fly). Recommended and
+  backfilled words (FR-25–FR-30, FR-31–FR-35) come from a fixed, hand-curated per-band word bank,
+  not model generation — see `docs/adr/2026-08-03-vocabulary-daily-minimum.md`'s Decision point 2
+  for why that tradeoff was made and what it forecloses for now.
 - Multi-language support beyond the learner's own single target language pair.
 - Editing or deleting a previously saved vocabulary word (this feature covers adding and
   reviewing only).
@@ -133,6 +171,12 @@ if it isn't.
   confirmation on the host screen; cancel simply closes it.
 - The MVP has no due-queue cap. Every word with `next_due_date <= today` is counted and included
   in the session snapshot.
+- **Daily 20-word minimum (resolved 2026-08-03).** Per
+  `docs/adr/2026-08-03-vocabulary-daily-minimum.md`: due words are never capped (previous
+  decision, unchanged) but are now floored — if fewer than 20 are due, the session is backfilled
+  with curated recommended words up to 20 total, or as many as remain available for the
+  learner's band. Backfilled words are due today (not the usual 1-day-later start), since they
+  enter the queue to be reviewed immediately.
 
 ## Acceptance Criteria
 - [ ] A word can be saved with only word and meaning filled in; example and topic can be left
@@ -145,8 +189,9 @@ if it isn't.
   and queue position afterward, whether saved or canceled (FR-7).
 - [ ] The due-review entry point shows a due count with a supporting breakdown before any review
   begins (FR-8, FR-9).
-- [ ] With zero words due, no "start review" action is offered and the state reads as a positive
-  milestone (FR-10).
+- [ ] With zero words due and zero backfill words available, no "start review" action is offered
+  and the state reads as a positive milestone; with zero words due but backfill words available,
+  "start review" is still offered (FR-10).
 - [ ] When the due count fails to load, the screen shows neither a zero nor a fabricated number,
   and states the load failed (FR-11).
 - [ ] "Add a new word" is reachable both when words are due and when none are due (FR-12).
@@ -167,3 +212,11 @@ if it isn't.
   review-complete state and not a recall card (FR-23).
 - [ ] A local data read failure during review presents an explicit error state and never shows a
   word for review under that condition (FR-24).
+- [ ] With fewer than 20 words due, starting a session backfills curated recommended words up to
+  a total of 20, persisted as owned words due today (FR-31, FR-32).
+- [ ] With fewer than 20 unowned recommended words left for the learner's band, the session uses
+  what's available and the shortfall is communicated, not hidden or blocked (FR-33).
+- [ ] The due-review entry point shows how many words will be backfilled to reach today's target,
+  including a shortfall indicator when applicable (FR-34).
+- [ ] The review-complete state additionally reports how many reviewed words were new backfilled
+  words (FR-35).

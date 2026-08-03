@@ -9,6 +9,7 @@ from app.models.ai_call_log import AICallLog
 from app.models.writing_submission import WritingSubmission
 from app.schemas.writing_submission import WritingSubmissionCreate
 from app.services.export_utils import serialize_all
+from app.models.user import LEGACY_USER_ID
 
 
 def _run_with_timeout(provider, request, timeout_seconds):
@@ -27,11 +28,13 @@ def create_and_evaluate(
     payload: WritingSubmissionCreate,
     provider: AIProvider,
     timeout_seconds: float = 25,
+    user_id=LEGACY_USER_ID,
 ) -> WritingSubmission:
     request = WritingEvaluationRequest(**payload.model_dump())
     result = _run_with_timeout(provider, request, timeout_seconds)
     valid = result is not None and result.status == "ok" and bool(result.corrections)
     submission = WritingSubmission(
+        user_id=user_id,
         **payload.model_dump(),
         status="complete" if valid else "failed",
         error_message=(
@@ -63,23 +66,31 @@ def create_and_evaluate(
     return submission
 
 
-def get_submission_list(db: Session) -> list[WritingSubmission]:
+def get_submission_list(db: Session, user_id=LEGACY_USER_ID) -> list[WritingSubmission]:
     return (
         db.query(WritingSubmission)
+        .filter(WritingSubmission.user_id == user_id)
         .order_by(WritingSubmission.created_at.desc())
         .all()
     )
 
 
 def get_submission_detail(
-    db: Session, submission_id: uuid.UUID
+    db: Session, submission_id: uuid.UUID, user_id=LEGACY_USER_ID
 ) -> WritingSubmission | None:
-    return db.get(WritingSubmission, submission_id)
+    return db.query(WritingSubmission).filter_by(id=submission_id, user_id=user_id).one_or_none()
 
 
-def export_learner_data(db: Session) -> dict:
+def export_learner_data(db: Session, user_id=LEGACY_USER_ID) -> dict:
     return {
         "category": "writing_submissions",
-        "submissions": serialize_all(db, WritingSubmission),
-        "ai_call_log": serialize_all(db, AICallLog),
+        "submissions": serialize_all(db, WritingSubmission, user_id),
+        "ai_call_log": [
+            item
+            for item in serialize_all(db, AICallLog)
+            if any(
+                str(row.id) == item["submission_id"]
+                for row in db.query(WritingSubmission).filter_by(user_id=user_id)
+            )
+        ],
     }

@@ -1,6 +1,88 @@
 # Tasks: Vocabulary & Spaced Repetition Review
 Plan: docs/specs/vocabulary-review/ImplementationPlan.md
 
+## Revision-3 Task-18 — Expand curated word bank to 20/band + shared recommendation-candidate helper
+- [x] Status: Done
+- Depends on: none
+- Goal: Expand `_LEVEL_VOCABULARY` from 5 to 20 words per band (100 total); extract
+  `_band_recommendation_candidates(session, user_id, band, cefr)` shared by
+  `get_level_recommendations` and the new backfill path so both always agree on what's available.
+- Files touched: `backend/app/services/vocabulary.py`, `backend/tests/test_vocabulary_service.py`.
+- Definition of done: `test_level_recommendations_follow_profile_and_exclude_existing` updated to
+  assert 20 recommendations for a fresh band; existing exclude-already-owned behavior unchanged.
+
+## Revision-3 Task-19 — Daily-target backfill in start_or_resume_review
+- [x] Status: Done
+- Depends on: Task-18
+- Goal: `DAILY_REVIEW_TARGET = 20`; `_backfill_daily_words` persists up to
+  `DAILY_REVIEW_TARGET - len(due_words)` new `VocabularyWord` rows (`source="daily_backfill"`,
+  `interval_index=0`, `next_due_date=today`) from the band's candidates; session snapshot is
+  `due_words + backfilled`. Covers FR-31, FR-32.
+- Files touched: `backend/app/services/vocabulary.py`, `backend/tests/test_vocabulary_service.py`.
+- Definition of done: `test_start_or_resume_backfills_to_daily_target_when_due_below_target` and
+  `test_backfilled_word_is_persisted_source_daily_backfill_due_today` pass; pre-existing
+  resume/session tests updated to `monkeypatch` `DAILY_REVIEW_TARGET` down to their original due
+  count so their resume-mechanics assertions stay meaningful and unchanged.
+
+## Revision-3 Task-20 — Due-summary backfill preview, shortfall, and FR-10 redefinition
+- [x] Status: Done
+- Depends on: Task-18
+- Goal: `get_due_summary` gains `daily_target`, `backfill_count`, `shortfall`;
+  `get_current_item`'s nothing-to-review branch checks `backfill_count == 0` too, not just
+  `total_due == 0`. Covers FR-33, FR-34, and the FR-10 redefinition.
+- Files touched: `backend/app/schemas/vocabulary.py`, `backend/app/services/vocabulary.py`,
+  `backend/tests/test_vocabulary_service.py`, `backend/tests/test_vocabulary_router.py`.
+- Definition of done: `test_due_summary_reports_daily_target_and_backfill_preview`,
+  `test_backfill_reports_shortfall_when_band_recommendations_exhausted`,
+  `test_zero_due_with_backfill_available_is_not_started_not_nothing_due`, and
+  `test_zero_due_and_zero_backfill_is_nothing_due` pass.
+
+## Revision-3 Task-21 — is_new on current item + new_words_included on complete summary
+- [x] Status: Done
+- Depends on: Task-19
+- Goal: `ReviewCurrentItem.is_new` (word's `source == 'daily_backfill'`);
+  `ReviewCompleteSummary.new_words_included` (count of that session's backfilled items). Covers
+  FR-35.
+- Files touched: `backend/app/schemas/vocabulary.py`, `backend/app/services/vocabulary.py`,
+  `backend/tests/test_vocabulary_service.py`.
+- Definition of done: `test_review_complete_summary_reports_new_words_included` passes;
+  `get_current_item`'s item-kind result includes `is_new` matching the underlying word's source.
+
+## Revision-3 Task-22 — Frontend: due-list backfill/shortfall preview
+- [x] Status: Done
+- Depends on: Task-20
+- Goal: `DueQueueSummary` model + repository mapping gain `dailyTarget`/`backfillCount`/
+  `shortfall`; Due List page shows "N due + M new words today" (or shortfall messaging) next to
+  the existing due-count summary; zero-due-but-backfill-available no longer suppresses "Start
+  review" (FR-10 frontend half).
+- Files touched: `src/app/vocabulary/models/vocabulary-word.model.ts`,
+  `src/app/vocabulary/data/vocabulary.repository.ts`,
+  `src/app/vocabulary/pages/vocabulary-due-list/*`.
+- Definition of done: `vocabulary-due-list.component.spec.ts` covers the backfill-preview and
+  shortfall-messaging render paths and the zero-due-with-backfill "Start review" visibility case.
+
+## Revision-3 Task-23 — Frontend: new-word tagging in session + review-complete new-words count
+- [x] Status: Done
+- Depends on: Task-21
+- Goal: `ReviewItem` model gains `isNew`; `ReviewCompleteSummary` model gains
+  `newWordsIncluded`; recall card shows a "New word" vs "Review" tag; Review-complete sub-view
+  shows the new-words-included count alongside remembered/forgot.
+- Files touched: `src/app/vocabulary/models/review-session.model.ts`,
+  `src/app/vocabulary/data/vocabulary.repository.ts`,
+  `src/app/vocabulary/pages/vocabulary-review-session/*`.
+- Definition of done: `vocabulary-review-session.component.spec.ts` covers the New-word tag and
+  the review-complete new-words-included count rendering.
+
+## Revision-2 Task-13 — Level metadata and recommendation service
+- [x] Status: Done
+- Goal: Derive band/CEFR from StudyProfile, recommend curated IELTS Academic words, exclude
+  existing words, and persist recommendation metadata per user.
+
+## Revision-2 Task-14 — Level-aware vocabulary UI
+- [x] Status: Done
+- Goal: Show week, phase, IELTS band, CEFR, meanings, examples, topics, and one-click
+  add-to-review actions.
+
 ## Notes
 
 - **Supersedes the prior version of this file**, which was written against the client-only

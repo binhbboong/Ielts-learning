@@ -12,6 +12,7 @@ reconcile since each ADR's identity is already unique.
 
 | Date | Decision | Status | Supersedes | Affects |
 |---|---|---|---|---|
+| 2026-08-03 | [Vocabulary daily minimum of 20 words via due-queue + recommendation backfill](2026-08-03-vocabulary-daily-minimum.md) | Accepted | — | vocabulary-review |
 | 2026-07-30 | [Daily Lesson Plan data model: per-day/per-skill `daily_focus` table, status derived from each skill's own table, never owned](2026-07-30-daily-lesson-plan-data-model.md) | Accepted | 2026-07-29-study-plan-relational-task-store, 2026-07-29-study-plan-flat-task-store | daily-lesson-plan |
 | 2026-07-30 | [AIProvider gains `generate_reading_exercise()` / `generate_listening_script()`, typed passage/script + question + answer-key results](2026-07-30-reading-listening-generation-interface.md) | Accepted | — | reading-practice, listening-practice |
 | 2026-07-30 | [Text-to-Speech integration mirrors Speech-to-Text (protocol + swappable local adapter); generated audio stored as `bytea` in Postgres, not object storage](2026-07-30-text-to-speech-integration-and-audio-storage.md) | Accepted | — | listening-practice |

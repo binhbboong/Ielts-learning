@@ -1,0 +1,63 @@
+<main class="history-page">
+  <header class="history-heading">
+    <div>
+      <p class="eyebrow">Vocabulary</p>
+      <h1>Learning History</h1>
+    </div>
+    <a routerLink="/vocabulary">Back to Vocabulary</a>
+  </header>
+
+  @if (facade.historyLoadState() === 'loading') {
+    <p role="status">Loading your vocabulary history...</p>
+  }
+
+  @if (facade.historyLoadState() === 'error') {
+    <div class="error-state" role="alert">
+      <strong>Couldn't load your vocabulary history.</strong>
+    </div>
+  }
+
+  @if (facade.historyLoadState() === 'ready' && facade.history(); as history) {
+    @if (history.days.length === 0) {
+      <p class="empty-state" data-testid="history-empty">
+        No vocabulary activity yet. Add a word or start a review to begin your history.
+      </p>
+    } @else {
+      <ol class="day-list">
+        @for (day of history.days; track day.day) {
+          <li class="day-card">
+            <h2>{{ day.day }}</h2>
+
+            @if (day.wordsAdded.length > 0) {
+              <section>
+                <p class="section-label">Added ({{ day.wordsAdded.length }})</p>
+                <ul class="word-list">
+                  @for (word of day.wordsAdded; track word.word) {
+                    <li>
+                      <strong>{{ word.word }}</strong> — {{ word.meaning }}
+                    </li>
+                  }
+                </ul>
+              </section>
+            }
+
+            @if (day.wordsReviewed.length > 0) {
+              <section>
+                <p class="section-label">Reviewed ({{ day.wordsReviewed.length }})</p>
+                <ul class="word-list">
+                  @for (review of day.wordsReviewed; track review.word + review.assessedAt) {
+                    <li [class.remembered]="review.outcome === 'remembered'"
+                        [class.forgot]="review.outcome === 'forgot'">
+                      <strong>{{ review.word }}</strong>
+                      <span class="outcome-badge">{{ review.outcome }}</span>
+                    </li>
+                  }
+                </ul>
+              </section>
+            }
+          </li>
+        }
+      </ol>
+    }
+  }
+</main>

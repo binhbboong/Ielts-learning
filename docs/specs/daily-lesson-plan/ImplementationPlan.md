@@ -3,6 +3,18 @@ Spec: docs/specs/daily-lesson-plan/Specification.md
 
 ## Approach
 
+**Revision-2 foundation**: introduce a `users` identity table and signed sessions containing
+`user_id`; add ownership foreign keys to every learner-owned aggregate. Introduce one
+`study_profiles` row per user and extend `daily_focus` with allocation metadata
+(`target_band`, `estimated_minutes`, `priority`, `phase`, `rationale`). Existing rows migrate
+to a legacy user. Routers pass authenticated identity explicitly and services include it in
+every query.
+
+The allocator uses a deterministic six-phase, 24-week IELTS Academic schedule as its safe
+baseline, then uses per-user mistakes, due vocabulary, and recorded performance as priority
+signals. It creates only the day's primary/supporting skills, reserving review time separately,
+so generated workload fits the 60-minute budget.
+
 **Chosen approach**: a single new backend module (`daily_lesson_plan`) that owns one table —
 the per-day/per-skill personalization decision (`daily_focus`, see
 `docs/adr/2026-07-30-daily-lesson-plan-data-model.md`) — and derives each skill's
@@ -45,6 +57,11 @@ rework. Their tests are removed along with them; nothing from that implementatio
 | `src/app/study-plan/` | **Removed** (backend `study_plan` module and its routes also removed) | — |
 
 ## Testing Strategy
+| FR-0 / FR-0A (accounts and ownership) | Registration/login tests plus two-user integration tests proving cross-user reads and mutations return no data |
+| FR-0B (goal profile) | Model/API round-trip and validation tests |
+| FR-0C (60-minute allocation) | Allocator unit tests asserting review=10 and allocated skills sum to 50 |
+| FR-0D (visible plan context) | Router schema and Angular component tests |
+| FR-0E (Academic/level-aware generation) | Fake-provider request assertions |
 | Requirement | Verified by |
 |---|---|
 | FR-1 (per-skill focus derived from mistakes/vocab) | Service unit test seeding real mistake/vocabulary rows, asserting the selected focus references one of them |

@@ -25,11 +25,15 @@ describe('AuthRepository', () => {
     const response: AuthStatusResponse = { authenticated: true };
     let actual: AuthStatusResponse | undefined;
 
-    repository.login('correct horse battery staple').subscribe((value) => (actual = value));
+    repository.login('developer@example.com', 'correct horse battery staple')
+      .subscribe((value) => (actual = value));
 
     const request = httpTestingController.expectOne('/api/auth/login');
     expect(request.request.method).toBe('POST');
-    expect(request.request.body).toEqual({ password: 'correct horse battery staple' });
+    expect(request.request.body).toEqual({
+      email: 'developer@example.com',
+      password: 'correct horse battery staple',
+    });
     request.flush(response);
 
     expect(actual).toEqual(response);
@@ -39,7 +43,7 @@ describe('AuthRepository', () => {
     it(`propagates a ${status} login rejection`, () => {
       let actualError: HttpErrorResponse | undefined;
 
-      repository.login('wrong password').subscribe({
+      repository.login('developer@example.com', 'wrong password').subscribe({
         error: (error: HttpErrorResponse) => (actualError = error),
       });
 
@@ -51,6 +55,19 @@ describe('AuthRepository', () => {
 
       expect(actualError?.status).toBe(status);
     });
+  });
+
+  it('registers a learner account', () => {
+    repository.register('developer@example.com', 'password123', 'Developer').subscribe();
+
+    const request = httpTestingController.expectOne('/api/auth/register');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({
+      email: 'developer@example.com',
+      password: 'password123',
+      display_name: 'Developer',
+    });
+    request.flush({ authenticated: true });
   });
 
   it('posts to the logout endpoint and returns the unauthenticated response', () => {

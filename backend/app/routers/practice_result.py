@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.security import require_learner
+from app.models.user import User
 from app.models.practice_result import PracticeResult
 from app.models.practice_result_taxonomy import QUESTION_TYPE_TAXONOMY
 from app.schemas.practice_result import (
@@ -39,8 +40,9 @@ def taxonomy() -> TaxonomyResponse:
 def create(
     payload: PracticeResultCreate,
     db: Session = Depends(get_db),
+    user: User = Depends(require_learner),
 ) -> PracticeResult:
-    return service.create_result(db, payload)
+    return service.create_result(db, payload, user.id)
 
 
 @router.get("", response_model=list[PracticeResultRead])
@@ -48,8 +50,9 @@ def history(
     skill: PracticeHistorySkill | None = None,
     sort: PracticeHistorySort = PracticeHistorySort.newest,
     db: Session = Depends(get_db),
+    user: User = Depends(require_learner),
 ) -> list[PracticeResult]:
-    return service.list_results(db, skill=skill, sort=sort)
+    return service.list_results(db, skill=skill, sort=sort, user_id=user.id)
 
 
 @router.get("/trend", response_model=PracticeTrendResponse)
@@ -57,9 +60,10 @@ def trend(
     skill: PracticeTrendSkill = PracticeTrendSkill.both,
     period: PracticeTrendPeriod = PracticeTrendPeriod.eight_weeks,
     db: Session = Depends(get_db),
+    user: User = Depends(require_learner),
 ) -> PracticeTrendResponse:
     try:
-        return service.get_trend(db, skill=skill, period=period)
+        return service.get_trend(db, skill=skill, period=period, user_id=user.id)
     except Exception:
         db.rollback()
         raise HTTPException(

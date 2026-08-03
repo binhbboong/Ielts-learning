@@ -8,6 +8,7 @@ from app.ai.provider import AIProvider
 from app.core.db import get_db
 from app.core.security import require_learner
 from app.models.reading_practice import ReadingExercise
+from app.models.user import User
 from app.schemas.reading_practice import (
     ReadingAnswerResult,
     ReadingExerciseAnswering,
@@ -27,8 +28,9 @@ def get_exercise(
     day: date,
     db: Session = Depends(get_db),
     provider: AIProvider = Depends(get_ai_provider),
+    user: User = Depends(require_learner),
 ) -> ReadingExerciseAnswering:
-    exercise = service.get_or_create_exercise(db, day, None, provider)
+    exercise = service.get_or_create_exercise(db, day, None, provider, user.id)
     return ReadingExerciseAnswering(
         day=exercise.day,
         status=exercise.status,
@@ -43,8 +45,9 @@ def submit(
     day: date,
     payload: ReadingSubmitRequest,
     db: Session = Depends(get_db),
+    user: User = Depends(require_learner),
 ) -> ReadingSubmissionResult:
-    exercise = db.query(ReadingExercise).filter_by(day=day).one_or_none()
+    exercise = db.query(ReadingExercise).filter_by(user_id=user.id, day=day).one_or_none()
     if exercise is None:
         raise HTTPException(status_code=404, detail="Reading exercise not found")
 
@@ -70,8 +73,9 @@ def retry(
     day: date,
     db: Session = Depends(get_db),
     provider: AIProvider = Depends(get_ai_provider),
+    user: User = Depends(require_learner),
 ) -> ReadingExerciseAnswering:
-    exercise = service.retry_exercise(db, day, provider)
+    exercise = service.retry_exercise(db, day, provider, user.id)
     return ReadingExerciseAnswering(
         day=exercise.day,
         status=exercise.status,

@@ -14,6 +14,10 @@ class Settings(BaseSettings):
 
     AI_PROVIDER: str = "claude"
     ANTHROPIC_API_KEY: str = ""
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-5.6-sol"
+    OPENAI_TTS_MODEL: str = "gpt-4o-mini-tts"
+    OPENAI_TTS_VOICE: str = "alloy"
 
 
 settings = Settings()

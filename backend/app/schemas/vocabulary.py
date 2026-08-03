@@ -40,6 +40,9 @@ class VocabularyWordRead(BaseModel):
     meaning: str
     example: str | None
     topic: str | None
+    target_band: float | None
+    cefr_level: str | None
+    source: str
     interval_index: int
     next_due_date: date
     created_at: datetime
@@ -50,6 +53,27 @@ class DueQueueSummary(BaseModel):
     total_due: int
     by_interval: dict[str, int]
     by_topic: dict[str, int]
+    daily_target: int
+    backfill_count: int
+    shortfall: bool
+
+
+class VocabularyRecommendation(BaseModel):
+    key: str
+    word: str
+    meaning: str
+    example: str
+    topic: str
+    target_band: float
+    cefr_level: str
+
+
+class VocabularyRecommendationFeed(BaseModel):
+    current_band: float
+    cefr_level: str
+    phase: str
+    week: int
+    recommendations: list[VocabularyRecommendation]
 
 
 class ReviewCurrentItem(BaseModel):
@@ -61,6 +85,7 @@ class ReviewCurrentItem(BaseModel):
     example: str | None
     position: int
     total: int
+    is_new: bool
 
 
 class ReviewAssessmentRequest(BaseModel):
@@ -72,4 +97,26 @@ class ReviewCompleteSummary(BaseModel):
     total_reviewed: int
     forgot: int
     remembered: int
+    new_words_included: int
     review_dates_updated: bool = True
+
+
+class VocabularyHistoryWord(BaseModel):
+    word: str
+    meaning: str
+
+
+class VocabularyHistoryReview(BaseModel):
+    word: str
+    outcome: str
+    assessed_at: datetime
+
+
+class VocabularyHistoryDay(BaseModel):
+    day: date
+    words_added: list[VocabularyHistoryWord]
+    words_reviewed: list[VocabularyHistoryReview]
+
+
+class VocabularyHistoryResponse(BaseModel):
+    days: list[VocabularyHistoryDay]

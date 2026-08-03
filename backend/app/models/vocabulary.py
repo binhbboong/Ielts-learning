@@ -16,6 +16,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
+from app.models.user import LEGACY_USER_ID
 
 
 class VocabularyWord(Base):
@@ -26,10 +27,20 @@ class VocabularyWord(Base):
         primary_key=True,
         server_default=text("gen_random_uuid()"),
     )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False, default=LEGACY_USER_ID,
+        server_default=text("'00000000-0000-0000-0000-000000000001'::uuid"),
+    )
     word: Mapped[str] = mapped_column(Text, nullable=False)
     meaning: Mapped[str] = mapped_column(Text, nullable=False)
     example: Mapped[str | None] = mapped_column(Text, nullable=True)
     topic: Mapped[str | None] = mapped_column(Text, nullable=True)
+    target_band: Mapped[float | None] = mapped_column(nullable=True)
+    cefr_level: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source: Mapped[str] = mapped_column(
+        Text, nullable=False, default="manual", server_default=text("'manual'")
+    )
     interval_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     next_due_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -45,7 +56,7 @@ class ReviewSession(Base):
     __table_args__ = (
         Index(
             "uq_review_sessions_single_active",
-            text("(1)"),
+            "user_id",
             unique=True,
             postgresql_where=text("completed_at IS NULL"),
         ),
@@ -56,11 +67,19 @@ class ReviewSession(Base):
         primary_key=True,
         server_default=text("gen_random_uuid()"),
     )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False, default=LEGACY_USER_ID,
+        server_default=text("'00000000-0000-0000-0000-000000000001'::uuid"),
+    )
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    day: Mapped[date] = mapped_column(
+        Date, nullable=False, server_default=text("CURRENT_DATE"), index=True
     )
     items: Mapped[list["ReviewSessionItem"]] = relationship(
         back_populates="session", cascade="all, delete-orphan"

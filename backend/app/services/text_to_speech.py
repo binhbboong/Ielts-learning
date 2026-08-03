@@ -1,6 +1,10 @@
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
+from openai import OpenAI
+
+from app.core.config import settings
+
 
 @dataclass(frozen=True)
 class SynthesisResult:
@@ -31,6 +35,30 @@ class LocalDemoTextToSpeech:
         )
 
 
+class OpenAITextToSpeech:
+    def __init__(self, client=None):
+        self.client = client or OpenAI(api_key=settings.OPENAI_API_KEY)
+
+    def synthesize(self, script_text: str) -> SynthesisResult:
+        try:
+            response = self.client.audio.speech.create(
+                model=settings.OPENAI_TTS_MODEL,
+                voice=settings.OPENAI_TTS_VOICE,
+                input=script_text,
+                response_format="mp3",
+            )
+            return SynthesisResult(
+                status="ok",
+                audio_bytes=response.content,
+                content_type="audio/mpeg",
+            )
+        except Exception as exc:
+            return SynthesisResult(
+                status="error",
+                error_message=f"OpenAI speech synthesis failed: {exc}",
+            )
+
+
 class FakeTextToSpeech:
     def __init__(self, result: SynthesisResult):
         self.result = result
@@ -42,4 +70,6 @@ class FakeTextToSpeech:
 
 
 def get_text_to_speech() -> TextToSpeech:
+    if settings.AI_PROVIDER == "openai":
+        return OpenAITextToSpeech()
     return LocalDemoTextToSpeech()

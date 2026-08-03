@@ -1,14 +1,14 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject } from '@angular/core';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { AuthRepository } from '../../data/auth.repository';
 import { AuthState } from '../../state/auth.state';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './login.component.html',
   styles: `
     :host {
@@ -200,6 +200,10 @@ export class LoginComponent {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
+  readonly email = new FormControl('', {
+    nonNullable: true,
+    validators: [Validators.required, Validators.email],
+  });
   readonly password = new FormControl('', {
     nonNullable: true,
     validators: [Validators.required],
@@ -210,7 +214,8 @@ export class LoginComponent {
   errorMessage = '';
 
   submit(): void {
-    if (this.password.invalid || this.submitting) {
+    if (this.email.invalid || this.password.invalid || this.submitting) {
+      this.email.markAsTouched();
       this.password.markAsTouched();
       return;
     }
@@ -218,13 +223,15 @@ export class LoginComponent {
     this.submitting = true;
     this.errorMessage = '';
     this.password.disable();
+    this.email.disable();
 
     this.repository
-      .login(this.password.value)
+      .login(this.email.value, this.password.value)
       .pipe(
         finalize(() => {
           this.submitting = false;
           this.password.enable();
+          this.email.enable();
         }),
       )
       .subscribe({

@@ -46,6 +46,19 @@ def test_vocabulary_schema_has_foreign_keys_constraints_and_indexes(db_session):
     assert "completed_at IS NULL" in str(
         active_index["dialect_options"]["postgresql_where"]
     )
+    review_session_columns = {
+        c["name"] for c in inspector.get_columns("review_sessions")
+    }
+    assert "day" in review_session_columns
+
+
+def test_review_session_day_defaults_to_current_date_when_unset(db_session):
+    session = ReviewSession(started_at=datetime.now(timezone.utc))
+    db_session.add(session)
+    db_session.commit()
+    db_session.refresh(session)
+
+    assert session.day == date.today()
 
 
 def test_constraints_reject_duplicate_items_and_second_active_session(db_session):

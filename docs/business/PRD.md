@@ -2,12 +2,28 @@
 Vision: docs/business/Vision.md
 
 ## Status
-Draft (revision 3 — reflects the Vision revision that shifts the product from a self-directed progress tracker to an AI-generated daily lesson engine across all four skills; see docs/business/Vision.md)
+Draft (revision 4 — IELTS Academic adaptive 24-week plans with multi-user accounts)
 
 ## Summary
 This product gives a solo, self-directed IELTS learner a "personal teacher" that generates a fresh, personalized set of practice for all four skills (Reading, Listening, Writing, Speaking) every day — targeted at the learner's own recurring mistakes and due vocabulary — instead of a static question bank or a bare progress tracker the learner has to feed themselves. It reviews vocabulary on schedule, catches and correlates recurring mistakes across skills, and shows the learner their own skill progress over time, including AI-graded feedback on Writing and Speaking scored against the official IELTS criteria. Because the application is reachable over the public Internet rather than running only inside the learner's own browser, protecting the learner's personal data from anyone else is a first-class concern, not an afterthought. The learner must always be able to export their data — including generated lessons and results — so depending on a hosting/database/AI provider never becomes a lock-in.
 
 ## Epics
+
+### Epic-0: Learner Accounts & Data Isolation
+- Priority: Must
+- Scope: Learners register with an email and password, sign in to a personal session, and can
+  access only lessons, submissions, vocabulary, mistakes, results, goals, and exports owned by
+  their account. Existing single-learner data is preserved under a migrated legacy account.
+- Future spec slug: learner-accounts
+
+### Epic-0A: IELTS Academic Goal & Adaptive Allocation
+- Priority: Must
+- Scope: Each learner owns an IELTS Academic study profile containing baseline band, target
+  overall band, per-skill minimum, target date, and daily time budget. The system turns that
+  profile into a 24-week progression and allocates a coherent 60-minute session each day:
+  review plus a primary and supporting skill, with visible target band, phase, rationale, and
+  estimated minutes. Allocation is recalibrated from performance.
+- Future spec slug: adaptive-study-allocation
 
 ### Epic-1: Daily Personalized Lesson Plan
 - Priority: Must
@@ -74,6 +90,12 @@ This product gives a solo, self-directed IELTS learner a "personal teacher" that
 - Weekly reports, smart recommendations, or PDF export — mentioned as a possible later phase in the source spec document, but not yet backed by a Vision goal; do not start a spec for this without first amending the Vision.
 
 ## Constraints
+- Every learner-owned query and mutation must be scoped by authenticated user identity; a
+  successful login is not sufficient evidence of authorization to another learner's row.
+- The first supported exam type is IELTS Academic. General Training content is out of scope
+  until introduced through an explicit Vision/PRD revision.
+- Default target profile: baseline 3.5, overall target 6.5, minimum 6.0 per skill, 24 weeks,
+  60 minutes/day, at least five study days/week.
 - Single maintainer, part-time effort — epics should be sized so any one of them can be built incrementally without requiring sustained full-time work.
 - The application has real, ongoing operating costs (hosting, database, AI API usage, and now text-to-speech for Epic-10) — prefer free/hobby tiers of chosen providers where available, and keep AI usage cost-conscious: each day's lesson content (Epic-1/9/10) is generated once and reused, never silently regenerated on every page view, and Writing/Speaking evaluation (Epic-7/8) still happens only on explicit learner submission.
 - No secret (AI provider API key, database credentials, or any other credential) may ever be committed to source control or exposed to the frontend — this is enforced by the architecture itself (all AI/database calls go through the backend only), not left to convention.

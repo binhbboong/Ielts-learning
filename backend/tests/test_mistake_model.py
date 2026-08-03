@@ -9,6 +9,7 @@ def test_mistakes_schema_has_required_columns_defaults_and_indexes(db_session):
 
     assert set(columns) == {
         "id",
+        "user_id",
         "skill",
         "question_type",
         "source",

@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.security import require_learner
+from app.models.user import User
 from app.schemas.data_portability import ExportFailure
 from app.services.data_portability import assemble_export
 
@@ -14,9 +15,9 @@ router = APIRouter(
 
 
 @router.post("/export")
-def export(db: Session = Depends(get_db)):
+def export(db: Session = Depends(get_db), user: User = Depends(require_learner)):
     try:
-        document = assemble_export(db)
+        document = assemble_export(db, user.id)
         timestamp = document.produced_at.strftime("%Y%m%dT%H%M%SZ")
         return Response(
             content=document.model_dump_json(indent=2),

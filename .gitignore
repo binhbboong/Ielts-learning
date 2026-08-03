@@ -10,6 +10,14 @@
 /node_modules
 npm-debug.log
 yarn-error.log
+pnpm-debug.log
+*.tsbuildinfo
+
+# Environment variables and local secrets
+.env
+.env.*
+!.env.example
+!**/.env.example
 
 # IDEs and editors
 .idea/
@@ -37,6 +45,10 @@ yarn-error.log
 testem.log
 /typings
 __screenshots__/
+*.log
+
+# Vercel
+.vercel/
 
 # System files
 .DS_Store
@@ -44,10 +56,23 @@ Thumbs.db
 
 # Backend (Python/FastAPI)
 backend/.venv
+backend/venv
+backend/env
 backend/__pycache__
 backend/**/__pycache__
 backend/.pytest_cache
-backend/.env
 backend/*.egg-info
 backend/data/audio/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local Codex/runtime artifacts
+/.codex-run/
 /.runtime/
+
+.vercel
+.env*
