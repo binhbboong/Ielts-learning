@@ -10,6 +10,7 @@ from app.routers.data_portability import router as data_portability_router
 from app.routers.reading_practice import router as reading_practice_router
 from app.routers.listening_practice import router as listening_practice_router
 from app.routers.daily_lesson_plan import router as daily_lesson_plan_router
+from app.routers.cron import router as cron_router
 
 app = FastAPI(title="IELTS Learning API")
 
@@ -34,3 +35,4 @@ app.include_router(data_portability_router)
 app.include_router(reading_practice_router)
 app.include_router(listening_practice_router)
 app.include_router(daily_lesson_plan_router)
+app.include_router(cron_router)

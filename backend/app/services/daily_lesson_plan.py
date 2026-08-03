@@ -463,3 +463,40 @@ def get_overview(
     return DailyOverviewResult(
         entries=entries, effective_day=effective_day, checkpoint=checkpoint
     )
+
+
+PREGENERATE_LOOKAHEAD_DAYS = 2
+
+
+def pregenerate_upcoming_days(
+    db: Session,
+    provider: AIProvider,
+    tts: TextToSpeech,
+    user_id: uuid.UUID,
+    today: date,
+) -> list[date]:
+    effective_day = get_effective_day(db, user_id, today)
+    processed = []
+    for offset in range(PREGENERATE_LOOKAHEAD_DAYS):
+        day = effective_day + timedelta(days=offset)
+        ensure_today_generated(db, day, provider, tts, user_id)
+        processed.append(day)
+    return processed
+
+
+def pregenerate_for_all_learners(
+    db: Session, provider: AIProvider, tts: TextToSpeech, today: date
+) -> dict:
+    processed_by_user: dict = {}
+    errors_by_user: dict = {}
+    profiles = db.query(StudyProfile).all()
+    for profile in profiles:
+        user_key = str(profile.user_id)
+        try:
+            processed_by_user[user_key] = pregenerate_upcoming_days(
+                db, provider, tts, profile.user_id, today
+            )
+        except Exception as exc:  # noqa: BLE001 - one learner's failure must not abort the batch
+            db.rollback()
+            errors_by_user[user_key] = str(exc)
+    return {"processed": processed_by_user, "errors": errors_by_user}

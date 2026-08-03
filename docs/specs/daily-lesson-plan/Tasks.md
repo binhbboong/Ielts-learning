@@ -1,6 +1,26 @@
 # Tasks: Daily Personalized Lesson Plan
 Plan: docs/specs/daily-lesson-plan/ImplementationPlan.md
 
+## Revision-4 Task-18 — Scheduled pre-generation job
+- [x] Status: Done
+- Depends on: Revision-3 Task-15 (effective-day/`get_effective_day`)
+- Goal: `pregenerate_upcoming_days` (effective day + 1, reusing `ensure_today_generated`'s
+  existing per-skill idempotency) and `pregenerate_for_all_learners` (iterates `StudyProfile`
+  rows only — never creates one; isolates each learner's failure in its own try/except so one
+  outage doesn't block the rest of the batch). New `GET /api/cron/pregenerate-lessons`, guarded
+  by `verify_cron_secret` (compares `Authorization: Bearer <CRON_SECRET>` against the configured
+  secret; rejects when unset or mismatched). Wired into `backend/vercel.json`'s `crons` array at
+  `0 1 * * *` (01:00 UTC = 08:00 `Asia/Ho_Chi_Minh`).
+- Files touched: `backend/app/services/daily_lesson_plan.py`,
+  `backend/app/routers/cron.py`, `backend/app/main.py`, `backend/app/core/config.py`,
+  `backend/app/schemas/daily_lesson_plan.py`, `backend/vercel.json`, `backend/.env.example`,
+  `backend/app/services/daily_lesson_plan_test.py`, `backend/tests/test_cron_router.py`.
+- Definition of done: `test_pregenerate_upcoming_days_generates_effective_day_and_the_next`,
+  `test_pregenerate_upcoming_days_skips_already_generated_content`,
+  `test_pregenerate_for_all_learners_only_processes_existing_profiles`,
+  `test_pregenerate_for_all_learners_continues_after_one_learner_fails`, and all 3
+  `test_cron_router.py` auth/success cases pass. Covers FR-19 through FR-22.
+
 ## Revision-3 Task-15 — All-4-skills-daily + checkpoint evaluation + effective-day gating
 - [x] Status: Done
 - Depends on: vocabulary-review Revision-4 Task-24 (quiz mode, checkpoint input)

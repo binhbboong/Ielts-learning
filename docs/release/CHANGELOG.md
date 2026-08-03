@@ -6,6 +6,12 @@ All notable changes to this project are documented here, newest first. Entries a
 ## [Unreleased]
 
 ### Added
+- Scheduled daily pre-generation: a Vercel Cron job (`0 1 * * *` UTC = 08:00
+  `Asia/Ho_Chi_Minh`) now calls `GET /api/cron/pregenerate-lessons` (shared-secret protected)
+  once a day, pre-generating each learner's effective day and the day after so content is ready
+  before they open the app — reusing the existing per-skill idempotent generation, so it never
+  regenerates what's already there and never creates a study profile for an inactive account
+  (docs/adr/2026-08-03-daily-lesson-pregeneration-job.md).
 - Daily checkpoint gating: each day now schedules all 4 skills (Reading, Listening, Writing,
   Speaking) instead of a rotating 2-of-4 subset, plus a new auto-graded vocabulary quiz
   (shuffled 4-option multiple choice over that day's reviewed words) after the existing

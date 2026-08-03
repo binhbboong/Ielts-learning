@@ -17,5 +17,11 @@
       "source": "/openapi.json",
       "destination": "/api/index"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/pregenerate-lessons",
+      "schedule": "0 1 * * *"
+    }
   ]
 }

@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     SESSION_COOKIE_MAX_AGE_DAYS: int = 30
     SESSION_COOKIE_SECURE: bool = True
     LEARNER_TIMEZONE: str = "Asia/Ho_Chi_Minh"
+    CRON_SECRET: str = ""
 
     AI_PROVIDER: str = "claude"
     ANTHROPIC_API_KEY: str = ""

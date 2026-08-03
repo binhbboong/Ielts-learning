@@ -24,6 +24,11 @@ class CheckpointStatus(BaseModel):
     all_passed: bool
 
 
+class PregenerationResponse(BaseModel):
+    processed: dict[str, list[date]]
+    errors: dict[str, str]
+
+
 class DailyOverviewResponse(BaseModel):
     exam_type: str
     week: int

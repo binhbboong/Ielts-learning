@@ -1,6 +1,22 @@
 # Specification: Daily Personalized Lesson Plan
 Related UX: docs/ux/prototypes/daily-lesson-flow.md, docs/ux/wireframes/daily-overview.md
 
+## Revision 4 — Scheduled pre-generation
+
+Decision: `docs/adr/2026-08-03-daily-lesson-pregeneration-job.md`.
+
+- FR-19: A scheduled job MUST run once daily at 08:00 `Asia/Ho_Chi_Minh` and, for every learner
+  with an existing study profile, ensure content is generated for that learner's effective day
+  (FR-16) and the day after — 2 days total, reusing FR-3's per-skill idempotent generation so an
+  already-generated day/skill is left untouched and only missing ones are generated.
+- FR-20: The scheduled job MUST NOT create a study profile for a learner who doesn't already have
+  one (i.e., MUST NOT trigger generation for an account that has never opened the app).
+- FR-21: The scheduled job's trigger endpoint MUST reject any request that doesn't present the
+  configured shared secret — it is not a publicly callable endpoint, since it spends real AI
+  generation cost.
+- FR-22: A single learner's generation failure during the scheduled job MUST NOT prevent
+  generation from completing for any other learner in the same run.
+
 ## Revision 3 — All 4 skills daily, checkpoint gating
 
 Decision: `docs/adr/2026-08-03-daily-checkpoint-gating.md`.
@@ -29,7 +45,7 @@ Decision: `docs/adr/2026-08-03-daily-checkpoint-gating.md`.
   — no AI generation calls are spent on a locked-out future day.
 
 ## Status
-Approved — revision 3 (all-4-skills-daily + checkpoint gating)
+Approved — revision 4 (scheduled pre-generation)
 
 ## Overview
 This feature decides, each calendar day, what the learner's practice should focus on across
@@ -167,3 +183,10 @@ FR-12) rather than being replaced.
       (FR-16, FR-18).
 - [ ] The overview shows how many of today's 5 checkpoints (4 skills + vocabulary quiz) are
       passed (FR-17).
+- [ ] Running the scheduled job for a learner with an effective day and no content yet generates
+      that day and the next; running it again immediately after generates nothing further
+      (FR-19).
+- [ ] Running the scheduled job does not create a study profile for an account with none (FR-20).
+- [ ] The job's trigger endpoint rejects a request without the correct shared secret (FR-21).
+- [ ] One learner's simulated generation failure during the job does not prevent another
+      learner's content from generating in the same run (FR-22).

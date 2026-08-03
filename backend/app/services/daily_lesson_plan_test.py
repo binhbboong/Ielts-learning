@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from app.ai.schemas import ChatResult
 from app.ai.testing import FakeAIProvider
@@ -22,8 +22,11 @@ from app.services.daily_lesson_plan import (
     generate_prompt_text,
     get_effective_day,
     get_or_create_focus,
+    get_or_create_profile,
     get_overview,
     get_skill_status,
+    pregenerate_for_all_learners,
+    pregenerate_upcoming_days,
     retry_skill,
 )
 from app.services.text_to_speech import FakeTextToSpeech, SynthesisResult
@@ -585,5 +588,121 @@ def test_retry_skill_on_listening_only_retries_the_failed_step(db_session_factor
         assert get_skill_status(session, date(2026, 7, 30), "listening") == "ready"
         # The script provider must not have been called a second time.
         assert len(succeeding_script_failing_audio.listening_script_requests) == 1
+    finally:
+        session.close()
+
+
+class _RaisingProvider(FakeAIProvider):
+    def generate_reading_exercise(self, request):
+        raise RuntimeError("simulated provider outage")
+
+
+def test_pregenerate_upcoming_days_generates_effective_day_and_the_next(
+    db_session_factory,
+):
+    session = db_session_factory()
+    try:
+        provider = _full_provider()
+        tts = FakeTextToSpeech(
+            SynthesisResult(status="ok", audio_bytes=b"audio", content_type="audio/mpeg")
+        )
+        today = date(2026, 7, 30)
+
+        processed = pregenerate_upcoming_days(session, provider, tts, LEGACY_USER_ID, today)
+
+        assert processed == [today, today + timedelta(days=1)]
+        for day in processed:
+            focuses = session.query(DailyFocus).filter_by(day=day).all()
+            assert {f.skill for f in focuses} == {
+                "reading", "listening", "writing", "speaking",
+            }
+    finally:
+        session.close()
+
+
+def test_pregenerate_upcoming_days_skips_already_generated_content(db_session_factory):
+    session = db_session_factory()
+    try:
+        provider = _full_provider()
+        tts = FakeTextToSpeech(
+            SynthesisResult(status="ok", audio_bytes=b"audio", content_type="audio/mpeg")
+        )
+        today = date(2026, 7, 30)
+
+        pregenerate_upcoming_days(session, provider, tts, LEGACY_USER_ID, today)
+        pregenerate_upcoming_days(session, provider, tts, LEGACY_USER_ID, today)
+
+        # Each of the 2 days generates reading once and listening once; a second
+        # run must not trigger any further generation calls.
+        assert len(provider.reading_exercise_requests) == 2
+        assert len(provider.listening_script_requests) == 2
+        assert len(provider.chat_requests) == 4
+    finally:
+        session.close()
+
+
+def test_pregenerate_for_all_learners_only_processes_existing_profiles(
+    db_session_factory,
+):
+    session = db_session_factory()
+    try:
+        from app.models.user import User
+
+        other_user_id = "00000000-0000-0000-0000-000000000099"
+        session.add(
+            User(
+                id=other_user_id, email="other@example.com",
+                display_name="Other", password_hash="unused",
+            )
+        )
+        session.commit()
+        today = date(2026, 7, 30)
+        get_or_create_profile(session, LEGACY_USER_ID, today)
+        provider = _full_provider()
+        tts = FakeTextToSpeech(
+            SynthesisResult(status="ok", audio_bytes=b"audio", content_type="audio/mpeg")
+        )
+
+        result = pregenerate_for_all_learners(session, provider, tts, today)
+
+        assert str(LEGACY_USER_ID) in result["processed"]
+        assert str(other_user_id) not in result["processed"]
+        assert result["errors"] == {}
+        from app.models.study_profile import StudyProfile
+        assert session.get(StudyProfile, other_user_id) is None
+    finally:
+        session.close()
+
+
+def test_pregenerate_for_all_learners_continues_after_one_learner_fails(
+    db_session_factory,
+):
+    session = db_session_factory()
+    try:
+        from app.models.user import User
+
+        other_user_id = "00000000-0000-0000-0000-000000000098"
+        session.add(
+            User(
+                id=other_user_id, email="second@example.com",
+                display_name="Second", password_hash="unused",
+            )
+        )
+        session.commit()
+        today = date(2026, 7, 30)
+        working_tts = FakeTextToSpeech(
+            SynthesisResult(status="ok", audio_bytes=b"audio", content_type="audio/mpeg")
+        )
+        # LEGACY_USER_ID is fully pre-generated with a working provider, so the
+        # raising provider below is never actually called for them (every skill
+        # already exists -> skipped) - a genuine mixed success/failure batch.
+        pregenerate_upcoming_days(session, _full_provider(), working_tts, LEGACY_USER_ID, today)
+        get_or_create_profile(session, other_user_id, today)
+
+        result = pregenerate_for_all_learners(session, _RaisingProvider(), working_tts, today)
+
+        assert str(LEGACY_USER_ID) in result["processed"]
+        assert str(LEGACY_USER_ID) not in result["errors"]
+        assert str(other_user_id) in result["errors"]
     finally:
         session.close()
