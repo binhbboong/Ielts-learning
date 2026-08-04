@@ -80,7 +80,7 @@ def submit(
             correct_option_index=question.correct_option_index,
             correct=question.correct_option_index == answer,
         )
-        for question, answer in zip(questions, payload.answers)
+        for question, answer in zip(questions, submission.answers)
     ]
     return ListeningSubmissionResult(
         day=day,

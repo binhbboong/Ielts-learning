@@ -201,3 +201,20 @@ def test_score_submission_computes_correct_count_without_any_ai_call(db_session_
     assert submission.answers == [0, 0, 2]
     assert len(provider.listening_script_requests) == 1
     session.close()
+
+
+def test_score_submission_is_idempotent_when_already_submitted(db_session_factory):
+    session = db_session_factory()
+    provider = FakeAIProvider(listening_script_result=_three_question_result())
+    tts = FakeTextToSpeech(_success_audio_result())
+    exercise = get_or_create_exercise(
+        session, date(2026, 7, 30), "focus", provider, tts
+    )
+
+    first = score_submission(session, exercise, [0, 0, 2])
+    second = score_submission(session, exercise, [1, 1, 1])
+
+    assert second.id == first.id
+    assert second.score == 2
+    assert second.answers == [0, 0, 2]
+    session.close()

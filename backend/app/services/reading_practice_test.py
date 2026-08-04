@@ -132,6 +132,22 @@ def test_score_submission_computes_correct_count_without_any_ai_call(db_session_
     session.close()
 
 
+def test_score_submission_is_idempotent_when_already_submitted(db_session_factory):
+    session = db_session_factory()
+    generation_provider = FakeAIProvider(reading_exercise_result=_three_question_result())
+    exercise = get_or_create_exercise(
+        session, date(2026, 7, 30), "focus", generation_provider
+    )
+
+    first = score_submission(session, exercise, [0, 0, 2])
+    second = score_submission(session, exercise, [1, 1, 1])
+
+    assert second.id == first.id
+    assert second.score == 2
+    assert second.answers == [0, 0, 2]
+    session.close()
+
+
 def test_retry_after_failure_reuses_the_original_focus_and_succeeds(db_session_factory):
     session = db_session_factory()
     failing_provider = FakeAIProvider(

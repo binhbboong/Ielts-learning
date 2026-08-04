@@ -96,6 +96,21 @@ def test_submit_scores_immediately_and_returns_quick_add_ready_data(db_session_f
     assert answer["options"] == ["A", "B", "C", "D"]
 
 
+def test_submitting_twice_returns_the_original_result_instead_of_500(db_session_factory):
+    client = _client(db_session_factory)
+    client.get("/api/reading-practice/2026-07-30")
+
+    first = client.post(
+        "/api/reading-practice/2026-07-30/submit", json={"answers": [1]}
+    )
+    second = client.post(
+        "/api/reading-practice/2026-07-30/submit", json={"answers": [0]}
+    )
+
+    assert second.status_code == 200
+    assert second.json() == first.json()
+
+
 def _failing_provider() -> FakeAIProvider:
     return FakeAIProvider(
         reading_exercise_result=ReadingExerciseGenerationResult(

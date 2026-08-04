@@ -104,6 +104,21 @@ def test_submit_scores_immediately_and_reveals_transcript(db_session_factory):
     assert answer["correct_option_index"] == 1
 
 
+def test_submitting_twice_returns_the_original_result_instead_of_500(db_session_factory):
+    client = _client(db_session_factory)
+    client.get("/api/listening-practice/2026-07-30")
+
+    first = client.post(
+        "/api/listening-practice/2026-07-30/submit", json={"answers": [1]}
+    )
+    second = client.post(
+        "/api/listening-practice/2026-07-30/submit", json={"answers": [0]}
+    )
+
+    assert second.status_code == 200
+    assert second.json() == first.json()
+
+
 def test_get_after_submission_reveals_the_transcript(db_session_factory):
     client = _client(db_session_factory)
     client.get("/api/listening-practice/2026-07-30")

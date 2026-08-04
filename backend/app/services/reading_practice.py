@@ -111,6 +111,12 @@ def retry_exercise(
 def score_submission(
     db: Session, exercise: ReadingExercise, answers: list[int]
 ) -> ReadingSubmission:
+    existing = (
+        db.query(ReadingSubmission).filter_by(exercise_id=exercise.id).one_or_none()
+    )
+    if existing is not None:
+        return existing
+
     questions = get_questions(db, exercise.id)
     score = sum(
         1
