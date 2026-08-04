@@ -202,10 +202,10 @@
               <p class="focus-note">{{ entry.rationale }}</p>
               @switch (entry.status) {
                 @case ('ready') {
-                  <a class="button-link primary" [routerLink]="skillRoute(entry.skill)">Start</a>
+                  <a class="button-link primary" [routerLink]="skillRoute(entry)">Start</a>
                 }
                 @case ('done') {
-                  <a class="button-link" [routerLink]="skillRoute(entry.skill)">Review</a>
+                  <a class="button-link" [routerLink]="skillRoute(entry)">Review</a>
                 }
                 @case ('generating') {
                   <span class="hint">Generating...</span>

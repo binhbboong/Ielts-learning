@@ -110,6 +110,28 @@ describe('DailyOverviewComponent', () => {
     expect(component.isCarriedOver({ day: today } as any)).toBeFalse();
   });
 
+  it('routes reading and listening to the entry day, not just the skill root', async () => {
+    const { component } = await setUp();
+
+    expect(component.skillRoute({ skill: 'reading', day: '2026-07-29' } as any)).toEqual([
+      '/reading', '2026-07-29',
+    ]);
+    expect(component.skillRoute({ skill: 'listening', day: '2026-07-29' } as any)).toEqual([
+      '/listening', '2026-07-29',
+    ]);
+  });
+
+  it('routes writing and speaking to the skill root without a day segment', async () => {
+    const { component } = await setUp();
+
+    expect(component.skillRoute({ skill: 'writing', day: '2026-07-29' } as any)).toEqual([
+      '/writing',
+    ]);
+    expect(component.skillRoute({ skill: 'speaking', day: '2026-07-29' } as any)).toEqual([
+      '/speaking',
+    ]);
+  });
+
   it('retries a failed skill', async () => {
     const { component, repository } = await setUp({
       getOverview: jasmine.createSpy().and.resolveTo({

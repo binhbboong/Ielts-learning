@@ -38,14 +38,18 @@ export class DailyOverviewComponent implements OnInit {
     return entry.day !== this.today;
   }
 
-  skillRoute(skill: string): string {
+  skillRoute(entry: Pick<SkillOverviewEntry, 'skill' | 'day'>): string[] {
     const routes: Record<string, string> = {
       reading: '/reading',
       listening: '/listening',
       writing: '/writing',
       speaking: '/speaking',
     };
-    return routes[skill] ?? '/';
+    const base = routes[entry.skill] ?? '/';
+    if (entry.skill === 'reading' || entry.skill === 'listening') {
+      return [base, entry.day];
+    }
+    return [base];
   }
 
   async retry(skill: string, day: string): Promise<void> {
