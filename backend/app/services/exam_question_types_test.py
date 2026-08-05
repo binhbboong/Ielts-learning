@@ -51,6 +51,16 @@ def test_option_based_question_rejects_a_string_answer():
     assert is_correct(question, "0") is False
 
 
+def test_option_based_question_rejects_a_bool_answer_even_though_bool_subclasses_int():
+    question = _Question(question_type="multiple_choice", correct_option_index=1)
+
+    # bool is a subclass of int in Python (True == 1, False == 0) — a stray
+    # boolean answer must not be silently graded as a valid option index.
+    assert is_correct(question, True) is False
+    question_zero = _Question(question_type="multiple_choice", correct_option_index=0)
+    assert is_correct(question_zero, False) is False
+
+
 def test_normalize_answer_text_collapses_internal_whitespace():
     assert normalize_answer_text("  a   bicycle  ") == "a bicycle"
 

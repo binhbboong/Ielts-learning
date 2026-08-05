@@ -1,7 +1,9 @@
 from pathlib import Path
+import uuid
 
 from alembic import command
 from alembic.config import Config
+import sqlalchemy as sa
 from sqlalchemy import create_engine, inspect
 
 from app.core.config import settings
@@ -259,4 +261,158 @@ def test_upgrade_head_creates_reading_practice_tables_then_downgrade_to_0007_rem
         assert "reading_submissions" not in table_names
         engine.dispose()
     finally:
+        command.downgrade(cfg, "base")
+
+
+def test_downgrade_from_head_to_0018_handles_multi_passage_and_text_based_data():
+    """Regression test for a code-review finding: downgrading past 0020/0019
+    with real Stage 1-3 content (multiple passages/sections, text-based
+    question types, a failed exercise with no passage at all) must not crash
+    with a NOT NULL violation and must leave the reconstructed flat
+    exercise/question rows internally consistent, not silently mismatched."""
+    cfg = _alembic_config_for_test_db()
+    command.upgrade(cfg, "head")
+    engine = create_engine(settings.TEST_DATABASE_URL)
+    try:
+        user_id = str(uuid.uuid4())
+        reading_exercise_id = str(uuid.uuid4())
+        failed_reading_id = str(uuid.uuid4())
+        listening_exercise_id = str(uuid.uuid4())
+        passage_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
+        section_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
+
+        with engine.begin() as conn:
+            conn.execute(
+                sa.text(
+                    "INSERT INTO users (id, email, display_name, password_hash) "
+                    "VALUES (:id, 'downgrade-test@example.com', 'Test', 'unused')"
+                ),
+                {"id": user_id},
+            )
+
+            # Reading: a "ready" exercise with 2 passages — passage 2 has a
+            # text-based (summary_completion) question with no option index.
+            conn.execute(
+                sa.text(
+                    "INSERT INTO reading_exercises (id, user_id, day, status) "
+                    "VALUES (:id, :user_id, '2026-07-30', 'ready')"
+                ),
+                {"id": reading_exercise_id, "user_id": user_id},
+            )
+            for order, passage_id in enumerate(passage_ids, start=1):
+                conn.execute(
+                    sa.text(
+                        'INSERT INTO reading_passages (id, exercise_id, passage_text, "order") '
+                        "VALUES (:id, :exercise_id, :text, :order)"
+                    ),
+                    {
+                        "id": passage_id, "exercise_id": reading_exercise_id,
+                        "text": f"Passage {order} text.", "order": order,
+                    },
+                )
+            conn.execute(
+                sa.text(
+                    "INSERT INTO reading_questions "
+                    '(id, passage_id, question_text, question_type, options, '
+                    'correct_option_index, "order") '
+                    "VALUES (:id, :passage_id, 'Q1?', 'multiple_choice', "
+                    "ARRAY['A', 'B'], 0, 1)"
+                ),
+                {"id": str(uuid.uuid4()), "passage_id": passage_ids[0]},
+            )
+            conn.execute(
+                sa.text(
+                    "INSERT INTO reading_questions "
+                    '(id, passage_id, question_text, question_type, accepted_answers, "order") '
+                    "VALUES (:id, :passage_id, 'Complete: the delay was caused by ___.', "
+                    "'summary_completion', ARRAY['funding'], 1)"
+                ),
+                {"id": str(uuid.uuid4()), "passage_id": passage_ids[1]},
+            )
+
+            # Reading: a "failed" exercise with no passage at all.
+            conn.execute(
+                sa.text(
+                    "INSERT INTO reading_exercises (id, user_id, day, status) "
+                    "VALUES (:id, :user_id, '2026-07-31', 'failed')"
+                ),
+                {"id": failed_reading_id, "user_id": user_id},
+            )
+
+            # Listening: a "ready" exercise with 2 sections — section 1 has a
+            # text-based (note_completion) question.
+            conn.execute(
+                sa.text(
+                    "INSERT INTO listening_exercises (id, user_id, day, status) "
+                    "VALUES (:id, :user_id, '2026-07-30', 'ready')"
+                ),
+                {"id": listening_exercise_id, "user_id": user_id},
+            )
+            for order, section_id in enumerate(section_ids, start=1):
+                conn.execute(
+                    sa.text(
+                        "INSERT INTO listening_sections "
+                        '(id, exercise_id, context_type, script_text, "order") '
+                        "VALUES (:id, :exercise_id, 'monologue', :text, :order)"
+                    ),
+                    {
+                        "id": section_id, "exercise_id": listening_exercise_id,
+                        "text": f"Section {order} script.", "order": order,
+                    },
+                )
+            conn.execute(
+                sa.text(
+                    "INSERT INTO listening_questions "
+                    '(id, section_id, question_text, question_type, accepted_answers, "order") '
+                    "VALUES (:id, :section_id, 'Complete: the speaker mentions ___.', "
+                    "'note_completion', ARRAY['a detail'], 1)"
+                ),
+                {"id": str(uuid.uuid4()), "section_id": section_ids[0]},
+            )
+
+        # Must not raise: previously a NOT NULL violation (0019) once any
+        # text-based question existed anywhere in the two tables.
+        command.downgrade(cfg, "0018")
+
+        with engine.begin() as conn:
+            reading_text = conn.execute(
+                sa.text("SELECT passage_text FROM reading_exercises WHERE id = :id"),
+                {"id": reading_exercise_id},
+            ).scalar_one()
+            assert reading_text == "Passage 1 text."
+
+            reading_question_texts = conn.execute(
+                sa.text(
+                    "SELECT question_text FROM reading_questions WHERE exercise_id = :id"
+                ),
+                {"id": reading_exercise_id},
+            ).scalars().all()
+            # Only passage 1's option-based question survives: passage 2's
+            # question is dropped rather than left dangling against a
+            # passage_text that no longer contains what it's about.
+            assert reading_question_texts == ["Q1?"]
+
+            failed_reading_text = conn.execute(
+                sa.text("SELECT passage_text FROM reading_exercises WHERE id = :id"),
+                {"id": failed_reading_id},
+            ).scalar_one()
+            assert failed_reading_text == ""
+
+            listening_text = conn.execute(
+                sa.text("SELECT script_text FROM listening_exercises WHERE id = :id"),
+                {"id": listening_exercise_id},
+            ).scalar_one()
+            assert listening_text == "Section 1 script."
+
+            listening_question_count = conn.execute(
+                sa.text(
+                    "SELECT count(*) FROM listening_questions WHERE exercise_id = :id"
+                ),
+                {"id": listening_exercise_id},
+            ).scalar_one()
+            # The note_completion question has no representation in the old
+            # option-based-only schema and is dropped too.
+            assert listening_question_count == 0
+    finally:
+        engine.dispose()
         command.downgrade(cfg, "base")

@@ -37,6 +37,18 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     for table in ("reading_questions", "listening_questions"):
+        # The pre-0019 schema is option-based only (every question has a
+        # correct_option_index into options). Text-based questions
+        # (note_completion, summary_completion, ...) have no representation
+        # there — delete them explicitly rather than letting the NOT NULL
+        # restores below fail with a constraint violation the first time any
+        # such question exists.
+        op.execute(
+            f"""
+            DELETE FROM {table}
+            WHERE correct_option_index IS NULL OR options IS NULL
+            """
+        )
         op.alter_column(
             table, "correct_option_index", existing_type=sa.Integer(), nullable=False
         )

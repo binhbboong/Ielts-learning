@@ -117,7 +117,26 @@ def downgrade() -> None:
         FROM listening_sections ls WHERE ls.exercise_id = le.id AND ls."order" = 1
         """
     )
+    # Exercises with no section yet (script_generating/script_failed, before
+    # any section was ever persisted) have nothing to restore from — match
+    # the pre-0020 service's own default of an empty string rather than
+    # leaving script_text NULL, which the NOT NULL below would reject.
+    op.execute("UPDATE listening_exercises SET script_text = '' WHERE script_text IS NULL")
     op.alter_column("listening_exercises", "script_text", nullable=False)
+
+    # The pre-0020 schema supports only one section per exercise. Questions
+    # belonging to any section other than order=1 have no representation
+    # there; delete them explicitly rather than silently reattaching them to
+    # an exercise whose script_text no longer contains what they're about —
+    # this keeps the downgraded exercise internally consistent, at the cost
+    # of losing sections 2+ and their questions (unavoidable: the old schema
+    # cannot represent more than one section).
+    op.execute(
+        """
+        DELETE FROM listening_questions
+        WHERE section_id IN (SELECT id FROM listening_sections WHERE "order" != 1)
+        """
+    )
 
     op.add_column("listening_questions", sa.Column("exercise_id", postgresql.UUID(as_uuid=True), nullable=True))
     op.execute(
@@ -141,7 +160,26 @@ def downgrade() -> None:
         FROM reading_passages rp WHERE rp.exercise_id = re.id AND rp."order" = 1
         """
     )
+    # Exercises with no passage yet (failed, before any passage was ever
+    # persisted) have nothing to restore from — match the pre-0020 service's
+    # own default of an empty string rather than leaving passage_text NULL,
+    # which the NOT NULL below would reject.
+    op.execute("UPDATE reading_exercises SET passage_text = '' WHERE passage_text IS NULL")
     op.alter_column("reading_exercises", "passage_text", nullable=False)
+
+    # The pre-0020 schema supports only one passage per exercise. Questions
+    # belonging to any passage other than order=1 have no representation
+    # there; delete them explicitly rather than silently reattaching them to
+    # an exercise whose passage_text no longer contains what they're about —
+    # this keeps the downgraded exercise internally consistent, at the cost
+    # of losing passages 2+ and their questions (unavoidable: the old schema
+    # cannot represent more than one passage).
+    op.execute(
+        """
+        DELETE FROM reading_questions
+        WHERE passage_id IN (SELECT id FROM reading_passages WHERE "order" != 1)
+        """
+    )
 
     op.add_column("reading_questions", sa.Column("exercise_id", postgresql.UUID(as_uuid=True), nullable=True))
     op.execute(

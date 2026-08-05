@@ -27,7 +27,14 @@ def is_correct(question, answer: int | str | None) -> bool:
             normalized == normalize_answer_text(accepted)
             for accepted in (question.accepted_answers or [])
         )
-    return isinstance(answer, int) and question.correct_option_index == answer
+    # bool is a subclass of int in Python (isinstance(True, int) is True), so
+    # exclude it explicitly — a stray boolean must never be graded as a valid
+    # option index just because True == 1 / False == 0.
+    return (
+        isinstance(answer, int)
+        and not isinstance(answer, bool)
+        and question.correct_option_index == answer
+    )
 
 
 def canonical_correct_answer(question) -> int | str | None:
