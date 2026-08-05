@@ -1,6 +1,36 @@
 # Specification: Daily Personalized Lesson Plan
 Related UX: docs/ux/prototypes/daily-lesson-flow.md, docs/ux/wireframes/daily-overview.md
 
+## Revision 6 — Tier-scaled structure and minutes
+
+Decision: `docs/adr/2026-08-05-ielts-exam-structure-band-scaling.md`.
+
+- FR-27: The per-skill minutes budget (FR-0C/FR-14's support/primary split) MUST scale by the
+  learner's tier (beginner/standard/advanced — the same phase mapping as Writing/Speaking/
+  Reading/Listening's respective revisions): beginner keeps the existing 20/10-minute primary/
+  support split; standard raises primary to ~35-40 minutes and support to ~15-20; advanced raises
+  primary toward real exam duration (~60 min Reading, ~30-40 min Listening, ~60 min Writing) with
+  a reduced, not full-length, support-day version of the same tier's structure.
+- FR-28: The daily overview's displayed total/skill minutes (FR-0D) MUST reflect FR-27's
+  tier-scaled values, not the fixed beginner-tier numbers, once a learner is in standard or
+  advanced tier.
+
+## Revision 5 — Speaking removed from the daily rotation and checkpoint
+
+Decision: `docs/adr/2026-08-05-remove-speaking-from-daily-checkpoint.md`. Supersedes revision 3's
+FR-13 ("all four skills") and adjusts FR-15/FR-17's checkpoint count accordingly.
+
+- FR-23: Every calendar day MUST generate content for Reading, Listening, and Writing only —
+  Speaking is no longer part of the daily rotation, generation, or checkpoint — superseding
+  revision 3's FR-13.
+- FR-24: The checkpoint `required_count` is 4 (Reading, Listening, Writing, vocabulary quiz) —
+  superseding revision 3's FR-15/FR-17's five/four-skills wording.
+- FR-25: The primary-skill weekday rotation MUST distribute across Reading/Listening/Writing
+  only, redistributing the weekday previously assigned to Speaking.
+- FR-26: Speaking Coach (Epic-8) remains reachable as an independent, learner-initiated feature
+  outside the daily plan; it MUST NOT be supplied a `daily-lesson-plan` `DailyFocus`/prompt for
+  any new day going forward.
+
 ## Revision 4 — Scheduled pre-generation
 
 Decision: `docs/adr/2026-08-03-daily-lesson-pregeneration-job.md`.

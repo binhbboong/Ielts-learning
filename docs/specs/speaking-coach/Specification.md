@@ -1,6 +1,19 @@
 # Specification: AI-Assisted Speaking Coaching
 Related UX: none yet — no wireframe/journey exists for this epic (it's a new epic, not carried over from the client-only architecture)
 
+## Revision 3 — Decoupled from the daily plan and checkpoint
+
+Decision: `docs/adr/2026-08-05-remove-speaking-from-daily-checkpoint.md`.
+
+- FR-19: Speaking is no longer part of the Daily Personalized Lesson Plan's (Epic-1) daily
+  rotation or checkpoint gating. Revision 2's FR-16 ("today's daily-generated Speaking prompt as
+  default selectable prompt") no longer receives a supplier for new days — the manual/secondary
+  question-bank picker (unaffected by revision 2) becomes the sole path for new submissions going
+  forward.
+- FR-20: Previously recorded submissions created via the daily-generated-prompt path (revision 2)
+  remain fully retrievable and unaffected — this decoupling is forward-only, not a retroactive
+  change to existing data.
+
 ## Revision 2 — Level-appropriate prompts and grading
 
 Decision: `docs/adr/2026-08-03-writing-speaking-level-adaptation.md`. Resolves this spec's Open

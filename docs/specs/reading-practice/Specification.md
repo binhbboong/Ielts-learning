@@ -1,6 +1,40 @@
 # Specification: AI-Generated Reading Practice & Auto-Scoring
 Related UX: docs/ux/prototypes/daily-lesson-flow.md, docs/ux/wireframes/reading-exercise.md, docs/ux/wireframes/mistake-quick-add.md
 
+## Revision 2 — Multi-passage, real question-type catalog, scaled by band tier
+
+Decision: `docs/adr/2026-08-05-ielts-exam-structure-band-scaling.md`. Supersedes the prior
+Out-of-Scope exclusions of non-multiple-choice question types and more than one passage per day.
+
+- FR-12: The system MUST generate Reading content structured into a phase-tier-appropriate
+  number of passages (beginner = 1, standard = 2, advanced = 3), each with its own title and
+  passage text, rather than a single flat passage — superseding FR-1's "one Reading passage."
+- FR-13: Each passage's questions MUST be typed per this catalog, chosen appropriately for the
+  passage/tier: Multiple Choice, True/False/Not Given, Yes/No/Not Given, Matching Headings,
+  Matching Information, Matching Features, Sentence Completion, Summary Completion, Table/
+  Flow-chart Completion, Diagram/Map Labelling (a letter-labelled textual description in lieu of
+  an image), Short-answer. Beginner tier is limited to Multiple Choice + True/False/Not Given;
+  standard tier adds Matching Headings + Sentence/Summary Completion; advanced tier includes the
+  full catalog.
+- FR-14: A question of a completion/short-answer type MUST record one or more accepted-answer
+  strings at generation time instead of a fixed option list, so scoring remains AI-call-free at
+  submission time, preserving FR-2's guarantee.
+- FR-15: A question grouped with others under shared instructions (e.g. "Questions 14-18:
+  complete the summary below using no more than two words") MUST carry those instructions for
+  display above the group, distinguishing which questions they apply to.
+- FR-16: Total question count and target time MUST scale with tier — beginner ~6-8 questions /
+  ~10-20 min, standard ~26 questions / ~35-40 min, advanced 40 questions / ~60 min — driving the
+  Reading minutes allocated by Epic-1 for that day.
+- FR-17: Free-text (completion/short-answer) answers MUST be scored by case-insensitive,
+  whitespace-normalized comparison against the recorded accepted-answer strings, with no
+  additional AI call.
+- FR-18: The learner's active tier (beginner/standard/advanced) for a given day's Reading
+  generation MUST be derived from the same phase mapping used for Writing/Speaking/Listening
+  prompt complexity, so Reading structure advances in step with the learner's phase.
+- FR-19: Standard and advanced tier Reading MUST display a non-blocking countdown timer based on
+  FR-16's target time; it MUST NOT auto-submit or lock the exercise when it reaches zero — a
+  visible pacing aid only, not an exam-condition enforcement (beginner tier shows no timer).
+
 ## Status
 Draft
 

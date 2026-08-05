@@ -1,6 +1,37 @@
 # Specification: AI-Generated Listening Practice & Auto-Scoring
 Related UX: docs/ux/prototypes/daily-lesson-flow.md, docs/ux/wireframes/listening-exercise.md, docs/ux/wireframes/mistake-quick-add.md
 
+## Revision 2 — Multi-section, real question-type catalog, scaled by band tier
+
+Decision: `docs/adr/2026-08-05-ielts-exam-structure-band-scaling.md`. Supersedes the prior
+Out-of-Scope exclusions of non-multiple-choice question types and more than one script per day.
+
+- FR-16: The system MUST generate Listening content structured into a phase-tier-appropriate
+  number of sections (beginner = 1, standard = 2, advanced = 4), each with its own script, audio,
+  and context type (social_conversation, monologue, educational_discussion, academic_lecture)
+  matching the real exam's four-section progression — superseding FR-1's "one Listening script."
+- FR-17: Each section's questions MUST be typed per this catalog: Multiple Choice, Form/Note/
+  Table Completion, Matching, Plan/Map/Diagram Labelling (a letter-labelled textual description
+  in lieu of an image). Beginner tier is limited to Multiple Choice + simple Note Completion;
+  standard tier adds Matching + Table Completion; advanced tier includes the full catalog.
+- FR-18: A question of a completion type MUST record one or more accepted-answer strings at
+  generation time instead of a fixed option list, preserving FR-3's AI-call-free scoring
+  guarantee.
+- FR-19: A question grouped with others under shared instructions MUST carry those instructions
+  for display above the group.
+- FR-20: Total question count and target time MUST scale with tier — beginner ~6-8 questions /
+  ~10-20 min, standard ~20 questions across 2 sections / ~20 min, advanced 40 questions across 4
+  sections / ~30-40 min — driving the Listening minutes allocated by Epic-1 for that day.
+- FR-21: Free-text (completion) answers MUST be scored by case-insensitive, whitespace-normalized
+  comparison against the recorded accepted-answer strings, with no additional AI call.
+- FR-22: The learner's active tier for a given day's Listening generation MUST be derived from
+  the same phase mapping used for Reading/Writing/Speaking prompt complexity.
+- FR-23: Standard and advanced tier Listening MUST display a non-blocking countdown timer per
+  section based on FR-20's target time; it MUST NOT auto-submit or lock the exercise at zero
+  (beginner tier shows no timer).
+- FR-24: Each section MUST have its own independently playable/replayable audio (unlimited replay,
+  unchanged from FR-4) rather than a single player for the whole day's exercise.
+
 ## Status
 Draft
 
