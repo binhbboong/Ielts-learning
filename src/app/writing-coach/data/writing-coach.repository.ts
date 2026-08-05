@@ -53,10 +53,11 @@ export class WritingCoachRepository {
     )));
   }
 
-  async list(): Promise<WritingSubmissionSummary[]> {
-    const values = await firstValueFrom(
-      this.api.get<any[]>('/api/writing-coach/submissions'),
-    );
+  async list(day?: string): Promise<WritingSubmissionSummary[]> {
+    const url = day
+      ? `/api/writing-coach/submissions?day=${encodeURIComponent(day)}`
+      : '/api/writing-coach/submissions';
+    const values = await firstValueFrom(this.api.get<any[]>(url));
     return values.map((value) => ({
       id: value.id,
       createdAt: value.created_at,

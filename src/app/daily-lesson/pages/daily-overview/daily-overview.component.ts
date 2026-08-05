@@ -38,6 +38,10 @@ export class DailyOverviewComponent implements OnInit {
     return entry.day !== this.today;
   }
 
+  doneActionLabel(entry: Pick<SkillOverviewEntry, 'skill'>): string {
+    return entry.skill === 'writing' ? 'Try again' : 'Review';
+  }
+
   skillRoute(entry: Pick<SkillOverviewEntry, 'skill' | 'day'>): string[] {
     const routes: Record<string, string> = {
       reading: '/reading',

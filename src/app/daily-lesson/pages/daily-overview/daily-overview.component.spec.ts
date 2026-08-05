@@ -132,6 +132,14 @@ describe('DailyOverviewComponent', () => {
     ]);
   });
 
+  it('labels a done Writing entry as retryable, other done skills as review-only', async () => {
+    const { component } = await setUp();
+
+    expect(component.doneActionLabel({ skill: 'writing' } as any)).toBe('Try again');
+    expect(component.doneActionLabel({ skill: 'reading' } as any)).toBe('Review');
+    expect(component.doneActionLabel({ skill: 'listening' } as any)).toBe('Review');
+  });
+
   it('retries a failed skill', async () => {
     const { component, repository } = await setUp({
       getOverview: jasmine.createSpy().and.resolveTo({

@@ -25,6 +25,31 @@
       }
     </section>
   } @else {
+    @if (writingAgain()) {
+      <ng-container *ngTemplateOutlet="writingForm"></ng-container>
+    } @else {
+      @if (facade.latestForDay(); as latest) {
+        <section class="coach-card state-card" data-testid="writing-latest-attempt">
+          <p class="eyebrow">Today's latest attempt</p>
+          @if (latest.status === 'complete') {
+            <h2>Overall band {{ latest.overallBand }}</h2>
+          } @else {
+            <h2>Evaluation did not complete</h2>
+          }
+          <a class="button-link" [routerLink]="['/writing/submissions', latest.id]">
+            Open full feedback
+          </a>
+          <button type="button" class="primary" data-testid="writing-again" (click)="writeAgain()">
+            Write again
+          </button>
+        </section>
+      } @else {
+        <ng-container *ngTemplateOutlet="writingForm"></ng-container>
+      }
+    }
+  }
+
+  <ng-template #writingForm>
     <form class="coach-card coach-form" (ngSubmit)="submit()">
       @if (promptDay) {
         <p class="daily-prompt-banner" data-testid="daily-prompt-banner">
@@ -65,5 +90,5 @@
         <button type="button" (click)="cancel()">Cancel</button>
       </div>
     </form>
-  }
+  </ng-template>
 </main>

@@ -116,4 +116,58 @@ describe('WritingSubmitComponent', () => {
       day: '2026-07-30',
     }));
   });
+
+  it('shows the latest same-day attempt instead of a blank form, until asked to write again', async () => {
+    const repository = jasmine.createSpyObj<WritingCoachRepository>(
+      'WritingCoachRepository', ['submit', 'list'],
+    );
+    repository.list.and.resolveTo([
+      {
+        id: 'w1', createdAt: '2026-07-30T09:00:00Z', taskType: 'task2', status: 'complete',
+        overallBand: 6, taskResponseScore: 6, questionExcerpt: 'Describe your daily routine.',
+      },
+    ]);
+    const dailyLessonRepository = dailyLessonRepositoryStub();
+    dailyLessonRepository.getOverview.and.resolveTo({
+      examType: 'ielts_academic', week: 1, phase: 'foundation', targetBand: 4.5,
+      totalMinutes: 60, reviewMinutes: 10, effectiveDay: '2026-07-30',
+      checkpoint: {
+        day: '2026-07-30',
+        skills: { reading: false, listening: false, writing: false, speaking: false },
+        vocabularyQuiz: false, passedCount: 0, requiredCount: 5, allPassed: false,
+      },
+      skills: [
+        {
+          day: '2026-07-30', skill: 'writing', status: 'done', focusReference: null,
+          targetBand: 4.5, estimatedMinutes: 20, priority: 'primary', phase: 'foundation',
+          rationale: 'Scheduled', generatedPromptText: 'Describe your daily routine.',
+        },
+      ],
+    });
+    await TestBed.configureTestingModule({
+      imports: [WritingSubmitComponent],
+      providers: [
+        provideRouter([]),
+        { provide: WritingCoachRepository, useValue: repository },
+        { provide: DailyLessonRepository, useValue: dailyLessonRepository },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(WritingSubmitComponent);
+    const component = fixture.componentInstance;
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(repository.list).toHaveBeenCalledWith('2026-07-30');
+    expect(component.facade.latestForDay()?.overallBand).toBe(6);
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="writing-latest-attempt"]'),
+    ).not.toBeNull();
+
+    component.writeAgain();
+    fixture.detectChanges();
+
+    expect(component.writingAgain()).toBeTrue();
+    expect(fixture.nativeElement.querySelector('textarea[name="responseText"]')).not.toBeNull();
+  });
 });

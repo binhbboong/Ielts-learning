@@ -111,6 +111,49 @@ def test_writing_route_round_trips_complete_feedback(db_session_factory):
     assert detail["grammatical_range_and_accuracy"]["band_score"] == 7
 
 
+def test_writing_submissions_list_filters_by_day(db_session_factory):
+    client = _client(db_session_factory)
+    other_day = client.post(
+        "/api/writing-coach/submissions",
+        json={
+            "task_type": "task2",
+            "question_text": "Discuss both views.",
+            "response_text": "People is affected.",
+            "day": "2026-07-30",
+        },
+    ).json()
+    same_day_first = client.post(
+        "/api/writing-coach/submissions",
+        json={
+            "task_type": "task2",
+            "question_text": "Discuss both views.",
+            "response_text": "First attempt.",
+            "day": "2026-07-31",
+        },
+    ).json()
+    same_day_second = client.post(
+        "/api/writing-coach/submissions",
+        json={
+            "task_type": "task2",
+            "question_text": "Discuss both views.",
+            "response_text": "Second attempt.",
+            "day": "2026-07-31",
+        },
+    ).json()
+
+    filtered = client.get(
+        "/api/writing-coach/submissions", params={"day": "2026-07-31"}
+    ).json()
+
+    assert {item["id"] for item in filtered} == {
+        same_day_first["id"],
+        same_day_second["id"],
+    }
+    assert other_day["id"] not in {item["id"] for item in filtered}
+    # Most recent attempt for the day comes first.
+    assert filtered[0]["id"] == same_day_second["id"]
+
+
 def test_speaking_route_runs_separate_steps_and_synthesizes_pronunciation(
     db_session_factory,
 ):

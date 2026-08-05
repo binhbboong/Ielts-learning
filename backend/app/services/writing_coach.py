@@ -83,13 +83,13 @@ def create_and_evaluate(
     return submission
 
 
-def get_submission_list(db: Session, user_id=LEGACY_USER_ID) -> list[WritingSubmission]:
-    return (
-        db.query(WritingSubmission)
-        .filter(WritingSubmission.user_id == user_id)
-        .order_by(WritingSubmission.created_at.desc())
-        .all()
-    )
+def get_submission_list(
+    db: Session, user_id=LEGACY_USER_ID, day=None
+) -> list[WritingSubmission]:
+    query = db.query(WritingSubmission).filter(WritingSubmission.user_id == user_id)
+    if day is not None:
+        query = query.filter(WritingSubmission.day == day)
+    return query.order_by(WritingSubmission.created_at.desc()).all()
 
 
 def get_submission_detail(

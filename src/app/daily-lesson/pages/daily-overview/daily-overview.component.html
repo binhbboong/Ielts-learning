@@ -205,7 +205,7 @@
                   <a class="button-link primary" [routerLink]="skillRoute(entry)">Start</a>
                 }
                 @case ('done') {
-                  <a class="button-link" [routerLink]="skillRoute(entry)">Review</a>
+                  <a class="button-link" [routerLink]="skillRoute(entry)">{{ doneActionLabel(entry) }}</a>
                 }
                 @case ('generating') {
                   <span class="hint">Generating...</span>
