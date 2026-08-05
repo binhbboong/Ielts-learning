@@ -1,3 +1,7 @@
+from pathlib import Path
+
+from alembic import command
+from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -13,6 +17,15 @@ from app.services.text_to_speech import (
     SynthesisResult,
     get_text_to_speech,
 )
+
+_ALEMBIC_INI = Path(__file__).resolve().parents[1] / "alembic.ini"
+
+
+def _migrations_config_for_test_db() -> Config:
+    cfg = Config(str(_ALEMBIC_INI))
+    cfg.set_main_option("sqlalchemy.url", settings.TEST_DATABASE_URL)
+    cfg.set_main_option("script_location", str(_ALEMBIC_INI.parent / "alembic"))
+    return cfg
 
 
 def _client(db_session_factory):
@@ -71,3 +84,38 @@ def test_pregenerate_lessons_succeeds_with_correct_secret(db_session_factory, mo
     body = response.json()
     assert body["processed"] == {}
     assert body["errors"] == {}
+
+
+def test_run_migrations_rejects_missing_or_wrong_secret(db_session_factory, monkeypatch):
+    monkeypatch.setattr(settings, "CRON_SECRET", "the-real-secret")
+    client = _client(db_session_factory)
+
+    no_header = client.post("/api/cron/run-migrations")
+    assert no_header.status_code == 401
+
+    wrong_secret = client.post(
+        "/api/cron/run-migrations",
+        headers={"Authorization": "Bearer wrong-value"},
+    )
+    assert wrong_secret.status_code == 401
+
+
+def test_run_migrations_upgrades_the_configured_database_to_head(monkeypatch):
+    monkeypatch.setattr(settings, "CRON_SECRET", "the-real-secret")
+    monkeypatch.setattr(settings, "DATABASE_URL", settings.TEST_DATABASE_URL)
+    cfg = _migrations_config_for_test_db()
+    command.downgrade(cfg, "base")
+    try:
+        app = FastAPI()
+        app.include_router(cron_router)
+        client = TestClient(app, base_url="https://testserver")
+
+        response = client.post(
+            "/api/cron/run-migrations",
+            headers={"Authorization": "Bearer the-real-secret"},
+        )
+
+        assert response.status_code == 200
+        assert response.json() == {"revision": "0021"}
+    finally:
+        command.downgrade(cfg, "base")

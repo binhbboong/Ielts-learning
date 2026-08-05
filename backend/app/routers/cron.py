@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.core.db import get_db
 from app.schemas.daily_lesson_plan import PregenerationResponse
 from app.services import daily_lesson_plan as service
+from app.services import db_migrations
 from app.services.text_to_speech import TextToSpeech, get_text_to_speech
 
 router = APIRouter(prefix="/api/cron")
@@ -33,3 +34,12 @@ def pregenerate_lessons(
 ) -> PregenerationResponse:
     result = service.pregenerate_for_all_learners(db, provider, tts, date.today())
     return PregenerationResponse(processed=result["processed"], errors=result["errors"])
+
+
+@router.post("/run-migrations", dependencies=[Depends(verify_cron_secret)])
+def run_migrations() -> dict[str, str]:
+    """Runs `alembic upgrade head` against this deployment's own DATABASE_URL.
+    A manual, human-triggered maintenance action (not on the pregenerate-lessons
+    schedule) — see app/services/db_migrations.py for why this exists."""
+    revision = db_migrations.upgrade_to_head()
+    return {"revision": revision}

@@ -1,6 +1,26 @@
 import os
 from importlib import reload
 
+import pytest
+
+from app.core import config as config_module
+
+
+@pytest.fixture(autouse=True)
+def _restore_settings_singleton():
+    """Every test below calls reload(config_module) to rebuild Settings()
+    from monkeypatched env vars, which permanently replaces the module-level
+    `settings` object other modules already hold a reference to (monkeypatch
+    only undoes monkeypatch.setenv, not this). Without restoring it, later
+    tests that make a real DB connection via settings.DATABASE_URL (e.g.
+    app/services/db_migrations_test.py) inherit this file's dummy
+    'postgresql://u:p@localhost:5433/db' value instead of the real one."""
+    original = config_module.settings
+    try:
+        yield
+    finally:
+        config_module.settings = original
+
 
 def test_settings_has_session_and_password_fields(monkeypatch):
     monkeypatch.setenv("SESSION_SECRET", "test-secret")
