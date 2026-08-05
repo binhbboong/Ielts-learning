@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 
 from app.ai import get_ai_provider
 from app.ai.schemas import (
+    GeneratedPassage,
     GeneratedQuestion,
     ReadingExerciseGenerationRequest,
     ReadingExerciseGenerationResult,
@@ -17,12 +18,16 @@ def _success_provider() -> FakeAIProvider:
     return FakeAIProvider(
         reading_exercise_result=ReadingExerciseGenerationResult(
             status="ok",
-            passage_text="A passage about nevertheless.",
-            questions=[
-                GeneratedQuestion(
-                    question_text="What is discussed?",
-                    options=["A", "B", "C", "D"],
-                    correct_option_index=1,
+            passages=[
+                GeneratedPassage(
+                    passage_text="A passage about nevertheless.",
+                    questions=[
+                        GeneratedQuestion(
+                            question_text="What is discussed?",
+                            options=["A", "B", "C", "D"],
+                            correct_option_index=1,
+                        )
+                    ],
                 )
             ],
         )
@@ -61,12 +66,14 @@ def test_get_exercise_generates_on_first_request_and_omits_correct_answers(
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "ready"
-    assert body["passage_text"] == "A passage about nevertheless."
-    assert len(body["questions"]) == 1
-    assert "correct_option_index" not in body["questions"][0]
-    assert "accepted_answers" not in body["questions"][0]
-    assert body["questions"][0]["question_type"] == "multiple_choice"
-    assert "options" in body["questions"][0]
+    assert len(body["passages"]) == 1
+    assert body["passages"][0]["passage_text"] == "A passage about nevertheless."
+    questions = body["passages"][0]["questions"]
+    assert len(questions) == 1
+    assert "correct_option_index" not in questions[0]
+    assert "accepted_answers" not in questions[0]
+    assert questions[0]["question_type"] == "multiple_choice"
+    assert "options" in questions[0]
 
 
 def test_get_exercise_second_request_returns_the_same_content(db_session_factory):
@@ -135,4 +142,4 @@ def test_retry_endpoint_replaces_failed_content_after_generation_succeeds(
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "ready"
-    assert body["passage_text"] == "A passage about nevertheless."
+    assert body["passages"][0]["passage_text"] == "A passage about nevertheless."

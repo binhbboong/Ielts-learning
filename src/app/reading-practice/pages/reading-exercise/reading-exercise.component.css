@@ -70,6 +70,29 @@
   background: #eff6ff;
 }
 
+.passage + .passage {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #ddd;
+}
+
+.group-instructions {
+  font-style: italic;
+  color: #555;
+  margin: 0 0 0.35rem;
+}
+
+.text-answer {
+  display: block;
+  width: 100%;
+  max-width: 24rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 0.375rem;
+  font: inherit;
+}
+
 .answer-review li {
   padding: 0.75rem;
   border-radius: 0.375rem;

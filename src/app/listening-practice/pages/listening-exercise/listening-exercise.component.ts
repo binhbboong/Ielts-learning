@@ -6,11 +6,20 @@ import {
   MistakeQuickAddData,
 } from '../../../mistakes/pages/quick-add/mistake-quick-add.component';
 import { isTextBasedQuestionType } from '../../../core/exam/question-types';
-import { ListeningAnswerResult } from '../../models/listening-exercise.model';
+import {
+  ListeningAnswerResult,
+  ListeningQuestion,
+  ListeningSection,
+} from '../../models/listening-exercise.model';
 import { ListeningPracticeFacade } from '../../state/listening-practice.facade';
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+interface ListeningSectionView {
+  section: ListeningSection;
+  questions: { question: ListeningQuestion; flatIndex: number }[];
 }
 
 @Component({
@@ -32,12 +41,24 @@ export class ListeningExerciseComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     this.day = this.route.snapshot.paramMap.get('day') ?? todayIso();
     await this.facade.load(this.day);
-    const questionCount = this.facade.exercise()?.questions.length ?? 0;
+    const questionCount = this.flatQuestions.length;
     this.selectedAnswers = new Array(questionCount).fill(null);
   }
 
-  get audioUrl(): string {
-    return this.facade.audioUrl(this.day);
+  get flatQuestions(): ListeningQuestion[] {
+    return (this.facade.exercise()?.sections ?? []).flatMap((s) => s.questions);
+  }
+
+  get sectionViews(): ListeningSectionView[] {
+    let index = 0;
+    return (this.facade.exercise()?.sections ?? []).map((section) => ({
+      section,
+      questions: section.questions.map((question) => ({ question, flatIndex: index++ })),
+    }));
+  }
+
+  audioUrl(order: number): string {
+    return this.facade.audioUrl(this.day, order);
   }
 
   selectAnswer(questionIndex: number, optionIndex: number): void {

@@ -32,9 +32,18 @@
           @for (answer of result.answers; track $index; let ai = $index) {
             <li [class.correct]="answer.correct" [class.wrong]="!answer.correct">
               <p>{{ answer.questionText }}</p>
-              <p>Your answer: {{ answer.options[answer.learnerAnswer] }}</p>
+              @if (isTextBasedQuestionType(answer.questionType)) {
+                <p>Your answer: {{ answer.learnerAnswer }}</p>
+                @if (!answer.correct) {
+                  <p>Accepted answer: {{ answer.correctAnswer }}</p>
+                }
+              } @else {
+                <p>Your answer: {{ answer.options![$any(answer.learnerAnswer)] }}</p>
+                @if (!answer.correct) {
+                  <p>Correct answer: {{ answer.options![$any(answer.correctAnswer)] }}</p>
+                }
+              }
               @if (!answer.correct) {
-                <p>Correct answer: {{ answer.options[answer.correctAnswer] }}</p>
                 @if (openQuickAddIndex === ai) {
                   <app-mistake-quick-add
                     [data]="quickAddData(answer)"
@@ -56,25 +65,46 @@
         @if (exercise.focusReference) {
           <p class="focus-note">Targets: {{ exercise.focusReference }}</p>
         }
-        <p class="passage-text">{{ exercise.passageText }}</p>
-        <ol class="question-list">
-          @for (question of exercise.questions; track question.id; let qi = $index) {
-            <li>
-              <p>{{ question.questionText }}</p>
-              <div class="options">
-                @for (option of question.options; track $index; let oi = $index) {
-                  <button
-                    type="button"
-                    class="option"
-                    [class.selected]="selectedAnswers[qi] === oi"
-                    (click)="selectAnswer(qi, oi)">
-                    {{ option }}
-                  </button>
-                }
-              </div>
-            </li>
-          }
-        </ol>
+        @for (section of passageSections; track section.passage.id) {
+          <article class="passage" [attr.data-testid]="'passage-' + section.passage.order">
+            @if (section.passage.title) {
+              <h2>{{ section.passage.title }}</h2>
+            }
+            <p class="passage-text">{{ section.passage.passageText }}</p>
+            <ol class="question-list">
+              @for (item of section.questions; track item.question.id) {
+                <li>
+                  @if (item.question.groupInstructions) {
+                    <p class="group-instructions">{{ item.question.groupInstructions }}</p>
+                  }
+                  <p>{{ item.question.questionText }}</p>
+                  @if (isTextBasedQuestionType(item.question.questionType)) {
+                    <input
+                      type="text"
+                      class="text-answer"
+                      [attr.data-testid]="'text-answer-' + item.flatIndex"
+                      [ngModel]="selectedAnswers[item.flatIndex]"
+                      (ngModelChange)="setTextAnswer(item.flatIndex, $event)"
+                      name="answer-{{ item.flatIndex }}"
+                    />
+                  } @else {
+                    <div class="options">
+                      @for (option of item.question.options; track $index; let oi = $index) {
+                        <button
+                          type="button"
+                          class="option"
+                          [class.selected]="selectedAnswers[item.flatIndex] === oi"
+                          (click)="selectAnswer(item.flatIndex, oi)">
+                          {{ option }}
+                        </button>
+                      }
+                    </div>
+                  }
+                </li>
+              }
+            </ol>
+          </article>
+        }
         <div class="actions">
           <button class="primary" type="button" [disabled]="!canSubmit" (click)="submit()">
             Submit Answers

@@ -6,7 +6,9 @@ from fastapi.testclient import TestClient
 from app.ai import get_ai_provider
 from app.ai.schemas import (
     ChatResult,
+    GeneratedPassage,
     GeneratedQuestion,
+    GeneratedSection,
     ListeningScriptGenerationResult,
     ReadingExerciseGenerationResult,
 )
@@ -25,15 +27,21 @@ from app.services.text_to_speech import (
 def _success_provider() -> FakeAIProvider:
     return FakeAIProvider(
         reading_exercise_result=ReadingExerciseGenerationResult(
-            status="ok", passage_text="A passage.",
-            questions=[GeneratedQuestion(
-                question_text="Q?", options=["A", "B", "C", "D"], correct_option_index=0
+            status="ok",
+            passages=[GeneratedPassage(
+                passage_text="A passage.",
+                questions=[GeneratedQuestion(
+                    question_text="Q?", options=["A", "B", "C", "D"], correct_option_index=0
+                )],
             )],
         ),
         listening_script_result=ListeningScriptGenerationResult(
-            status="ok", script_text="A script.",
-            questions=[GeneratedQuestion(
-                question_text="Q?", options=["A", "B", "C", "D"], correct_option_index=0
+            status="ok",
+            sections=[GeneratedSection(
+                script_text="A script.",
+                questions=[GeneratedQuestion(
+                    question_text="Q?", options=["A", "B", "C", "D"], correct_option_index=0
+                )],
             )],
         ),
         chat_result=ChatResult(status="ok", message="A generated prompt."),

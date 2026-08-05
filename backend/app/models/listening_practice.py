@@ -26,14 +26,36 @@ class ListeningExercise(Base):
         server_default=text("'00000000-0000-0000-0000-000000000001'::uuid"),
     )
     day: Mapped[date] = mapped_column(Date, nullable=False, index=True)
-    script_text: Mapped[str] = mapped_column(Text, nullable=False)
-    audio_bytes: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
-    audio_content_type: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # script_text/audio_bytes/audio_content_type live on ListeningSection now (1
+    # section at beginner tier, 2 at standard tier) per
+    # docs/adr/2026-08-05-ielts-exam-structure-band-scaling.md. status stays here
+    # as the aggregate pipeline state across all sections.
     focus_reference: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         server_default=text("now()"), nullable=False
     )
+
+
+class ListeningSection(Base):
+    __tablename__ = "listening_sections"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    exercise_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("listening_exercises.id"), nullable=False, index=True
+    )
+    # context_type mirrors the real exam's 4-section progression (social
+    # conversation, monologue, educational discussion, academic lecture) —
+    # only social_conversation/monologue are used at standard tier for now.
+    context_type: Mapped[str] = mapped_column(Text, nullable=False)
+    script_text: Mapped[str] = mapped_column(Text, nullable=False)
+    audio_bytes: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    audio_content_type: Mapped[str | None] = mapped_column(Text, nullable=True)
+    order: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
 class ListeningQuestion(Base):
@@ -44,11 +66,11 @@ class ListeningQuestion(Base):
         primary_key=True,
         server_default=text("gen_random_uuid()"),
     )
-    exercise_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("listening_exercises.id"), nullable=False, index=True
+    section_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("listening_sections.id"), nullable=False, index=True
     )
     question_text: Mapped[str] = mapped_column(Text, nullable=False)
-    # question_type/accepted_answers added per
+    # question_type/accepted_answers/group_instructions added per
     # docs/adr/2026-08-05-ielts-exam-structure-band-scaling.md. options/
     # correct_option_index are used by option-based types (multiple_choice,
     # true_false_not_given, matching, ...); accepted_answers is used by
@@ -59,6 +81,7 @@ class ListeningQuestion(Base):
     options: Mapped[list | None] = mapped_column(ARRAY(Text), nullable=True)
     correct_option_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
     accepted_answers: Mapped[list | None] = mapped_column(ARRAY(Text), nullable=True)
+    group_instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
     order: Mapped[int] = mapped_column(Integer, nullable=False)
 
 

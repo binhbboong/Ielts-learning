@@ -6,22 +6,33 @@ import { ListeningExerciseComponent } from './listening-exercise.component';
 
 const exercise = {
   day: '2026-07-30', status: 'ready',
-  focusReference: "the word 'nevertheless'", scriptText: null,
-  questions: [
+  focusReference: "the word 'nevertheless'",
+  sections: [
     {
-      id: 'q1', questionText: 'What is discussed?', questionType: 'multiple_choice',
-      options: ['A', 'B', 'C', 'D'], order: 1,
+      id: 's1', contextType: 'monologue', scriptText: null, order: 1,
+      questions: [
+        {
+          id: 'q1', questionText: 'What is discussed?', questionType: 'multiple_choice',
+          options: ['A', 'B', 'C', 'D'], groupInstructions: null, order: 1,
+        },
+      ],
     },
   ],
 };
 
-const mixedTypeExercise = {
+const twoSectionExercise = {
   ...exercise,
-  questions: [
-    ...exercise.questions,
+  sections: [
+    exercise.sections[0],
     {
-      id: 'q2', questionText: 'Complete the note: the team missed the ___ deadline.',
-      questionType: 'note_completion', options: null, order: 2,
+      id: 's2', contextType: 'social_conversation', scriptText: null, order: 2,
+      questions: [
+        {
+          id: 'q2', questionText: 'Complete the note: the team missed the ___ deadline.',
+          questionType: 'note_completion', options: null,
+          groupInstructions: null, order: 1,
+        },
+      ],
     },
   ],
 };
@@ -35,7 +46,9 @@ async function setUp(
     ['get', 'submit', 'retryScript', 'retryAudio', 'audioUrl'],
   );
   repository.get.and.resolveTo(exercise);
-  repository.audioUrl.and.callFake((day: string) => `/api/listening-practice/${day}/audio`);
+  repository.audioUrl.and.callFake(
+    (day: string, order: number) => `/api/listening-practice/${day}/audio/${order}`,
+  );
   Object.assign(repository, repositoryOverrides);
 
   await TestBed.configureTestingModule({
@@ -54,11 +67,11 @@ async function setUp(
 }
 
 describe('ListeningExerciseComponent', () => {
-  it('loads the exercise for the route day and builds the audio URL', async () => {
+  it('loads the exercise for the route day and builds the audio URL per section', async () => {
     const { component, repository } = await setUp();
     await component.ngOnInit();
     expect(repository.get).toHaveBeenCalledWith('2026-07-30');
-    expect(component.audioUrl).toBe('/api/listening-practice/2026-07-30/audio');
+    expect(component.audioUrl(1)).toBe('/api/listening-practice/2026-07-30/audio/1');
   });
 
   it('does not allow submit until every question is answered', async () => {
@@ -69,10 +82,21 @@ describe('ListeningExerciseComponent', () => {
     expect(component.canSubmit).toBeTrue();
   });
 
+  it('flattens questions across sections in section/question order', async () => {
+    const { component, repository } = await setUp();
+    repository.get.and.resolveTo(twoSectionExercise);
+    await component.ngOnInit();
+
+    expect(component.flatQuestions.map((q) => q.id)).toEqual(['q1', 'q2']);
+    expect(component.sectionViews.length).toBe(2);
+    expect(component.sectionViews[1].questions[0].flatIndex).toBe(1);
+  });
+
   it('submits selected answers', async () => {
     const { component, repository } = await setUp();
     repository.submit.and.resolveTo({
-      day: '2026-07-30', score: 1, total: 1, scriptText: 'A script.',
+      day: '2026-07-30', score: 1, total: 1,
+      sections: [{ id: 's1', contextType: 'monologue', scriptText: 'A script.', order: 1, questions: [] }],
       answers: [{
         questionText: 'What is discussed?', questionType: 'multiple_choice',
         options: ['A', 'B', 'C', 'D'], learnerAnswer: 1, correctAnswer: 1, correct: true,
@@ -84,12 +108,12 @@ describe('ListeningExerciseComponent', () => {
     await component.submit();
 
     expect(repository.submit).toHaveBeenCalledWith('2026-07-30', [1]);
-    expect(component.facade.result()?.scriptText).toBe('A script.');
+    expect(component.facade.result()?.sections[0].scriptText).toBe('A script.');
   });
 
   it('does not allow submit until a text-based question has a non-blank answer', async () => {
     const { component, repository } = await setUp({}, '2026-07-30');
-    repository.get.and.resolveTo(mixedTypeExercise);
+    repository.get.and.resolveTo(twoSectionExercise);
     await component.ngOnInit();
     component.selectAnswer(0, 1);
     expect(component.canSubmit).toBeFalse();
@@ -103,10 +127,9 @@ describe('ListeningExerciseComponent', () => {
 
   it('submits a mix of option indexes and free text answers', async () => {
     const { component, repository } = await setUp();
-    repository.get.and.resolveTo(mixedTypeExercise);
+    repository.get.and.resolveTo(twoSectionExercise);
     repository.submit.and.resolveTo({
-      day: '2026-07-30', score: 2, total: 2, scriptText: 'A script.',
-      answers: [],
+      day: '2026-07-30', score: 2, total: 2, sections: [], answers: [],
     });
     await component.ngOnInit();
     component.selectAnswer(0, 1);

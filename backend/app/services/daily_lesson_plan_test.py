@@ -12,7 +12,9 @@ from app.models.user import LEGACY_USER_ID
 from app.models.vocabulary import VocabularyQuiz, VocabularyWord
 from app.models.writing_submission import WritingSubmission
 from app.ai.schemas import (
+    GeneratedPassage,
     GeneratedQuestion,
+    GeneratedSection,
     ListeningScriptGenerationResult,
     ReadingExerciseGenerationResult,
 )
@@ -173,9 +175,11 @@ def test_generate_prompt_text_propagates_chat_failure(db_session_factory):
     session.close()
 
 
-def _focus_at_phase(skill: str, phase: str, target_band: float) -> DailyFocus:
+def _focus_at_phase(
+    skill: str, phase: str, target_band: float, day: date = date(2026, 7, 30)
+) -> DailyFocus:
     return DailyFocus(
-        day=date(2026, 7, 30), skill=skill, focus_kind="default",
+        day=day, skill=skill, focus_kind="default",
         target_band=target_band, phase=phase, estimated_minutes=20,
     )
 
@@ -221,6 +225,38 @@ def test_advanced_phase_gets_part_3_speaking_and_abstract_writing_prompts():
     assert "abstract or policy-oriented" in provider.chat_requests[1].message
 
 
+def test_beginner_tier_writing_never_sets_a_task_type(db_session_factory):
+    provider = FakeAIProvider(
+        chat_result=ChatResult(status="ok", message="A generated prompt.")
+    )
+    focus = _focus_at_phase("writing", "foundation", 4.5)
+
+    generate_prompt_text(provider, focus)
+
+    assert focus.task_type is None
+
+
+def test_standard_tier_writing_alternates_task_1_and_task_2_by_day(db_session_factory):
+    provider = FakeAIProvider(
+        chat_result=ChatResult(status="ok", message="A generated prompt.")
+    )
+    task2_focus = _focus_at_phase(
+        "writing", "consolidation", 6.0, day=date(2026, 7, 30)
+    )
+    task1_focus = _focus_at_phase(
+        "writing", "consolidation", 6.0, day=date(2026, 7, 31)
+    )
+
+    generate_prompt_text(provider, task2_focus)
+    generate_prompt_text(provider, task1_focus)
+
+    assert task2_focus.task_type == "task2"
+    assert task1_focus.task_type == "task1"
+    assert "Task 2" in provider.chat_requests[0].message
+    assert "no image-rendering capability" in provider.chat_requests[1].message
+    assert "Task 2" not in provider.chat_requests[1].message
+
+
 def test_reading_status_generating_when_no_exercise_exists_yet(db_session_factory):
     session = db_session_factory()
     try:
@@ -232,10 +268,7 @@ def test_reading_status_generating_when_no_exercise_exists_yet(db_session_factor
 def test_reading_status_ready_then_done_after_submission(db_session_factory):
     session = db_session_factory()
     try:
-        exercise = ReadingExercise(
-            day=date(2026, 7, 30), passage_text="Passage.", focus_reference=None,
-            status="ready",
-        )
+        exercise = ReadingExercise(day=date(2026, 7, 30), focus_reference=None, status="ready")
         session.add(exercise)
         session.commit()
         assert get_skill_status(session, date(2026, 7, 30), "reading") == "ready"
@@ -253,10 +286,7 @@ def test_reading_status_failed(db_session_factory):
     session = db_session_factory()
     try:
         session.add(
-            ReadingExercise(
-                day=date(2026, 7, 30), passage_text="", focus_reference=None,
-                status="failed",
-            )
+            ReadingExercise(day=date(2026, 7, 30), focus_reference=None, status="failed")
         )
         session.commit()
         assert get_skill_status(session, date(2026, 7, 30), "reading") == "failed"
@@ -269,9 +299,7 @@ def test_listening_status_generating_while_mid_pipeline(db_session_factory):
     try:
         session.add(
             ListeningExercise(
-                day=date(2026, 7, 30), script_text="", audio_bytes=None,
-                audio_content_type=None, focus_reference=None,
-                status="script_generating",
+                day=date(2026, 7, 30), focus_reference=None, status="script_generating",
             )
         )
         session.commit()
@@ -284,8 +312,7 @@ def test_listening_status_ready_then_done_after_submission(db_session_factory):
     session = db_session_factory()
     try:
         exercise = ListeningExercise(
-            day=date(2026, 7, 30), script_text="Script.", audio_bytes=b"a",
-            audio_content_type="audio/mpeg", focus_reference=None, status="ready",
+            day=date(2026, 7, 30), focus_reference=None, status="ready",
         )
         session.add(exercise)
         session.commit()
@@ -305,8 +332,7 @@ def test_listening_status_failed_for_either_failure_state(db_session_factory):
     try:
         session.add(
             ListeningExercise(
-                day=date(2026, 7, 30), script_text="Script.", audio_bytes=None,
-                audio_content_type=None, focus_reference=None, status="audio_failed",
+                day=date(2026, 7, 30), focus_reference=None, status="audio_failed",
             )
         )
         session.commit()
@@ -370,15 +396,21 @@ def test_speaking_status_ready_then_done_after_submission(db_session_factory):
 def _full_provider() -> FakeAIProvider:
     return FakeAIProvider(
         reading_exercise_result=ReadingExerciseGenerationResult(
-            status="ok", passage_text="A passage.",
-            questions=[GeneratedQuestion(
-                question_text="Q?", options=["A", "B", "C", "D"], correct_option_index=0
+            status="ok",
+            passages=[GeneratedPassage(
+                passage_text="A passage.",
+                questions=[GeneratedQuestion(
+                    question_text="Q?", options=["A", "B", "C", "D"], correct_option_index=0
+                )],
             )],
         ),
         listening_script_result=ListeningScriptGenerationResult(
-            status="ok", script_text="A script.",
-            questions=[GeneratedQuestion(
-                question_text="Q?", options=["A", "B", "C", "D"], correct_option_index=0
+            status="ok",
+            sections=[GeneratedSection(
+                script_text="A script.",
+                questions=[GeneratedQuestion(
+                    question_text="Q?", options=["A", "B", "C", "D"], correct_option_index=0
+                )],
             )],
         ),
         chat_result=ChatResult(status="ok", message="A generated prompt."),
@@ -592,9 +624,12 @@ def test_retry_skill_on_listening_only_retries_the_failed_step(db_session_factor
     try:
         succeeding_script_failing_audio = FakeAIProvider(
             listening_script_result=ListeningScriptGenerationResult(
-                status="ok", script_text="A script.",
-                questions=[GeneratedQuestion(
-                    question_text="Q?", options=["A", "B", "C", "D"], correct_option_index=0
+                status="ok",
+                sections=[GeneratedSection(
+                    script_text="A script.",
+                    questions=[GeneratedQuestion(
+                        question_text="Q?", options=["A", "B", "C", "D"], correct_option_index=0
+                    )],
                 )],
             ),
         )

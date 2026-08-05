@@ -182,6 +182,10 @@ class GeneratedQuestion(_RequiredTextModel):
     options: list[str] | None = None
     correct_option_index: int | None = Field(default=None, ge=0)
     accepted_answers: list[str] | None = None
+    # Shared instructions for a block of questions (e.g. "Questions 6-9: choose
+    # the correct heading..."), introduced at the standard tier for grouped
+    # types like matching/summary completion — None for standalone questions.
+    group_instructions: str | None = None
 
     @model_validator(mode="after")
     def validate_shape_for_question_type(self):
@@ -200,22 +204,40 @@ class GeneratedQuestion(_RequiredTextModel):
         return self
 
 
+# "advanced" (3 passages/4 sections, full type catalog) is Stage 3 follow-up
+# work, deliberately not accepted here yet — see
+# docs/adr/2026-08-05-ielts-exam-structure-band-scaling.md.
+GenerationTier = Literal["beginner", "standard"]
+
+
+class GeneratedPassage(_RequiredTextModel):
+    title: str | None = None
+    passage_text: str
+    questions: list[GeneratedQuestion] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_has_questions(self):
+        if not self.questions:
+            raise ValueError("a passage requires at least one question")
+        return self
+
+
 class ReadingExerciseGenerationRequest(_RequiredTextModel):
     focus_description: str
+    tier: GenerationTier = "beginner"
 
 
 class ReadingExerciseGenerationResult(BaseModel):
     status: Literal["ok", "error"]
     error_message: str | None = None
-    passage_text: str | None = None
-    questions: list[GeneratedQuestion] = Field(default_factory=list)
+    passages: list[GeneratedPassage] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_status_shape(self):
-        if self.status == "ok" and not (
-            self.passage_text and self.passage_text.strip() and self.questions
-        ):
-            raise ValueError("successful reading exercise result requires a passage and questions")
+        if self.status == "ok" and not self.passages:
+            raise ValueError(
+                "successful reading exercise result requires at least one passage"
+            )
         if self.status == "error" and not (
             self.error_message and self.error_message.strip()
         ):
@@ -223,22 +245,36 @@ class ReadingExerciseGenerationResult(BaseModel):
         return self
 
 
+class GeneratedSection(_RequiredTextModel):
+    # social_conversation, monologue, educational_discussion, academic_lecture —
+    # only social_conversation/monologue are used at standard tier for now.
+    context_type: str = "monologue"
+    script_text: str
+    questions: list[GeneratedQuestion] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_has_questions(self):
+        if not self.questions:
+            raise ValueError("a section requires at least one question")
+        return self
+
+
 class ListeningScriptGenerationRequest(_RequiredTextModel):
     focus_description: str
+    tier: GenerationTier = "beginner"
 
 
 class ListeningScriptGenerationResult(BaseModel):
     status: Literal["ok", "error"]
     error_message: str | None = None
-    script_text: str | None = None
-    questions: list[GeneratedQuestion] = Field(default_factory=list)
+    sections: list[GeneratedSection] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_status_shape(self):
-        if self.status == "ok" and not (
-            self.script_text and self.script_text.strip() and self.questions
-        ):
-            raise ValueError("successful listening script result requires a script and questions")
+        if self.status == "ok" and not self.sections:
+            raise ValueError(
+                "successful listening script result requires at least one section"
+            )
         if self.status == "error" and not (
             self.error_message and self.error_message.strip()
         ):

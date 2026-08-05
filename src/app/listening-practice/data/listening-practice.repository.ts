@@ -5,6 +5,7 @@ import {
   ListeningAnswerResult,
   ListeningExercise,
   ListeningQuestion,
+  ListeningSection,
   ListeningSubmissionResult,
 } from '../models/listening-exercise.model';
 
@@ -14,7 +15,18 @@ function question(value: any): ListeningQuestion {
     questionText: value.question_text,
     questionType: value.question_type,
     options: value.options,
+    groupInstructions: value.group_instructions,
     order: value.order,
+  };
+}
+
+function section(value: any): ListeningSection {
+  return {
+    id: value.id,
+    contextType: value.context_type,
+    scriptText: value.script_text,
+    order: value.order,
+    questions: (value.questions ?? []).map(question),
   };
 }
 
@@ -23,8 +35,7 @@ function exercise(value: any): ListeningExercise {
     day: value.day,
     status: value.status,
     focusReference: value.focus_reference,
-    scriptText: value.script_text,
-    questions: (value.questions ?? []).map(question),
+    sections: (value.sections ?? []).map(section),
   };
 }
 
@@ -44,7 +55,7 @@ function submissionResult(value: any): ListeningSubmissionResult {
     day: value.day,
     score: value.score,
     total: value.total,
-    scriptText: value.script_text,
+    sections: (value.sections ?? []).map(section),
     answers: (value.answers ?? []).map(answerResult),
   };
 }
@@ -59,8 +70,8 @@ export class ListeningPracticeRepository {
     );
   }
 
-  audioUrl(day: string): string {
-    return `/api/listening-practice/${day}/audio`;
+  audioUrl(day: string, order: number): string {
+    return `/api/listening-practice/${day}/audio/${order}`;
   }
 
   async submit(

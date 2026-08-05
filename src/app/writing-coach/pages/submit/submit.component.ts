@@ -39,6 +39,12 @@ export class WritingSubmitComponent implements OnInit {
       this.promptDay = entry.day;
       this.promptTargetBand = entry.targetBand;
       this.promptPhase = entry.phase;
+      // Task 1/Task 2 alternate from the standard tier onward — pre-fill the
+      // task type the generated prompt actually is, rather than leaving the
+      // default 'task2' selected for a Task 1 (data-description) prompt.
+      if (entry.taskType === 'task1' || entry.taskType === 'task2') {
+        this.taskType = entry.taskType;
+      }
     }
     if (this.promptDay) {
       await this.facade.loadLatestForDay(this.promptDay).catch(() => undefined);

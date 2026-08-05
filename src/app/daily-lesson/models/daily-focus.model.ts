@@ -12,6 +12,7 @@ export interface SkillOverviewEntry {
   phase: string;
   rationale: string;
   generatedPromptText: string | null;
+  taskType: string | null;
 }
 
 export interface CheckpointStatus {

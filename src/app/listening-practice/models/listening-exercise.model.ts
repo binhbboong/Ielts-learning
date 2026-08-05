@@ -3,15 +3,23 @@ export interface ListeningQuestion {
   questionText: string;
   questionType: string;
   options: string[] | null;
+  groupInstructions: string | null;
   order: number;
+}
+
+export interface ListeningSection {
+  id: string;
+  contextType: string;
+  scriptText: string | null;
+  order: number;
+  questions: ListeningQuestion[];
 }
 
 export interface ListeningExercise {
   day: string;
   status: string;
   focusReference: string | null;
-  scriptText: string | null;
-  questions: ListeningQuestion[];
+  sections: ListeningSection[];
 }
 
 export interface ListeningAnswerResult {
@@ -27,6 +35,6 @@ export interface ListeningSubmissionResult {
   day: string;
   score: number;
   total: number;
-  scriptText: string;
+  sections: ListeningSection[];
   answers: ListeningAnswerResult[];
 }

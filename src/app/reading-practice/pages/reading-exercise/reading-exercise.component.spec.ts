@@ -6,11 +6,33 @@ import { ReadingExerciseComponent } from './reading-exercise.component';
 
 const exercise = {
   day: '2026-07-30', status: 'ready' as const,
-  focusReference: "the word 'nevertheless'", passageText: 'A passage about nevertheless.',
-  questions: [
+  focusReference: "the word 'nevertheless'",
+  passages: [
     {
-      id: 'q1', questionText: 'What is discussed?', questionType: 'multiple_choice',
-      options: ['A', 'B', 'C', 'D'], order: 1,
+      id: 'p1', title: null, passageText: 'A passage about nevertheless.', order: 1,
+      questions: [
+        {
+          id: 'q1', questionText: 'What is discussed?', questionType: 'multiple_choice',
+          options: ['A', 'B', 'C', 'D'], groupInstructions: null, order: 1,
+        },
+      ],
+    },
+  ],
+};
+
+const twoPassageExercise = {
+  ...exercise,
+  passages: [
+    exercise.passages[0],
+    {
+      id: 'p2', title: 'Passage 2', passageText: 'Second passage.', order: 2,
+      questions: [
+        {
+          id: 'q2', questionText: 'Complete the summary: the delay was caused by ___.',
+          questionType: 'summary_completion', options: null,
+          groupInstructions: 'Complete the summary below.', order: 1,
+        },
+      ],
     },
   ],
 };
@@ -62,6 +84,30 @@ describe('ReadingExerciseComponent', () => {
     expect(component.canSubmit).toBeTrue();
   });
 
+  it('flattens questions across passages in passage/question order', async () => {
+    const { component, repository } = await setUp();
+    repository.get.and.resolveTo(twoPassageExercise);
+    await component.ngOnInit();
+
+    expect(component.flatQuestions.map((q) => q.id)).toEqual(['q1', 'q2']);
+    expect(component.passageSections.length).toBe(2);
+    expect(component.passageSections[1].questions[0].flatIndex).toBe(1);
+  });
+
+  it('does not allow submit until a text-based question has a non-blank answer', async () => {
+    const { component, repository } = await setUp();
+    repository.get.and.resolveTo(twoPassageExercise);
+    await component.ngOnInit();
+    component.selectAnswer(0, 1);
+    expect(component.canSubmit).toBeFalse();
+
+    component.setTextAnswer(1, '   ');
+    expect(component.canSubmit).toBeFalse();
+
+    component.setTextAnswer(1, 'funding');
+    expect(component.canSubmit).toBeTrue();
+  });
+
   it('submits selected answers and shows the result', async () => {
     const { component, repository } = await setUp({
       submit: jasmine.createSpy().and.resolveTo(undefined) as any,
@@ -82,9 +128,22 @@ describe('ReadingExerciseComponent', () => {
     expect(component.facade.result()?.score).toBe(1);
   });
 
+  it('submits a mix of option indexes and free text answers', async () => {
+    const { component, repository } = await setUp();
+    repository.get.and.resolveTo(twoPassageExercise);
+    repository.submit.and.resolveTo({ day: '2026-07-30', score: 2, total: 2, answers: [] });
+    await component.ngOnInit();
+    component.selectAnswer(0, 1);
+    component.setTextAnswer(1, 'funding');
+
+    await component.submit();
+
+    expect(repository.submit).toHaveBeenCalledWith('2026-07-30', [1, 'funding']);
+  });
+
   it('retries generation when the exercise failed', async () => {
     const { component, repository } = await setUp();
-    repository.get.and.resolveTo({ ...exercise, status: 'failed', passageText: null });
+    repository.get.and.resolveTo({ ...exercise, status: 'failed', passages: [] });
     repository.retry.and.resolveTo(exercise);
     await component.ngOnInit();
 
@@ -93,7 +152,7 @@ describe('ReadingExerciseComponent', () => {
     expect(repository.retry).toHaveBeenCalledWith('2026-07-30');
   });
 
-  it('builds pre-filled quick-add data from a wrong answer with no re-entry needed', async () => {
+  it('builds pre-filled quick-add data from a wrong option-based answer with no re-entry needed', async () => {
     const { component } = await setUp();
     await component.ngOnInit();
 
@@ -106,6 +165,19 @@ describe('ReadingExerciseComponent', () => {
     expect(data.ownAnswer).toBe('A');
     expect(data.correctAnswer).toBe('C');
     expect(data.source).toContain('What is discussed?');
+  });
+
+  it('builds pre-filled quick-add data from a wrong text-based answer', async () => {
+    const { component } = await setUp();
+    await component.ngOnInit();
+
+    const data = component.quickAddData({
+      questionText: 'Complete the summary.', questionType: 'summary_completion',
+      options: null, learnerAnswer: 'staffing', correctAnswer: 'funding', correct: false,
+    });
+
+    expect(data.ownAnswer).toBe('staffing');
+    expect(data.correctAnswer).toBe('funding');
   });
 
   it('toggles the quick-add panel open and closed per question', async () => {

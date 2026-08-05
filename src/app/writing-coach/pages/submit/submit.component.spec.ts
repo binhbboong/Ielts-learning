@@ -87,6 +87,7 @@ describe('WritingSubmitComponent', () => {
           day: '2026-07-30', skill: 'writing', status: 'ready', focusReference: null,
           targetBand: 4.5, estimatedMinutes: 20, priority: 'primary', phase: 'foundation',
           rationale: 'Scheduled', generatedPromptText: 'Describe your daily routine.',
+          taskType: null,
         },
       ],
     });
@@ -117,6 +118,44 @@ describe('WritingSubmitComponent', () => {
     }));
   });
 
+  it('pre-fills task type from the daily-generated prompt (Task 1, not the default Task 2)', async () => {
+    const repository = jasmine.createSpyObj<WritingCoachRepository>(
+      'WritingCoachRepository', ['submit'],
+    );
+    const dailyLessonRepository = dailyLessonRepositoryStub();
+    dailyLessonRepository.getOverview.and.resolveTo({
+      examType: 'ielts_academic', week: 5, phase: 'consolidation', targetBand: 6.0,
+      totalMinutes: 60, reviewMinutes: 10, effectiveDay: '2026-07-31',
+      checkpoint: {
+        day: '2026-07-31',
+        skills: { reading: false, listening: false, writing: false, speaking: false },
+        vocabularyQuiz: false, passedCount: 0, requiredCount: 4, allPassed: false,
+      },
+      skills: [
+        {
+          day: '2026-07-31', skill: 'writing', status: 'ready', focusReference: null,
+          targetBand: 6.0, estimatedMinutes: 38, priority: 'primary', phase: 'consolidation',
+          rationale: 'Scheduled', generatedPromptText: 'Describe the chart below.',
+          taskType: 'task1',
+        },
+      ],
+    });
+    await TestBed.configureTestingModule({
+      imports: [WritingSubmitComponent],
+      providers: [
+        provideRouter([]),
+        { provide: WritingCoachRepository, useValue: repository },
+        { provide: DailyLessonRepository, useValue: dailyLessonRepository },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(WritingSubmitComponent);
+    const component = fixture.componentInstance;
+
+    await component.ngOnInit();
+
+    expect(component.taskType).toBe('task1');
+  });
+
   it('shows the latest same-day attempt instead of a blank form, until asked to write again', async () => {
     const repository = jasmine.createSpyObj<WritingCoachRepository>(
       'WritingCoachRepository', ['submit', 'list'],
@@ -141,6 +180,7 @@ describe('WritingSubmitComponent', () => {
           day: '2026-07-30', skill: 'writing', status: 'done', focusReference: null,
           targetBand: 4.5, estimatedMinutes: 20, priority: 'primary', phase: 'foundation',
           rationale: 'Scheduled', generatedPromptText: 'Describe your daily routine.',
+          taskType: null,
         },
       ],
     });

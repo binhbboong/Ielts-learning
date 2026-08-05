@@ -1,6 +1,5 @@
 import uuid
-from datetime import date, datetime
-from typing import Literal
+from datetime import date
 
 from pydantic import BaseModel, ConfigDict
 
@@ -12,15 +11,25 @@ class ListeningQuestionAnswering(BaseModel):
     question_text: str
     question_type: str
     options: list[str] | None
+    group_instructions: str | None
     order: int
+
+
+class ListeningSectionAnswering(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    context_type: str
+    script_text: str | None
+    order: int
+    questions: list[ListeningQuestionAnswering]
 
 
 class ListeningExerciseAnswering(BaseModel):
     day: date
     status: str
     focus_reference: str | None
-    script_text: str | None
-    questions: list[ListeningQuestionAnswering]
+    sections: list[ListeningSectionAnswering]
 
 
 class ListeningSubmitRequest(BaseModel):
@@ -40,5 +49,5 @@ class ListeningSubmissionResult(BaseModel):
     day: date
     score: int
     total: int
-    script_text: str
+    sections: list[ListeningSectionAnswering]
     answers: list[ListeningAnswerResult]

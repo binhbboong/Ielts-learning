@@ -66,7 +66,9 @@
         </ol>
         <section class="transcript">
           <p class="eyebrow">Transcript</p>
-          <p class="script-text">{{ result.scriptText }}</p>
+          @for (section of result.sections; track section.id) {
+            <p class="script-text">{{ section.scriptText }}</p>
+          }
         </section>
         <a class="button-link primary" routerLink="/">Back to today's lesson</a>
       </section>
@@ -75,38 +77,49 @@
         @if (exercise.focusReference) {
           <p class="focus-note">Targets: {{ exercise.focusReference }}</p>
         }
-        <div class="audio-player">
-          <audio controls [src]="audioUrl" data-testid="audio-player"></audio>
-        </div>
-        <ol class="question-list">
-          @for (question of exercise.questions; track question.id; let qi = $index) {
-            <li>
-              <p>{{ question.questionText }}</p>
-              @if (isTextBasedQuestionType(question.questionType)) {
-                <input
-                  type="text"
-                  class="text-answer"
-                  [attr.data-testid]="'text-answer-' + qi"
-                  [ngModel]="selectedAnswers[qi]"
-                  (ngModelChange)="setTextAnswer(qi, $event)"
-                  name="answer-{{ qi }}"
-                />
-              } @else {
-                <div class="options">
-                  @for (option of question.options; track $index; let oi = $index) {
-                    <button
-                      type="button"
-                      class="option"
-                      [class.selected]="selectedAnswers[qi] === oi"
-                      (click)="selectAnswer(qi, oi)">
-                      {{ option }}
-                    </button>
+        @for (view of sectionViews; track view.section.id) {
+          <article class="section" [attr.data-testid]="'section-' + view.section.order">
+            <div class="audio-player">
+              <audio
+                controls
+                [src]="audioUrl(view.section.order)"
+                [attr.data-testid]="'audio-player-' + view.section.order"
+              ></audio>
+            </div>
+            <ol class="question-list">
+              @for (item of view.questions; track item.question.id) {
+                <li>
+                  @if (item.question.groupInstructions) {
+                    <p class="group-instructions">{{ item.question.groupInstructions }}</p>
                   }
-                </div>
+                  <p>{{ item.question.questionText }}</p>
+                  @if (isTextBasedQuestionType(item.question.questionType)) {
+                    <input
+                      type="text"
+                      class="text-answer"
+                      [attr.data-testid]="'text-answer-' + item.flatIndex"
+                      [ngModel]="selectedAnswers[item.flatIndex]"
+                      (ngModelChange)="setTextAnswer(item.flatIndex, $event)"
+                      name="answer-{{ item.flatIndex }}"
+                    />
+                  } @else {
+                    <div class="options">
+                      @for (option of item.question.options; track $index; let oi = $index) {
+                        <button
+                          type="button"
+                          class="option"
+                          [class.selected]="selectedAnswers[item.flatIndex] === oi"
+                          (click)="selectAnswer(item.flatIndex, oi)">
+                          {{ option }}
+                        </button>
+                      }
+                    </div>
+                  }
+                </li>
               }
-            </li>
-          }
-        </ol>
+            </ol>
+          </article>
+        }
         <div class="actions">
           <button class="primary" type="button" [disabled]="!canSubmit" (click)="submit()">
             Submit Answers

@@ -12,6 +12,7 @@ from app.models.user import User
 from app.schemas.reading_practice import (
     ReadingAnswerResult,
     ReadingExerciseAnswering,
+    ReadingPassageAnswering,
     ReadingSubmissionResult,
     ReadingSubmitRequest,
 )
@@ -23,6 +24,29 @@ router = APIRouter(
 )
 
 
+def _build_exercise_answering(db: Session, exercise: ReadingExercise) -> ReadingExerciseAnswering:
+    passages = service.get_passages(db, exercise.id) if exercise.status == "ready" else []
+    questions = service.get_questions(db, exercise.id) if exercise.status == "ready" else []
+    questions_by_passage: dict = {}
+    for question in questions:
+        questions_by_passage.setdefault(question.passage_id, []).append(question)
+    return ReadingExerciseAnswering(
+        day=exercise.day,
+        status=exercise.status,
+        focus_reference=exercise.focus_reference,
+        passages=[
+            ReadingPassageAnswering(
+                id=passage.id,
+                title=passage.title,
+                passage_text=passage.passage_text,
+                order=passage.order,
+                questions=questions_by_passage.get(passage.id, []),
+            )
+            for passage in passages
+        ],
+    )
+
+
 @router.get("/{day}", response_model=ReadingExerciseAnswering)
 def get_exercise(
     day: date,
@@ -31,13 +55,7 @@ def get_exercise(
     user: User = Depends(require_learner),
 ) -> ReadingExerciseAnswering:
     exercise = service.get_or_create_exercise(db, day, None, provider, user.id)
-    return ReadingExerciseAnswering(
-        day=exercise.day,
-        status=exercise.status,
-        focus_reference=exercise.focus_reference,
-        passage_text=exercise.passage_text if exercise.status == "ready" else None,
-        questions=service.get_questions(db, exercise.id),
-    )
+    return _build_exercise_answering(db, exercise)
 
 
 @router.post("/{day}/submit", response_model=ReadingSubmissionResult)
@@ -77,10 +95,4 @@ def retry(
     user: User = Depends(require_learner),
 ) -> ReadingExerciseAnswering:
     exercise = service.retry_exercise(db, day, provider, user.id)
-    return ReadingExerciseAnswering(
-        day=exercise.day,
-        status=exercise.status,
-        focus_reference=exercise.focus_reference,
-        passage_text=exercise.passage_text if exercise.status == "ready" else None,
-        questions=service.get_questions(db, exercise.id),
-    )
+    return _build_exercise_answering(db, exercise)

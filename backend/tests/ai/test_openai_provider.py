@@ -31,12 +31,17 @@ class _FakeOpenAIClient:
 
 def test_openai_provider_generates_reading_exercise_from_model_response():
     payload = {
-        "passage_text": "A passage about nevertheless.",
-        "questions": [
+        "passages": [
             {
-                "question_text": "What does the passage discuss?",
-                "options": ["A", "B", "C", "D"],
-                "correct_option_index": 1,
+                "title": None,
+                "passage_text": "A passage about nevertheless.",
+                "questions": [
+                    {
+                        "question_text": "What does the passage discuss?",
+                        "options": ["A", "B", "C", "D"],
+                        "correct_option_index": 1,
+                    }
+                ],
             }
         ],
     }
@@ -47,7 +52,7 @@ def test_openai_provider_generates_reading_exercise_from_model_response():
     )
 
     assert result.status == "ok"
-    assert result.passage_text == "A passage about nevertheless."
+    assert result.passages[0].passage_text == "A passage about nevertheless."
 
 
 def test_openai_provider_returns_error_result_on_client_failure():
@@ -63,12 +68,17 @@ def test_openai_provider_returns_error_result_on_client_failure():
 
 def test_openai_provider_generates_listening_script_from_model_response():
     payload = {
-        "script_text": "A script about nevertheless.",
-        "questions": [
+        "sections": [
             {
-                "question_text": "What does the script discuss?",
-                "options": ["A", "B", "C", "D"],
-                "correct_option_index": 2,
+                "context_type": "monologue",
+                "script_text": "A script about nevertheless.",
+                "questions": [
+                    {
+                        "question_text": "What does the script discuss?",
+                        "options": ["A", "B", "C", "D"],
+                        "correct_option_index": 2,
+                    }
+                ],
             }
         ],
     }
@@ -79,7 +89,7 @@ def test_openai_provider_generates_listening_script_from_model_response():
     )
 
     assert result.status == "ok"
-    assert result.script_text == "A script about nevertheless."
+    assert result.sections[0].script_text == "A script about nevertheless."
 
 
 def test_openai_provider_generates_chat_response():

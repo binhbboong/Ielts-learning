@@ -3,7 +3,9 @@ from app.ai.schemas import (
     ChatRequest,
     ChatResult,
     CriterionFeedback,
+    GeneratedPassage,
     GeneratedQuestion,
+    GeneratedSection,
     ListeningScriptGenerationRequest,
     ListeningScriptGenerationResult,
     QuizGenerationRequest,
@@ -27,6 +29,105 @@ def _feedback(reference: str, focus: str) -> CriterionFeedback:
         ),
         strengths=[f'The response includes the idea "{reference}".'],
         weaknesses=[f"Develop {focus} with more precise evidence and control."],
+    )
+
+
+def _beginner_reading_passage(focus: str) -> GeneratedPassage:
+    return GeneratedPassage(
+        passage_text=(
+            f"Local demo passage targeting {focus}. Connect Claude for a real "
+            "IELTS-style Reading passage."
+        ),
+        questions=[
+            GeneratedQuestion(
+                question_text=f"Local demo question about {focus}?",
+                question_type="multiple_choice",
+                options=["Option A", "Option B", "Option C", "Option D"],
+                correct_option_index=0,
+            ),
+            GeneratedQuestion(
+                question_text=f"The passage's main claim relates to {focus}.",
+                question_type="true_false_not_given",
+                options=["True", "False", "Not Given"],
+                correct_option_index=0,
+            ),
+        ],
+    )
+
+
+def _standard_reading_second_passage(focus: str) -> GeneratedPassage:
+    return GeneratedPassage(
+        title=f"Local demo passage 2: {focus}",
+        passage_text=(
+            f"Local demo second passage targeting {focus}, with paragraphs A and B. "
+            "Connect Claude for a real IELTS-style Reading passage."
+        ),
+        questions=[
+            GeneratedQuestion(
+                question_text="Paragraph A",
+                question_type="matching_headings",
+                options=["Local demo heading 1", "Local demo heading 2"],
+                correct_option_index=0,
+                group_instructions=(
+                    "Questions: choose the correct heading for each paragraph from "
+                    "the list below."
+                ),
+            ),
+            GeneratedQuestion(
+                question_text="The passage's summary mentions ___.",
+                question_type="summary_completion",
+                accepted_answers=["a detail", "detail"],
+                group_instructions="Complete the summary below using no more than two words.",
+            ),
+        ],
+    )
+
+
+def _beginner_listening_section(focus: str) -> GeneratedSection:
+    return GeneratedSection(
+        context_type="monologue",
+        script_text=(
+            f"Local demo script targeting {focus}. Connect Claude for a real "
+            "IELTS-style Listening script."
+        ),
+        questions=[
+            GeneratedQuestion(
+                question_text=f"Local demo question about {focus}?",
+                question_type="multiple_choice",
+                options=["Option A", "Option B", "Option C", "Option D"],
+                correct_option_index=0,
+            ),
+            GeneratedQuestion(
+                question_text=f"Complete the note: the speaker mentions ___ ({focus}).",
+                question_type="note_completion",
+                accepted_answers=["a detail", "detail"],
+            ),
+        ],
+    )
+
+
+def _standard_listening_second_section(focus: str) -> GeneratedSection:
+    return GeneratedSection(
+        context_type="social_conversation",
+        script_text=(
+            f"Local demo second script targeting {focus}. Connect Claude for a real "
+            "IELTS-style Listening script."
+        ),
+        questions=[
+            GeneratedQuestion(
+                question_text="Local demo speaker",
+                question_type="matching",
+                options=["Local demo option 1", "Local demo option 2"],
+                correct_option_index=0,
+                group_instructions="Match each speaker to the correct option below.",
+            ),
+            GeneratedQuestion(
+                question_text="Local demo table row ___.",
+                question_type="table_completion",
+                accepted_answers=["a detail", "detail"],
+                group_instructions="Complete the table below using no more than two words.",
+            ),
+        ],
     )
 
 
@@ -83,53 +184,23 @@ class LocalAIProvider(AIProvider):
         self, request: ReadingExerciseGenerationRequest
     ) -> ReadingExerciseGenerationResult:
         focus = request.focus_description
-        return ReadingExerciseGenerationResult(
-            status="ok",
-            passage_text=(
-                f"Local demo passage targeting {focus}. Connect Claude for a real "
-                "IELTS-style Reading passage."
-            ),
-            # Beginner-tier catalog (multiple_choice + true_false_not_given) per
-            # docs/adr/2026-08-05-ielts-exam-structure-band-scaling.md.
-            questions=[
-                GeneratedQuestion(
-                    question_text=f"Local demo question about {focus}?",
-                    question_type="multiple_choice",
-                    options=["Option A", "Option B", "Option C", "Option D"],
-                    correct_option_index=0,
-                ),
-                GeneratedQuestion(
-                    question_text=f"The passage's main claim relates to {focus}.",
-                    question_type="true_false_not_given",
-                    options=["True", "False", "Not Given"],
-                    correct_option_index=0,
-                ),
-            ],
-        )
+        # Beginner tier: 1 passage (multiple_choice + true_false_not_given).
+        # Standard tier adds a 2nd passage (matching_headings +
+        # summary_completion) per
+        # docs/adr/2026-08-05-ielts-exam-structure-band-scaling.md.
+        passages = [_beginner_reading_passage(focus)]
+        if request.tier == "standard":
+            passages.append(_standard_reading_second_passage(focus))
+        return ReadingExerciseGenerationResult(status="ok", passages=passages)
 
     def generate_listening_script(
         self, request: ListeningScriptGenerationRequest
     ) -> ListeningScriptGenerationResult:
         focus = request.focus_description
-        return ListeningScriptGenerationResult(
-            status="ok",
-            script_text=(
-                f"Local demo script targeting {focus}. Connect Claude for a real "
-                "IELTS-style Listening script."
-            ),
-            # Beginner-tier catalog (multiple_choice + note_completion) per
-            # docs/adr/2026-08-05-ielts-exam-structure-band-scaling.md.
-            questions=[
-                GeneratedQuestion(
-                    question_text=f"Local demo question about {focus}?",
-                    question_type="multiple_choice",
-                    options=["Option A", "Option B", "Option C", "Option D"],
-                    correct_option_index=0,
-                ),
-                GeneratedQuestion(
-                    question_text=f"Complete the note: the speaker mentions ___ ({focus}).",
-                    question_type="note_completion",
-                    accepted_answers=["a detail", "detail"],
-                ),
-            ],
-        )
+        # Beginner tier: 1 section (multiple_choice + note_completion). Standard
+        # tier adds a 2nd section (matching + table_completion) per
+        # docs/adr/2026-08-05-ielts-exam-structure-band-scaling.md.
+        sections = [_beginner_listening_section(focus)]
+        if request.tier == "standard":
+            sections.append(_standard_listening_second_section(focus))
+        return ListeningScriptGenerationResult(status="ok", sections=sections)

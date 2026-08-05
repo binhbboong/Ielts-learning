@@ -7,16 +7,25 @@ describe('ListeningPracticeRepository', () => {
     const api = jasmine.createSpyObj<ApiClient>('ApiClient', ['get', 'post']);
     api.get.and.returnValue(of({
       day: '2026-07-30', status: 'ready', focus_reference: "the word 'nevertheless'",
-      script_text: null, questions: [
+      sections: [
         {
-          id: 'q1', question_text: 'What is discussed?', question_type: 'multiple_choice',
-          options: ['A', 'B', 'C', 'D'], order: 1,
+          id: 's1', context_type: 'monologue', script_text: null, order: 1,
+          questions: [
+            {
+              id: 'q1', question_text: 'What is discussed?', question_type: 'multiple_choice',
+              options: ['A', 'B', 'C', 'D'], group_instructions: null, order: 1,
+            },
+          ],
         },
       ],
     }));
     api.post.and.returnValues(
       of({
-        day: '2026-07-30', score: 1, total: 1, script_text: 'A script.', answers: [
+        day: '2026-07-30', score: 1, total: 1,
+        sections: [
+          { id: 's1', context_type: 'monologue', script_text: 'A script.', order: 1, questions: [] },
+        ],
+        answers: [
           {
             question_text: 'What is discussed?', question_type: 'multiple_choice',
             options: ['A', 'B', 'C', 'D'], learner_answer: 1, correct_answer: 1, correct: true,
@@ -25,21 +34,21 @@ describe('ListeningPracticeRepository', () => {
       }),
       of({
         day: '2026-07-30', status: 'script_generated', focus_reference: "the word 'nevertheless'",
-        script_text: null, questions: [],
+        sections: [],
       }),
       of({
         day: '2026-07-30', status: 'ready', focus_reference: "the word 'nevertheless'",
-        script_text: null, questions: [],
+        sections: [],
       }),
     );
     const repository = new ListeningPracticeRepository(api);
 
     const exercise = await repository.get('2026-07-30');
-    expect(exercise.questions[0].questionText).toBe('What is discussed?');
+    expect(exercise.sections[0].questions[0].questionText).toBe('What is discussed?');
 
     const result = await repository.submit('2026-07-30', [1]);
     expect(result.score).toBe(1);
-    expect(result.scriptText).toBe('A script.');
+    expect(result.sections[0].scriptText).toBe('A script.');
 
     const retriedScript = await repository.retryScript('2026-07-30');
     expect(retriedScript.status).toBe('script_generated');
@@ -59,12 +68,12 @@ describe('ListeningPracticeRepository', () => {
     );
   });
 
-  it('builds the audio URL for a given day', () => {
+  it('builds the audio URL for a given day and section order', () => {
     const api = jasmine.createSpyObj<ApiClient>('ApiClient', ['get', 'post']);
     const repository = new ListeningPracticeRepository(api);
 
-    expect(repository.audioUrl('2026-07-30')).toBe(
-      '/api/listening-practice/2026-07-30/audio',
+    expect(repository.audioUrl('2026-07-30', 2)).toBe(
+      '/api/listening-practice/2026-07-30/audio/2',
     );
   });
 

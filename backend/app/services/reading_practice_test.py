@@ -1,15 +1,18 @@
 from datetime import date
 
 from app.ai.schemas import (
+    GeneratedPassage,
     GeneratedQuestion,
     ReadingExerciseGenerationRequest,
     ReadingExerciseGenerationResult,
 )
 
 from app.ai.testing import FakeAIProvider
-from app.models.reading_practice import ReadingExercise, ReadingQuestion
+from app.models.reading_practice import ReadingExercise, ReadingPassage, ReadingQuestion
 from app.services.reading_practice import (
     get_or_create_exercise,
+    get_passages,
+    get_questions,
     retry_exercise,
     score_submission,
 )
@@ -18,18 +21,24 @@ from app.services.reading_practice import (
 def _success_result() -> ReadingExerciseGenerationResult:
     return ReadingExerciseGenerationResult(
         status="ok",
-        passage_text="A passage about nevertheless.",
-        questions=[
-            GeneratedQuestion(
-                question_text="What is discussed?",
-                options=["A", "B", "C", "D"],
-                correct_option_index=1,
+        passages=[
+            GeneratedPassage(
+                passage_text="A passage about nevertheless.",
+                questions=[
+                    GeneratedQuestion(
+                        question_text="What is discussed?",
+                        options=["A", "B", "C", "D"],
+                        correct_option_index=1,
+                    )
+                ],
             )
         ],
     )
 
 
-def test_first_call_generates_and_persists_exercise_with_questions(db_session_factory):
+def test_first_call_generates_and_persists_exercise_with_passage_and_questions(
+    db_session_factory,
+):
     session = db_session_factory()
     provider = FakeAIProvider(reading_exercise_result=_success_result())
 
@@ -38,13 +47,15 @@ def test_first_call_generates_and_persists_exercise_with_questions(db_session_fa
     )
 
     assert exercise.status == "ready"
-    assert exercise.passage_text == "A passage about nevertheless."
+    passages = get_passages(session, exercise.id)
+    assert len(passages) == 1
+    assert passages[0].passage_text == "A passage about nevertheless."
     assert provider.reading_exercise_requests == [
-        ReadingExerciseGenerationRequest(focus_description="the word 'nevertheless'")
+        ReadingExerciseGenerationRequest(
+            focus_description="the word 'nevertheless'", tier="beginner",
+        )
     ]
-    questions = (
-        session.query(ReadingQuestion).filter_by(exercise_id=exercise.id).all()
-    )
+    questions = get_questions(session, exercise.id)
     assert len(questions) == 1
     assert questions[0].correct_option_index == 1
     session.close()
@@ -96,20 +107,74 @@ def test_no_focus_reference_still_generates_using_a_general_default(db_session_f
     session.close()
 
 
+def test_standard_tier_requests_and_persists_two_passages(db_session_factory):
+    session = db_session_factory()
+    provider = FakeAIProvider(
+        reading_exercise_result=ReadingExerciseGenerationResult(
+            status="ok",
+            passages=[
+                GeneratedPassage(
+                    passage_text="Passage 1.",
+                    questions=[
+                        GeneratedQuestion(
+                            question_text="Q1?", options=["A", "B"], correct_option_index=0,
+                        )
+                    ],
+                ),
+                GeneratedPassage(
+                    title="Passage 2 title",
+                    passage_text="Passage 2.",
+                    questions=[
+                        GeneratedQuestion(
+                            question_text="Paragraph A",
+                            question_type="matching_headings",
+                            options=["Heading 1", "Heading 2"],
+                            correct_option_index=0,
+                            group_instructions="Match each paragraph to a heading.",
+                        )
+                    ],
+                ),
+            ],
+        )
+    )
+
+    exercise = get_or_create_exercise(
+        session, date(2026, 7, 30), "focus", provider, tier="standard",
+    )
+
+    assert provider.reading_exercise_requests == [
+        ReadingExerciseGenerationRequest(focus_description="focus", tier="standard")
+    ]
+    passages = get_passages(session, exercise.id)
+    assert [p.passage_text for p in passages] == ["Passage 1.", "Passage 2."]
+    assert passages[1].title == "Passage 2 title"
+    questions = get_questions(session, exercise.id)
+    assert [q.question_type for q in questions] == ["multiple_choice", "matching_headings"]
+    assert questions[1].group_instructions == "Match each paragraph to a heading."
+    session.close()
+
+
 def _three_question_result() -> ReadingExerciseGenerationResult:
     return ReadingExerciseGenerationResult(
         status="ok",
-        passage_text="A passage with three questions.",
-        questions=[
-            GeneratedQuestion(
-                question_text="Q1?", options=["A", "B", "C", "D"], correct_option_index=0
-            ),
-            GeneratedQuestion(
-                question_text="Q2?", options=["A", "B", "C", "D"], correct_option_index=1
-            ),
-            GeneratedQuestion(
-                question_text="Q3?", options=["A", "B", "C", "D"], correct_option_index=2
-            ),
+        passages=[
+            GeneratedPassage(
+                passage_text="A passage with three questions.",
+                questions=[
+                    GeneratedQuestion(
+                        question_text="Q1?", options=["A", "B", "C", "D"],
+                        correct_option_index=0,
+                    ),
+                    GeneratedQuestion(
+                        question_text="Q2?", options=["A", "B", "C", "D"],
+                        correct_option_index=1,
+                    ),
+                    GeneratedQuestion(
+                        question_text="Q3?", options=["A", "B", "C", "D"],
+                        correct_option_index=2,
+                    ),
+                ],
+            )
         ],
     )
 
@@ -151,20 +216,24 @@ def test_score_submission_is_idempotent_when_already_submitted(db_session_factor
 def _mixed_type_result() -> ReadingExerciseGenerationResult:
     return ReadingExerciseGenerationResult(
         status="ok",
-        passage_text="A passage with mixed question types.",
-        questions=[
-            GeneratedQuestion(
-                question_text="What is discussed?",
-                question_type="multiple_choice",
-                options=["A", "B", "C", "D"],
-                correct_option_index=1,
-            ),
-            GeneratedQuestion(
-                question_text="The delay was caused by funding shortfalls.",
-                question_type="true_false_not_given",
-                options=["True", "False", "Not Given"],
-                correct_option_index=0,
-            ),
+        passages=[
+            GeneratedPassage(
+                passage_text="A passage with mixed question types.",
+                questions=[
+                    GeneratedQuestion(
+                        question_text="What is discussed?",
+                        question_type="multiple_choice",
+                        options=["A", "B", "C", "D"],
+                        correct_option_index=1,
+                    ),
+                    GeneratedQuestion(
+                        question_text="The delay was caused by funding shortfalls.",
+                        question_type="true_false_not_given",
+                        options=["True", "False", "Not Given"],
+                        correct_option_index=0,
+                    ),
+                ],
+            )
         ],
     )
 
@@ -179,9 +248,7 @@ def test_score_submission_grades_true_false_not_given_as_option_based(
     submission = score_submission(session, exercise, [1, 0])
 
     assert submission.score == 2
-    questions = session.query(ReadingQuestion).filter_by(exercise_id=exercise.id).order_by(
-        ReadingQuestion.order
-    ).all()
+    questions = get_questions(session, exercise.id)
     assert questions[1].question_type == "true_false_not_given"
     session.close()
 
@@ -204,10 +271,43 @@ def test_retry_after_failure_reuses_the_original_focus_and_succeeds(db_session_f
     assert retried.status == "ready"
     assert retried.id == exercise.id
     assert succeeding_provider.reading_exercise_requests == [
-        ReadingExerciseGenerationRequest(focus_description="the word 'nevertheless'")
+        ReadingExerciseGenerationRequest(
+            focus_description="the word 'nevertheless'", tier="beginner",
+        )
     ]
-    questions = (
-        session.query(ReadingQuestion).filter_by(exercise_id=exercise.id).all()
-    )
+    questions = get_questions(session, exercise.id)
     assert len(questions) == 1
+    session.close()
+
+
+def test_retry_replaces_passages_not_just_appends(db_session_factory):
+    session = db_session_factory()
+    provider = FakeAIProvider(reading_exercise_result=_success_result())
+    exercise = get_or_create_exercise(session, date(2026, 7, 30), "focus", provider)
+    assert len(get_passages(session, exercise.id)) == 1
+
+    retried_provider = FakeAIProvider(
+        reading_exercise_result=ReadingExerciseGenerationResult(
+            status="ok",
+            passages=[
+                GeneratedPassage(
+                    passage_text="A brand new passage.",
+                    questions=[
+                        GeneratedQuestion(
+                            question_text="New Q?", options=["A", "B"],
+                            correct_option_index=0,
+                        )
+                    ],
+                )
+            ],
+        )
+    )
+    retry_exercise(session, date(2026, 7, 30), retried_provider)
+
+    passages = get_passages(session, exercise.id)
+    assert len(passages) == 1
+    assert passages[0].passage_text == "A brand new passage."
+    assert (
+        session.query(ReadingPassage).filter_by(exercise_id=exercise.id).count() == 1
+    )
     session.close()

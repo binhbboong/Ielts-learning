@@ -22,8 +22,8 @@ export class ListeningPracticeFacade {
 
   constructor(private readonly repository: ListeningPracticeRepository) {}
 
-  audioUrl(day: string): string {
-    return this.repository.audioUrl(day);
+  audioUrl(day: string, order: number): string {
+    return this.repository.audioUrl(day, order);
   }
 
   async load(day: string): Promise<void> {

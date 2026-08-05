@@ -16,8 +16,14 @@ describe('DailyLessonRepository', () => {
         all_passed: false,
       },
       skills: [
-        { day: '2026-07-30', skill: 'reading', status: 'ready', focus_reference: "the word 'nevertheless'" },
-        { day: '2026-07-30', skill: 'listening', status: 'generating', focus_reference: null },
+        {
+          day: '2026-07-30', skill: 'reading', status: 'ready',
+          focus_reference: "the word 'nevertheless'",
+        },
+        {
+          day: '2026-07-30', skill: 'writing', status: 'ready', focus_reference: null,
+          task_type: 'task1',
+        },
       ],
     }));
     api.post.and.returnValue(of({
@@ -28,6 +34,8 @@ describe('DailyLessonRepository', () => {
     const overview = await repository.getOverview();
     expect(overview.skills.length).toBe(2);
     expect(overview.skills[0].focusReference).toBe("the word 'nevertheless'");
+    expect(overview.skills[0].taskType).toBeNull();
+    expect(overview.skills[1].taskType).toBe('task1');
     expect(overview.effectiveDay).toBe('2026-07-30');
     expect(overview.checkpoint.requiredCount).toBe(5);
     expect(overview.checkpoint.allPassed).toBe(false);

@@ -7,10 +7,15 @@ describe('ReadingPracticeRepository', () => {
     const api = jasmine.createSpyObj<ApiClient>('ApiClient', ['get', 'post']);
     api.get.and.returnValue(of({
       day: '2026-07-30', status: 'ready', focus_reference: "the word 'nevertheless'",
-      passage_text: 'A passage.', questions: [
+      passages: [
         {
-          id: 'q1', question_text: 'What is discussed?', question_type: 'multiple_choice',
-          options: ['A', 'B', 'C', 'D'], order: 1,
+          id: 'p1', title: null, passage_text: 'A passage.', order: 1,
+          questions: [
+            {
+              id: 'q1', question_text: 'What is discussed?', question_type: 'multiple_choice',
+              options: ['A', 'B', 'C', 'D'], group_instructions: null, order: 1,
+            },
+          ],
         },
       ],
     }));
@@ -25,21 +30,25 @@ describe('ReadingPracticeRepository', () => {
       }),
       of({
         day: '2026-07-30', status: 'ready', focus_reference: "the word 'nevertheless'",
-        passage_text: 'A new passage.', questions: [],
+        passages: [
+          {
+            id: 'p1', title: null, passage_text: 'A new passage.', order: 1, questions: [],
+          },
+        ],
       }),
     );
     const repository = new ReadingPracticeRepository(api);
 
     const exercise = await repository.get('2026-07-30');
-    expect(exercise.passageText).toBe('A passage.');
-    expect(exercise.questions[0].questionText).toBe('What is discussed?');
+    expect(exercise.passages[0].passageText).toBe('A passage.');
+    expect(exercise.passages[0].questions[0].questionText).toBe('What is discussed?');
 
     const result = await repository.submit('2026-07-30', [1]);
     expect(result.score).toBe(1);
     expect(result.answers[0].correct).toBeTrue();
 
     const retried = await repository.retry('2026-07-30');
-    expect(retried.passageText).toBe('A new passage.');
+    expect(retried.passages[0].passageText).toBe('A new passage.');
 
     expect(api.get).toHaveBeenCalledWith('/api/reading-practice/2026-07-30');
     expect(api.post).toHaveBeenCalledWith(

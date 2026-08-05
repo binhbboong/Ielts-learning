@@ -101,16 +101,42 @@ and cite exact transcript wording. Do not estimate pronunciation."""
     def generate_reading_exercise(
         self, request: ReadingExerciseGenerationRequest
     ) -> ReadingExerciseGenerationResult:
-        prompt = f"""Generate one IELTS-style Reading passage (300-400 words) and 5-8
+        if request.tier == "standard":
+            prompt = f"""Generate two IELTS-style Reading passages (300-400 words each,
+increasing difficulty) targeting: {request.focus_description}
+
+Passage 1: 5-8 questions mixing "multiple_choice" and "true_false_not_given" (a
+statement the learner judges against the passage). Include at least one of each.
+
+Passage 2: give it a short "title", and 3-5 questions mixing "matching_headings"
+(match a paragraph to the correct heading from a shared list) and
+"summary_completion" (fill a blank in a short summary of the passage). Group
+each type's questions under a shared group_instructions string explaining the
+task (e.g. "Choose the correct heading for each paragraph from the list
+below." / "Complete the summary below using no more than two words.").
+
+Return JSON only with key: passages (array of 2 objects, each with title
+[string, null for passage 1], passage_text [string], questions [array of
+objects with question_text, question_type, group_instructions [string or
+null], options [array of strings, required for multiple_choice/
+true_false_not_given/matching_headings — exactly 4 for multiple_choice,
+exactly ["True", "False", "Not Given"] for true_false_not_given, the shared
+heading list for matching_headings], correct_option_index [0-based int
+indexing into options, required for option-based types], accepted_answers
+[array of 1-3 acceptable answer strings, required for summary_completion]])."""
+        else:
+            prompt = f"""Generate one IELTS-style Reading passage (300-400 words) and 5-8
 comprehension questions targeting: {request.focus_description}
 
 Use a mix of two question types: "multiple_choice" and "true_false_not_given" (a
 statement the learner judges against the passage). Include at least one of each.
 
-Return JSON only with keys: passage_text (string), questions (array of objects with
-question_text, question_type ["multiple_choice" or "true_false_not_given"], options
-[exactly 4 strings for multiple_choice, exactly ["True", "False", "Not Given"] for
-true_false_not_given], correct_option_index [0-based int indexing into options])."""
+Return JSON only with key: passages (array of 1 object with title [null],
+passage_text [string], questions [array of objects with question_text,
+question_type ["multiple_choice" or "true_false_not_given"], options [exactly 4
+strings for multiple_choice, exactly ["True", "False", "Not Given"] for
+true_false_not_given], correct_option_index [0-based int indexing into
+options]])."""
         try:
             return ReadingExerciseGenerationResult(
                 status="ok", **self._generate_json(prompt, 2500)
@@ -124,7 +150,29 @@ true_false_not_given], correct_option_index [0-based int indexing into options])
     def generate_listening_script(
         self, request: ListeningScriptGenerationRequest
     ) -> ListeningScriptGenerationResult:
-        prompt = f"""Generate one IELTS-style Listening script (a short spoken-style
+        if request.tier == "standard":
+            prompt = f"""Generate two IELTS-style Listening scripts (short spoken-style
+passages, 150-250 words each) targeting: {request.focus_description}
+
+Section 1 (context_type "monologue"): 5-8 questions mixing "multiple_choice" and
+"note_completion" (a short fill-in-the-blank note using a word/phrase actually
+said in the script). Include at least one of each.
+
+Section 2 (context_type "social_conversation", a short dialogue between two
+speakers): 3-5 questions mixing "matching" (match a speaker or item to the
+correct option from a shared list) and "table_completion" (fill a blank in a
+short table summarizing the conversation). Group each type's questions under a
+shared group_instructions string explaining the task.
+
+Return JSON only with key: sections (array of 2 objects, each with
+context_type [string], script_text [string], questions [array of objects with
+question_text, question_type, group_instructions [string or null], options
+[array of strings, required for multiple_choice/matching], correct_option_index
+[0-based int indexing into options, required for option-based types],
+accepted_answers [array of 1-3 acceptable answer strings, required for
+note_completion/table_completion]])."""
+        else:
+            prompt = f"""Generate one IELTS-style Listening script (a short spoken-style
 passage, 150-250 words) and 5-8 comprehension questions targeting:
 {request.focus_description}
 
@@ -132,12 +180,13 @@ Use a mix of two question types: "multiple_choice" and "note_completion" (a shor
 fill-in-the-blank note using a word/phrase actually said in the script). Include at
 least one of each.
 
-Return JSON only with keys: script_text (string), questions (array of objects with
+Return JSON only with key: sections (array of 1 object with context_type
+["monologue"], script_text [string], questions [array of objects with
 question_text, question_type ["multiple_choice" or "note_completion"], options
 [exactly 4 strings, only for multiple_choice questions], correct_option_index
 [0-based int indexing into options, only for multiple_choice questions],
-accepted_answers [array of 1-3 acceptable answer strings, only for note_completion
-questions])."""
+accepted_answers [array of 1-3 acceptable answer strings, only for
+note_completion questions]])."""
         try:
             return ListeningScriptGenerationResult(
                 status="ok", **self._generate_json(prompt, 2500)

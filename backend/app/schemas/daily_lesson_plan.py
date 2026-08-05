@@ -14,6 +14,7 @@ class SkillOverviewEntry(BaseModel):
     phase: str
     rationale: str
     generated_prompt_text: str | None = None
+    task_type: str | None = None
 
 
 class CheckpointStatus(BaseModel):

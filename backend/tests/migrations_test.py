@@ -44,13 +44,13 @@ def test_upgrade_head_creates_listening_practice_tables_then_downgrade_to_0008_r
         exercise_columns = {
             c["name"] for c in inspector.get_columns("listening_exercises")
         }
+        # script_text/audio_bytes/audio_content_type moved to listening_sections
+        # (migration 0020 — see docs/adr/2026-08-05-ielts-exam-structure-band-
+        # scaling.md).
         assert exercise_columns == {
             "id",
             "user_id",
             "day",
-            "script_text",
-            "audio_bytes",
-            "audio_content_type",
             "focus_reference",
             "status",
             "created_at",
@@ -153,6 +153,8 @@ def test_upgrade_head_creates_daily_focus_table_then_downgrade_to_0009_removes_i
         inspector = inspect(engine)
         assert "daily_focus" in inspector.get_table_names()
         columns = {c["name"] for c in inspector.get_columns("daily_focus")}
+        # task_type added by migration 0021 (Writing Task 1/Task 2 alternation —
+        # see docs/adr/2026-08-05-ielts-exam-structure-band-scaling.md).
         assert columns == {
             "id",
             "user_id",
@@ -161,6 +163,7 @@ def test_upgrade_head_creates_daily_focus_table_then_downgrade_to_0009_removes_i
             "focus_kind",
             "focus_reference",
             "generated_prompt_text",
+            "task_type",
             "target_band",
             "estimated_minutes",
             "priority",
@@ -235,11 +238,12 @@ def test_upgrade_head_creates_reading_practice_tables_then_downgrade_to_0007_rem
         assert "reading_submissions" in table_names
 
         exercise_columns = {c["name"] for c in inspector.get_columns("reading_exercises")}
+        # passage_text moved to reading_passages (migration 0020 — see
+        # docs/adr/2026-08-05-ielts-exam-structure-band-scaling.md).
         assert exercise_columns == {
             "id",
             "user_id",
             "day",
-            "passage_text",
             "focus_reference",
             "status",
             "created_at",

@@ -1,7 +1,9 @@
 from datetime import date
 
 from app.ai.schemas import (
+    GeneratedPassage,
     GeneratedQuestion,
+    GeneratedSection,
     ListeningScriptGenerationResult,
     ReadingExerciseGenerationResult,
 )
@@ -27,12 +29,16 @@ def test_export_includes_a_completed_reading_exercise_and_result(db_session):
     provider = FakeAIProvider(
         reading_exercise_result=ReadingExerciseGenerationResult(
             status="ok",
-            passage_text="A passage about nevertheless.",
-            questions=[
-                GeneratedQuestion(
-                    question_text="What is discussed?",
-                    options=["A", "B", "C", "D"],
-                    correct_option_index=1,
+            passages=[
+                GeneratedPassage(
+                    passage_text="A passage about nevertheless.",
+                    questions=[
+                        GeneratedQuestion(
+                            question_text="What is discussed?",
+                            options=["A", "B", "C", "D"],
+                            correct_option_index=1,
+                        )
+                    ],
                 )
             ],
         )
@@ -45,7 +51,9 @@ def test_export_includes_a_completed_reading_exercise_and_result(db_session):
     document = assemble_export(db_session)
 
     reading_data = document.data["reading_practice"]
-    assert reading_data["exercises"][0]["passage_text"] == "A passage about nevertheless."
+    assert (
+        reading_data["passages"][0]["passage_text"] == "A passage about nevertheless."
+    )
     assert reading_data["submissions"][0]["score"] == 1
 
 
@@ -55,12 +63,16 @@ def test_export_includes_the_actual_audio_bytes_for_a_completed_listening_exerci
     provider = FakeAIProvider(
         listening_script_result=ListeningScriptGenerationResult(
             status="ok",
-            script_text="A script about nevertheless.",
-            questions=[
-                GeneratedQuestion(
-                    question_text="What is discussed?",
-                    options=["A", "B", "C", "D"],
-                    correct_option_index=1,
+            sections=[
+                GeneratedSection(
+                    script_text="A script about nevertheless.",
+                    questions=[
+                        GeneratedQuestion(
+                            question_text="What is discussed?",
+                            options=["A", "B", "C", "D"],
+                            correct_option_index=1,
+                        )
+                    ],
                 )
             ],
         )
@@ -78,7 +90,10 @@ def test_export_includes_the_actual_audio_bytes_for_a_completed_listening_exerci
     listening_data = document.data["listening_practice"]
     import base64
 
-    assert base64.b64decode(listening_data["exercises"][0]["audio_bytes"]) == b"raw-audio-bytes"
+    assert (
+        base64.b64decode(listening_data["sections"][0]["audio_bytes"])
+        == b"raw-audio-bytes"
+    )
     assert listening_data["submissions"][0]["score"] == 1
 
 
