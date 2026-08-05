@@ -1,6 +1,7 @@
 import uuid
+from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.ai import get_ai_provider
@@ -36,7 +37,11 @@ def create_submission(
 
 
 @router.get("/submissions", response_model=list[WritingSubmissionSummary])
-def list_submissions(db: Session = Depends(get_db), user: User = Depends(require_learner)):
+def list_submissions(
+    day: date | None = Query(None),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_learner),
+):
     return [
         WritingSubmissionSummary(
             id=value.id,
@@ -49,7 +54,7 @@ def list_submissions(db: Session = Depends(get_db), user: User = Depends(require
             ),
             question_excerpt=value.question_text[:120],
         )
-        for value in writing_coach.get_submission_list(db, user.id)
+        for value in writing_coach.get_submission_list(db, user.id, day=day)
     ]
 
 

@@ -5,7 +5,9 @@ from app.ai.schemas import (
     ChatRequest,
     ChatResult,
     CriterionFeedback,
+    GeneratedPassage,
     GeneratedQuestion,
+    GeneratedSection,
     ListeningScriptGenerationRequest,
     ListeningScriptGenerationResult,
     QuizGenerationRequest,
@@ -107,7 +109,8 @@ def test_fake_provider_implements_generate_reading_exercise():
         correct_option_index=1,
     )
     result = ReadingExerciseGenerationResult(
-        status="ok", passage_text="A passage.", questions=[question]
+        status="ok",
+        passages=[GeneratedPassage(passage_text="A passage.", questions=[question])],
     )
     fake = FakeAIProvider(reading_exercise_result=result)
     request = ReadingExerciseGenerationRequest(focus_description="the word 'nevertheless'")
@@ -123,7 +126,8 @@ def test_fake_provider_implements_generate_listening_script():
         correct_option_index=1,
     )
     result = ListeningScriptGenerationResult(
-        status="ok", script_text="A script.", questions=[question]
+        status="ok",
+        sections=[GeneratedSection(script_text="A script.", questions=[question])],
     )
     fake = FakeAIProvider(listening_script_result=result)
     request = ListeningScriptGenerationRequest(focus_description="the word 'nevertheless'")

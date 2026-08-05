@@ -35,6 +35,7 @@ function skill(
     phase: 'foundation',
     rationale: 'Scheduled rotation',
     generatedPromptText: null,
+    taskType: null,
   };
 }
 

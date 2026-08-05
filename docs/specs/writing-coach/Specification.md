@@ -1,6 +1,40 @@
 # Specification: AI-Assisted Writing Coaching
 Related UX: none yet — no wireframe/journey exists for this epic (it's a new epic, not carried over from the client-only architecture)
 
+## Revision 4 — Task 1 alternates with Task 2 from the standard tier onward
+
+Decision: `docs/adr/2026-08-05-ielts-exam-structure-band-scaling.md`.
+
+- FR-23: From the standard tier onward (development phase and later), the system MUST alternate
+  the daily-generated Writing prompt between Task 1 (a textual description of a chart, graph,
+  table, process, or map's data, asking the learner to summarize/describe it in ~150 words —
+  IELTS Academic Task 1) and Task 2 (the existing essay prompt) by day, never generating both on
+  the same day.
+- FR-24: A Task 1 prompt MUST include the underlying data/description to be written about
+  directly in the generated prompt text, since the app has no image-rendering capability —
+  sufficient for the learner to write a complete Task 1 response without an external reference.
+- FR-25: Beginner tier (foundation/core_skills) Writing generation is unaffected by FR-23 — it
+  continues to use the simplified short-question format defined in revision 2's FR-18, never
+  Task 1.
+- FR-26: Advanced tier (exam_readiness/peak_performance) retains FR-23's alternation at full
+  Task 1/Task 2 complexity matching the real exam's per-task expectations, not a further-
+  simplified version.
+
+## Revision 3 — Unlimited same-day redo, with clearer retry UX
+
+Decision: `docs/adr/2026-08-05-writing-unlimited-redo.md`.
+
+- FR-20: The system MUST allow a learner to submit more than one Writing response for the same
+  day's prompt; each additional submission MUST be evaluated and recorded independently (not
+  overwrite or block prior ones) — clarifying that FR-1 through FR-3's "a submission" is
+  repeatable per day, not one-shot.
+- FR-21: When a learner returns to submit Writing for a day that already has at least one
+  submission, the system MUST show that day's most recent submission's overall band and headline
+  feedback before presenting the (same-prompt, blank-response) form to write again.
+- FR-22: The daily overview's action for a Writing entry with an existing same-day submission
+  MUST be labeled to make a retry available and discoverable (e.g. "Try again"), not implied to
+  be read-only ("Review").
+
 ## Revision 2 — Level-appropriate prompts and grading
 
 Decision: `docs/adr/2026-08-03-writing-speaking-level-adaptation.md`.

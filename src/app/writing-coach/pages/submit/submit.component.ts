@@ -1,5 +1,5 @@
-import { Location } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { Location, NgTemplateOutlet } from '@angular/common';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { DailyLessonFacade } from '../../../daily-lesson/state/daily-lesson.facade';
@@ -9,7 +9,7 @@ import { WritingCoachFacade } from '../../state/writing-coach.facade';
 @Component({
   selector: 'app-writing-submit',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, NgTemplateOutlet],
   templateUrl: './submit.component.html',
   styleUrl: './submit.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -24,6 +24,7 @@ export class WritingSubmitComponent implements OnInit {
   promptDay: string | null = null;
   promptTargetBand: number | null = null;
   promptPhase: string | null = null;
+  readonly writingAgain = signal(false);
 
   async ngOnInit(): Promise<void> {
     if (this.dailyLessonFacade.state() === 'idle') {
@@ -38,7 +39,20 @@ export class WritingSubmitComponent implements OnInit {
       this.promptDay = entry.day;
       this.promptTargetBand = entry.targetBand;
       this.promptPhase = entry.phase;
+      // Task 1/Task 2 alternate from the standard tier onward — pre-fill the
+      // task type the generated prompt actually is, rather than leaving the
+      // default 'task2' selected for a Task 1 (data-description) prompt.
+      if (entry.taskType === 'task1' || entry.taskType === 'task2') {
+        this.taskType = entry.taskType;
+      }
     }
+    if (this.promptDay) {
+      await this.facade.loadLatestForDay(this.promptDay).catch(() => undefined);
+    }
+  }
+
+  writeAgain(): void {
+    this.writingAgain.set(true);
   }
 
   get canSubmit(): boolean {

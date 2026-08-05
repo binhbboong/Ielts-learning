@@ -4,6 +4,7 @@ import { ApiClient } from '../../core/api/api-client';
 import {
   ReadingAnswerResult,
   ReadingExercise,
+  ReadingPassage,
   ReadingQuestion,
   ReadingSubmissionResult,
 } from '../models/reading-exercise.model';
@@ -12,8 +13,20 @@ function question(value: any): ReadingQuestion {
   return {
     id: value.id,
     questionText: value.question_text,
+    questionType: value.question_type,
     options: value.options,
+    groupInstructions: value.group_instructions,
     order: value.order,
+  };
+}
+
+function passage(value: any): ReadingPassage {
+  return {
+    id: value.id,
+    title: value.title,
+    passageText: value.passage_text,
+    order: value.order,
+    questions: (value.questions ?? []).map(question),
   };
 }
 
@@ -22,17 +35,19 @@ function exercise(value: any): ReadingExercise {
     day: value.day,
     status: value.status,
     focusReference: value.focus_reference,
-    passageText: value.passage_text,
-    questions: (value.questions ?? []).map(question),
+    passages: (value.passages ?? []).map(passage),
+    phase: value.phase ?? null,
+    targetMinutes: value.target_minutes ?? null,
   };
 }
 
 function answerResult(value: any): ReadingAnswerResult {
   return {
     questionText: value.question_text,
+    questionType: value.question_type,
     options: value.options,
-    learnerAnswerIndex: value.learner_answer_index,
-    correctOptionIndex: value.correct_option_index,
+    learnerAnswer: value.learner_answer,
+    correctAnswer: value.correct_answer,
     correct: value.correct,
   };
 }
@@ -56,7 +71,7 @@ export class ReadingPracticeRepository {
     );
   }
 
-  async submit(day: string, answers: number[]): Promise<ReadingSubmissionResult> {
+  async submit(day: string, answers: (number | string)[]): Promise<ReadingSubmissionResult> {
     return submissionResult(
       await firstValueFrom(
         this.api.post<any>(`/api/reading-practice/${day}/submit`, { answers }),

@@ -30,6 +30,7 @@ function entry(value: any): SkillOverviewEntry {
     phase: value.phase,
     rationale: value.rationale,
     generatedPromptText: value.generated_prompt_text ?? null,
+    taskType: value.task_type ?? null,
   };
 }
 

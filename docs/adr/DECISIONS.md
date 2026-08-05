@@ -12,6 +12,9 @@ reconcile since each ADR's identity is already unique.
 
 | Date | Decision | Status | Supersedes | Affects |
 |---|---|---|---|---|
+| 2026-08-05 | [Reading/Listening/Writing structured like the real IELTS exam, scaled by band tier](2026-08-05-ielts-exam-structure-band-scaling.md) | Accepted | — | reading-practice, listening-practice, writing-coach, daily-lesson-plan |
+| 2026-08-05 | [Remove Speaking from the daily plan and checkpoint](2026-08-05-remove-speaking-from-daily-checkpoint.md) | Accepted | — | daily-lesson-plan, speaking-coach |
+| 2026-08-05 | [Writing allows unlimited same-day redo, with clearer retry UX](2026-08-05-writing-unlimited-redo.md) | Accepted | — | writing-coach |
 | 2026-08-03 | [Phase-appropriate Writing/Speaking task selection, level-aware grading, and wiring the AI-generated prompt into the submit UI](2026-08-03-writing-speaking-level-adaptation.md) | Accepted | — | writing-coach, speaking-coach, daily-lesson-plan |
 | 2026-08-03 | [Scheduled daily pre-generation of the next 2 days' lessons](2026-08-03-daily-lesson-pregeneration-job.md) | Accepted | — | daily-lesson-plan |
 | 2026-08-03 | [Per-skill 80% checkpoint, effective-day gating, all-4-skills-daily, and a vocabulary quiz mode](2026-08-03-daily-checkpoint-gating.md) | Accepted | — | daily-lesson-plan, vocabulary-review, reading-practice, listening-practice, writing-coach, speaking-coach |

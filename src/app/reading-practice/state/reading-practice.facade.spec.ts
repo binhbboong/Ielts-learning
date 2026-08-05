@@ -4,14 +4,21 @@ import { ReadingPracticeFacade } from './reading-practice.facade';
 describe('ReadingPracticeFacade', () => {
   const exercise = {
     day: '2026-07-30', status: 'ready' as const,
-    focusReference: "the word 'nevertheless'", passageText: 'A passage.',
-    questions: [{ id: 'q1', questionText: 'What is discussed?', options: ['A', 'B'], order: 1 }],
+    focusReference: "the word 'nevertheless'",
+    phase: 'foundation', targetMinutes: 20,
+    passages: [{
+      id: 'p1', title: null, passageText: 'A passage.', order: 1,
+      questions: [{
+        id: 'q1', questionText: 'What is discussed?', questionType: 'multiple_choice',
+        options: ['A', 'B'], groupInstructions: null, order: 1,
+      }],
+    }],
   };
   const result = {
     day: '2026-07-30', score: 1, total: 1,
     answers: [{
-      questionText: 'What is discussed?', options: ['A', 'B'],
-      learnerAnswerIndex: 1, correctOptionIndex: 1, correct: true,
+      questionText: 'What is discussed?', questionType: 'multiple_choice',
+      options: ['A', 'B'], learnerAnswer: 1, correctAnswer: 1, correct: true,
     }],
   };
 
@@ -25,7 +32,7 @@ describe('ReadingPracticeFacade', () => {
     await facade.load('2026-07-30');
 
     expect(facade.exerciseState()).toBe('ready');
-    expect(facade.exercise()?.passageText).toBe('A passage.');
+    expect(facade.exercise()?.passages[0].passageText).toBe('A passage.');
   });
 
   it('submits answers for the loaded day', async () => {
@@ -48,7 +55,7 @@ describe('ReadingPracticeFacade', () => {
     const repository = jasmine.createSpyObj<ReadingPracticeRepository>(
       'ReadingPracticeRepository', ['get', 'submit', 'retry'],
     );
-    repository.get.and.resolveTo({ ...exercise, status: 'failed', passageText: null });
+    repository.get.and.resolveTo({ ...exercise, status: 'failed', passages: [] });
     repository.retry.and.resolveTo(exercise);
     const facade = new ReadingPracticeFacade(repository);
     await facade.load('2026-07-30');

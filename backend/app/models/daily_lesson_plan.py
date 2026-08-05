@@ -32,6 +32,11 @@ class DailyFocus(Base):
     focus_kind: Mapped[str] = mapped_column(Text, nullable=False)
     focus_reference: Mapped[str | None] = mapped_column(Text, nullable=True)
     generated_prompt_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Writing-only: which IELTS task the generated prompt is ("task1"/"task2"),
+    # so the submission screen can pre-fill the correct task type. Alternates by
+    # day from the standard tier onward — null at beginner tier and for every
+    # other skill. See docs/adr/2026-08-05-ielts-exam-structure-band-scaling.md.
+    task_type: Mapped[str | None] = mapped_column(Text, nullable=True)
     target_band: Mapped[float] = mapped_column(Float, nullable=False, default=4.5)
     estimated_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=25)
     priority: Mapped[str] = mapped_column(Text, nullable=False, default="support")

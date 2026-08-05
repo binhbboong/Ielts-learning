@@ -1,23 +1,35 @@
 export interface ListeningQuestion {
   id: string;
   questionText: string;
-  options: string[];
+  questionType: string;
+  options: string[] | null;
+  groupInstructions: string | null;
   order: number;
+}
+
+export interface ListeningSection {
+  id: string;
+  contextType: string;
+  scriptText: string | null;
+  order: number;
+  questions: ListeningQuestion[];
 }
 
 export interface ListeningExercise {
   day: string;
   status: string;
   focusReference: string | null;
-  scriptText: string | null;
-  questions: ListeningQuestion[];
+  sections: ListeningSection[];
+  phase: string | null;
+  targetMinutes: number | null;
 }
 
 export interface ListeningAnswerResult {
   questionText: string;
-  options: string[];
-  learnerAnswerIndex: number;
-  correctOptionIndex: number;
+  questionType: string;
+  options: string[] | null;
+  learnerAnswer: number | string;
+  correctAnswer: number | string | null;
   correct: boolean;
 }
 
@@ -25,6 +37,6 @@ export interface ListeningSubmissionResult {
   day: string;
   score: number;
   total: number;
-  scriptText: string;
+  sections: ListeningSection[];
   answers: ListeningAnswerResult[];
 }

@@ -132,6 +132,26 @@ describe('DailyOverviewComponent', () => {
     ]);
   });
 
+  it('offers a standalone link to Speaking practice outside the daily skill grid', async () => {
+    const { fixture, component } = await setUp();
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const link = fixture.nativeElement.querySelector(
+      '[data-testid="speaking-practice-link"]',
+    );
+    expect(link).not.toBeNull();
+    expect(component.skillOrder).not.toContain('speaking');
+  });
+
+  it('labels a done Writing entry as retryable, other done skills as review-only', async () => {
+    const { component } = await setUp();
+
+    expect(component.doneActionLabel({ skill: 'writing' } as any)).toBe('Try again');
+    expect(component.doneActionLabel({ skill: 'reading' } as any)).toBe('Review');
+    expect(component.doneActionLabel({ skill: 'listening' } as any)).toBe('Review');
+  });
+
   it('retries a failed skill', async () => {
     const { component, repository } = await setUp({
       getOverview: jasmine.createSpy().and.resolveTo({

@@ -21,7 +21,7 @@ function dailyLessonRepositoryStub(generatedPromptText: string | null = null) {
       ? [{
           day: '2026-07-30', skill: 'speaking', status: 'ready', focusReference: null,
           targetBand: 4.5, estimatedMinutes: 20, priority: 'primary', phase: 'foundation',
-          rationale: 'Scheduled', generatedPromptText,
+          rationale: 'Scheduled', generatedPromptText, taskType: null,
         }]
       : [],
   });

@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 import uuid
 
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.ai.provider import AIProvider
@@ -10,13 +9,9 @@ from app.ai.schemas import ChatRequest, ChatResult
 from app.models.daily_lesson_plan import DailyFocus
 from app.models.study_profile import StudyProfile
 from app.models.user import LEGACY_USER_ID
-from app.models.listening_practice import (
-    ListeningExercise,
-    ListeningQuestion,
-    ListeningSubmission,
-)
+from app.models.listening_practice import ListeningExercise, ListeningSubmission
 from app.models.mistake import Mistake
-from app.models.reading_practice import ReadingExercise, ReadingQuestion, ReadingSubmission
+from app.models.reading_practice import ReadingExercise, ReadingSubmission
 from app.models.speaking_submission import SpeakingSubmission
 from app.models.vocabulary import VocabularyWord
 from app.models.writing_submission import WritingSubmission
@@ -24,18 +19,37 @@ from app.services import listening_practice, reading_practice, vocabulary as voc
 from app.services.text_to_speech import TextToSpeech
 
 _LISTENING_FAILED_STATES = {"script_failed", "audio_failed"}
-ALL_SKILLS = ("reading", "listening", "writing", "speaking")
+# Speaking was removed from the daily rotation/checkpoint per
+# docs/adr/2026-08-05-remove-speaking-from-daily-checkpoint.md — it remains a
+# standalone, learner-initiated feature (Speaking Coach) outside this daily plan.
+# The per-skill helper functions below still recognize "speaking" for that
+# standalone flow; they are simply never called with it from ALL_SKILLS-driven
+# daily generation/checkpoint loops anymore.
+ALL_SKILLS = ("reading", "listening", "writing")
 CHECKPOINT_PASS_RATIO = 0.8
+# Kept as the beginner-tier default (used as a fallback and by any caller that
+# doesn't go through _skill_minutes_and_priority's tier lookup).
 PRIMARY_SKILL_MINUTES = 20
 SUPPORT_SKILL_MINUTES = 10
+# Per-tier (primary, support) minutes, per docs/adr/2026-08-05-ielts-exam-
+# structure-band-scaling.md revision 6.
+_MINUTES_BY_TIER = {
+    "beginner": (PRIMARY_SKILL_MINUTES, SUPPORT_SKILL_MINUTES),
+    "standard": (38, 18),
+}
+# Advanced tier approaches real exam duration, which varies by skill (Reading
+# ~60 min, Listening ~30-40 min, Writing ~60 min) rather than one shared
+# number — support days stay a reduced, not full-length, version.
+_ADVANCED_PRIMARY_MINUTES_BY_SKILL = {"reading": 60, "listening": 40, "writing": 60}
+_ADVANCED_SUPPORT_MINUTES = 25
 _PRIMARY_SKILL_BY_WEEKDAY = {
     0: "reading",
     1: "listening",
     2: "writing",
-    3: "speaking",
-    4: "reading",
-    5: "listening",
-    6: "writing",
+    3: "reading",
+    4: "listening",
+    5: "writing",
+    6: "reading",
 }
 _PHASES = (
     ("foundation", 4.5),
@@ -56,6 +70,11 @@ _BEGINNER_PHASES = {"foundation", "core_skills"}
 _ADVANCED_PHASES = {"exam_readiness", "peak_performance"}
 
 _PROMPT_INSTRUCTION = {
+    # Beginner tier stays a single short question (no Task 1/2 split — see
+    # docs/adr/2026-08-03-writing-speaking-level-adaptation.md). From the
+    # standard tier onward, Writing alternates Task 1 (data description) and
+    # Task 2 (essay) by day — see docs/adr/2026-08-05-ielts-exam-structure-
+    # band-scaling.md revision 4 (writing-coach spec).
     "writing": {
         "beginner": (
             "Write one short, concrete IELTS-style writing question suitable for a true "
@@ -64,15 +83,37 @@ _PROMPT_INSTRUCTION = {
             "essay question. State clearly that the expected response is about 100-150 "
             "words in simple, everyday vocabulary and sentence structure, targeting: {focus}"
         ),
-        "standard": (
-            "Write one IELTS Writing Task 2-style prompt (a single essay question) "
-            "targeting: {focus}"
-        ),
-        "advanced": (
-            "Write one IELTS Writing Task 2-style prompt (a single essay question) on a "
-            "more abstract or policy-oriented topic (e.g. society, technology, the "
-            "environment, government) targeting: {focus}"
-        ),
+        "standard": {
+            "task1": (
+                "Write one IELTS Academic Writing Task 1 prompt: ask the learner to "
+                "summarize/describe the key trends, comparisons, or stages shown in a "
+                "chart, graph, table, or process, in about 150 words. This app has no "
+                "image-rendering capability, so include the underlying data directly as "
+                "readable text inside the prompt itself (e.g. a short data table or a "
+                "bullet list of figures) — sufficient for the learner to write a "
+                "complete response with no external image. Targeting: {focus}"
+            ),
+            "task2": (
+                "Write one IELTS Writing Task 2-style prompt (a single essay question) "
+                "targeting: {focus}"
+            ),
+        },
+        "advanced": {
+            "task1": (
+                "Write one IELTS Academic Writing Task 1 prompt on a more complex chart, "
+                "graph, table, or process (e.g. multiple data series, a multi-stage "
+                "process) than an intermediate learner would see, asking the learner to "
+                "summarize/describe it in about 150 words. This app has no image-"
+                "rendering capability, so include the underlying data directly as "
+                "readable text inside the prompt itself — sufficient for the learner to "
+                "write a complete response with no external image. Targeting: {focus}"
+            ),
+            "task2": (
+                "Write one IELTS Writing Task 2-style prompt (a single essay question) on a "
+                "more abstract or policy-oriented topic (e.g. society, technology, the "
+                "environment, government) targeting: {focus}"
+            ),
+        },
     },
     "speaking": {
         "beginner": (
@@ -98,6 +139,20 @@ def _prompt_complexity_tier(phase: str) -> str:
     if phase in _ADVANCED_PHASES:
         return "advanced"
     return "standard"
+
+
+def _content_tier(phase: str) -> str:
+    """Reading/Listening structural generation tier (beginner=1 passage/
+    section, standard=2, advanced=3 passages/4 sections with the full
+    question-type catalog) — same phase mapping as Writing/Speaking prompt
+    complexity."""
+    return _prompt_complexity_tier(phase)
+
+
+def _writing_task_for_day(day: date) -> str:
+    """Alternates Task 1 (data description) / Task 2 (essay) by calendar day —
+    deterministic so a retry on the same day reuses the same task."""
+    return "task1" if day.toordinal() % 2 == 0 else "task2"
 
 
 def get_or_create_profile(
@@ -203,8 +258,13 @@ def get_or_create_focus(
 def generate_prompt_text(provider: AIProvider, focus: DailyFocus) -> ChatResult:
     focus_description = focus.focus_reference or f"general IELTS {focus.skill} practice"
     tier = _prompt_complexity_tier(focus.phase)
+    template = _PROMPT_INSTRUCTION[focus.skill][tier]
+    if isinstance(template, dict):
+        # Writing, standard/advanced tier: alternates Task 1/Task 2 by day.
+        focus.task_type = _writing_task_for_day(focus.day)
+        template = template[focus.task_type]
     instruction = (
-        _PROMPT_INSTRUCTION[focus.skill][tier].format(focus=focus_description)
+        template.format(focus=focus_description)
         + f". This is IELTS Academic practice targeting band {focus.target_band} "
         + f"during the {focus.phase.replace('_', ' ')} phase. "
         + f"Design it for about {focus.estimated_minutes} minutes."
@@ -266,11 +326,19 @@ def get_skill_status(
     raise ValueError(f"unknown skill: {skill}")
 
 
-def _skill_minutes_and_priority(day: date, skill: str) -> tuple[int, str]:
+def _skill_minutes_and_priority(day: date, skill: str, phase: str) -> tuple[int, str]:
     primary_skill = _PRIMARY_SKILL_BY_WEEKDAY[day.weekday()]
+    tier = _prompt_complexity_tier(phase)
+    if tier == "advanced":
+        primary_minutes = _ADVANCED_PRIMARY_MINUTES_BY_SKILL.get(skill, 60)
+        support_minutes = _ADVANCED_SUPPORT_MINUTES
+    else:
+        primary_minutes, support_minutes = _MINUTES_BY_TIER.get(
+            tier, _MINUTES_BY_TIER["standard"]
+        )
     if skill == primary_skill:
-        return PRIMARY_SKILL_MINUTES, "primary"
-    return SUPPORT_SKILL_MINUTES, "support"
+        return primary_minutes, "primary"
+    return support_minutes, "support"
 
 
 def ensure_today_generated(
@@ -280,8 +348,12 @@ def ensure_today_generated(
     tts: TextToSpeech,
     user_id: uuid.UUID = LEGACY_USER_ID,
 ) -> None:
+    profile = get_or_create_profile(db, user_id, day)
+    _, phase, _ = plan_context(profile, day)
+    content_tier = _content_tier(phase)
+
     for skill in ALL_SKILLS:
-        minutes, priority = _skill_minutes_and_priority(day, skill)
+        minutes, priority = _skill_minutes_and_priority(day, skill, phase)
         existing = (
             db.query(DailyFocus)
             .filter_by(user_id=user_id, day=day, skill=skill)
@@ -301,11 +373,11 @@ def ensure_today_generated(
 
         if skill == "reading":
             reading_practice.get_or_create_exercise(
-                db, day, generation_focus, provider, user_id
+                db, day, generation_focus, provider, user_id, tier=content_tier
             )
         elif skill == "listening":
             listening_practice.get_or_create_exercise(
-                db, day, generation_focus, provider, tts, user_id
+                db, day, generation_focus, provider, tts, user_id, tier=content_tier
             )
         else:
             result = generate_prompt_text(provider, focus)
@@ -319,13 +391,16 @@ def retry_skill(
     user_id: uuid.UUID = LEGACY_USER_ID,
 ) -> None:
     focus = db.query(DailyFocus).filter_by(user_id=user_id, day=day, skill=skill).one()
+    content_tier = _content_tier(focus.phase)
 
     if skill == "reading":
-        reading_practice.retry_exercise(db, day, provider, user_id)
+        reading_practice.retry_exercise(db, day, provider, user_id, tier=content_tier)
     elif skill == "listening":
         exercise = db.query(ListeningExercise).filter_by(user_id=user_id, day=day).one()
         if exercise.status == "script_failed":
-            exercise = listening_practice.retry_script(db, day, provider, user_id)
+            exercise = listening_practice.retry_script(
+                db, day, provider, user_id, tier=content_tier
+            )
             if exercise.status == "script_generated":
                 listening_practice.retry_audio(db, day, tts, user_id)
         elif exercise.status == "audio_failed":
@@ -338,7 +413,7 @@ def retry_skill(
 
 
 def _reading_or_listening_checkpoint(
-    db: Session, day: date, exercise_model, question_model, submission_model,
+    db: Session, day: date, exercise_model, get_questions_fn, submission_model,
     user_id: uuid.UUID,
 ) -> bool:
     exercise = db.query(exercise_model).filter_by(user_id=user_id, day=day).one_or_none()
@@ -349,9 +424,7 @@ def _reading_or_listening_checkpoint(
     )
     if submission is None:
         return False
-    total = db.query(func.count(question_model.id)).filter_by(
-        exercise_id=exercise.id
-    ).scalar()
+    total = len(get_questions_fn(db, exercise.id))
     if not total:
         return False
     return (submission.score / total) >= CHECKPOINT_PASS_RATIO
@@ -398,11 +471,13 @@ def evaluate_skill_checkpoint(
 ) -> bool:
     if skill == "reading":
         return _reading_or_listening_checkpoint(
-            db, day, ReadingExercise, ReadingQuestion, ReadingSubmission, user_id
+            db, day, ReadingExercise, reading_practice.get_questions, ReadingSubmission,
+            user_id,
         )
     if skill == "listening":
         return _reading_or_listening_checkpoint(
-            db, day, ListeningExercise, ListeningQuestion, ListeningSubmission, user_id
+            db, day, ListeningExercise, listening_practice.get_questions,
+            ListeningSubmission, user_id,
         )
     if skill == "writing":
         return _writing_checkpoint(db, day, user_id, profile)
@@ -465,6 +540,7 @@ class SkillOverviewEntry:
     phase: str
     rationale: str
     generated_prompt_text: str | None = None
+    task_type: str | None = None
 
 
 @dataclass
@@ -503,6 +579,7 @@ def get_overview(
                     phase=focus.phase,
                     rationale=focus.rationale,
                     generated_prompt_text=focus.generated_prompt_text,
+                    task_type=focus.task_type,
                 )
             )
     checkpoint = evaluate_checkpoint(db, effective_day, user_id)

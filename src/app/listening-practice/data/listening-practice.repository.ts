@@ -5,6 +5,7 @@ import {
   ListeningAnswerResult,
   ListeningExercise,
   ListeningQuestion,
+  ListeningSection,
   ListeningSubmissionResult,
 } from '../models/listening-exercise.model';
 
@@ -12,8 +13,20 @@ function question(value: any): ListeningQuestion {
   return {
     id: value.id,
     questionText: value.question_text,
+    questionType: value.question_type,
     options: value.options,
+    groupInstructions: value.group_instructions,
     order: value.order,
+  };
+}
+
+function section(value: any): ListeningSection {
+  return {
+    id: value.id,
+    contextType: value.context_type,
+    scriptText: value.script_text,
+    order: value.order,
+    questions: (value.questions ?? []).map(question),
   };
 }
 
@@ -22,17 +35,19 @@ function exercise(value: any): ListeningExercise {
     day: value.day,
     status: value.status,
     focusReference: value.focus_reference,
-    scriptText: value.script_text,
-    questions: (value.questions ?? []).map(question),
+    sections: (value.sections ?? []).map(section),
+    phase: value.phase ?? null,
+    targetMinutes: value.target_minutes ?? null,
   };
 }
 
 function answerResult(value: any): ListeningAnswerResult {
   return {
     questionText: value.question_text,
+    questionType: value.question_type,
     options: value.options,
-    learnerAnswerIndex: value.learner_answer_index,
-    correctOptionIndex: value.correct_option_index,
+    learnerAnswer: value.learner_answer,
+    correctAnswer: value.correct_answer,
     correct: value.correct,
   };
 }
@@ -42,7 +57,7 @@ function submissionResult(value: any): ListeningSubmissionResult {
     day: value.day,
     score: value.score,
     total: value.total,
-    scriptText: value.script_text,
+    sections: (value.sections ?? []).map(section),
     answers: (value.answers ?? []).map(answerResult),
   };
 }
@@ -57,11 +72,14 @@ export class ListeningPracticeRepository {
     );
   }
 
-  audioUrl(day: string): string {
-    return `/api/listening-practice/${day}/audio`;
+  audioUrl(day: string, order: number): string {
+    return `/api/listening-practice/${day}/audio/${order}`;
   }
 
-  async submit(day: string, answers: number[]): Promise<ListeningSubmissionResult> {
+  async submit(
+    day: string,
+    answers: (number | string)[],
+  ): Promise<ListeningSubmissionResult> {
     return submissionResult(
       await firstValueFrom(
         this.api.post<any>(`/api/listening-practice/${day}/submit`, { answers }),

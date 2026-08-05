@@ -21,7 +21,10 @@ export class DailyOverviewComponent implements OnInit {
   readonly facade = inject(DailyLessonFacade);
   readonly vocabulary = inject(VocabularyFacade);
   readonly today = todayIso();
-  readonly skillOrder: readonly Skill[] = ['reading', 'listening', 'writing', 'speaking'];
+  // Speaking is no longer part of the daily rotation/checkpoint (it remains a
+  // standalone feature reachable from the secondary-links nav) — see
+  // docs/adr/2026-08-05-remove-speaking-from-daily-checkpoint.md.
+  readonly skillOrder: readonly Skill[] = ['reading', 'listening', 'writing'];
   readonly vocabularyRevealed = signal(false);
   readonly vocabularyAssessing = signal(false);
   readonly addingRecommendation = signal<string | null>(null);
@@ -36,6 +39,10 @@ export class DailyOverviewComponent implements OnInit {
 
   isCarriedOver(entry: Pick<SkillOverviewEntry, 'day'>): boolean {
     return entry.day !== this.today;
+  }
+
+  doneActionLabel(entry: Pick<SkillOverviewEntry, 'skill'>): string {
+    return entry.skill === 'writing' ? 'Try again' : 'Review';
   }
 
   skillRoute(entry: Pick<SkillOverviewEntry, 'skill' | 'day'>): string[] {

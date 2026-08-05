@@ -6,7 +6,9 @@ from fastapi.testclient import TestClient
 from app.ai import get_ai_provider
 from app.ai.schemas import (
     ChatResult,
+    GeneratedPassage,
     GeneratedQuestion,
+    GeneratedSection,
     ListeningScriptGenerationResult,
     ReadingExerciseGenerationResult,
 )
@@ -25,15 +27,21 @@ from app.services.text_to_speech import (
 def _success_provider() -> FakeAIProvider:
     return FakeAIProvider(
         reading_exercise_result=ReadingExerciseGenerationResult(
-            status="ok", passage_text="A passage.",
-            questions=[GeneratedQuestion(
-                question_text="Q?", options=["A", "B", "C", "D"], correct_option_index=0
+            status="ok",
+            passages=[GeneratedPassage(
+                passage_text="A passage.",
+                questions=[GeneratedQuestion(
+                    question_text="Q?", options=["A", "B", "C", "D"], correct_option_index=0
+                )],
             )],
         ),
         listening_script_result=ListeningScriptGenerationResult(
-            status="ok", script_text="A script.",
-            questions=[GeneratedQuestion(
-                question_text="Q?", options=["A", "B", "C", "D"], correct_option_index=0
+            status="ok",
+            sections=[GeneratedSection(
+                script_text="A script.",
+                questions=[GeneratedQuestion(
+                    question_text="Q?", options=["A", "B", "C", "D"], correct_option_index=0
+                )],
             )],
         ),
         chat_result=ChatResult(status="ok", message="A generated prompt."),
@@ -69,7 +77,7 @@ def test_daily_lesson_route_rejects_unauthenticated_requests(db_session_factory)
     assert client.get("/api/daily-lesson/overview").status_code == 401
 
 
-def test_overview_returns_all_four_skills_and_session_context(db_session_factory):
+def test_overview_returns_all_three_daily_skills_and_session_context(db_session_factory):
     client = _client(db_session_factory)
 
     response = client.get("/api/daily-lesson/overview")
@@ -79,18 +87,18 @@ def test_overview_returns_all_four_skills_and_session_context(db_session_factory
     today = date.today().isoformat()
     todays_entries = [entry for entry in body["skills"] if entry["day"] == today]
     assert {entry["skill"] for entry in todays_entries} == {
-        "reading", "listening", "writing", "speaking",
+        "reading", "listening", "writing",
     }
     assert body["exam_type"] == "ielts_academic"
     assert body["total_minutes"] == 60
     assert body["review_minutes"] == 10
-    assert sum(entry["estimated_minutes"] for entry in todays_entries) == 50
+    assert sum(entry["estimated_minutes"] for entry in todays_entries) == 40
     assert sum(1 for e in todays_entries if e["priority"] == "primary") == 1
     assert all(entry["status"] == "ready" for entry in todays_entries)
     assert body["effective_day"] == today
     assert body["checkpoint"]["all_passed"] is False
     assert body["checkpoint"]["passed_count"] == 0
-    assert body["checkpoint"]["required_count"] == 5
+    assert body["checkpoint"]["required_count"] == 4
 
 
 def test_overview_is_idempotent_across_requests(db_session_factory):
@@ -116,7 +124,7 @@ def _failing_provider() -> FakeAIProvider:
 
 def test_retry_endpoint_recovers_a_failed_skill(db_session_factory):
     today = date.today().isoformat()
-    # All 4 skills are always allocated now, so any of them is a valid retry target.
+    # All 3 daily skills are always allocated now, so any of them is a valid retry target.
     skill_to_retry = "reading"
 
     failing_app = FastAPI()

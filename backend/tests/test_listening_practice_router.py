@@ -2,10 +2,12 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.ai import get_ai_provider
-from app.ai.schemas import GeneratedQuestion, ListeningScriptGenerationResult
+from app.ai.schemas import GeneratedQuestion, GeneratedSection, ListeningScriptGenerationResult
 from app.ai.testing import FakeAIProvider
 from app.core.db import get_db
 from app.core.security import SESSION_COOKIE_NAME, create_session_token
+from app.models.daily_lesson_plan import DailyFocus
+from app.models.user import LEGACY_USER_ID
 from app.routers.listening_practice import router as listening_router
 from app.services.text_to_speech import (
     FakeTextToSpeech,
@@ -18,12 +20,16 @@ def _success_provider() -> FakeAIProvider:
     return FakeAIProvider(
         listening_script_result=ListeningScriptGenerationResult(
             status="ok",
-            script_text="A script about nevertheless.",
-            questions=[
-                GeneratedQuestion(
-                    question_text="What is discussed?",
-                    options=["A", "B", "C", "D"],
-                    correct_option_index=1,
+            sections=[
+                GeneratedSection(
+                    script_text="A script about nevertheless.",
+                    questions=[
+                        GeneratedQuestion(
+                            question_text="What is discussed?",
+                            options=["A", "B", "C", "D"],
+                            correct_option_index=1,
+                        )
+                    ],
                 )
             ],
         )
@@ -69,20 +75,53 @@ def test_get_exercise_generates_on_first_request_and_withholds_transcript(
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "ready"
-    assert body["script_text"] is None
-    assert len(body["questions"]) == 1
-    assert "correct_option_index" not in body["questions"][0]
+    assert len(body["sections"]) == 1
+    assert body["sections"][0]["script_text"] is None
+    questions = body["sections"][0]["questions"]
+    assert len(questions) == 1
+    assert "correct_option_index" not in questions[0]
+
+
+def test_get_exercise_includes_phase_and_target_minutes_from_the_days_daily_focus(
+    db_session_factory,
+):
+    with db_session_factory() as session:
+        session.add(
+            DailyFocus(
+                user_id=LEGACY_USER_ID, day="2026-07-30", skill="listening",
+                focus_kind="default", target_band=6.5, estimated_minutes=40,
+                priority="primary", phase="exam_readiness",
+                rationale="Scheduled rotation",
+            )
+        )
+        session.commit()
+    client = _client(db_session_factory)
+
+    response = client.get("/api/listening-practice/2026-07-30")
+
+    body = response.json()
+    assert body["phase"] == "exam_readiness"
+    assert body["target_minutes"] == 40
 
 
 def test_get_audio_serves_the_stored_bytes_with_content_type(db_session_factory):
     client = _client(db_session_factory)
     client.get("/api/listening-practice/2026-07-30")
 
-    response = client.get("/api/listening-practice/2026-07-30/audio")
+    response = client.get("/api/listening-practice/2026-07-30/audio/1")
 
     assert response.status_code == 200
     assert response.content == b"fake-audio"
     assert response.headers["content-type"] == "audio/mpeg"
+
+
+def test_get_audio_404s_for_an_unknown_section_order(db_session_factory):
+    client = _client(db_session_factory)
+    client.get("/api/listening-practice/2026-07-30")
+
+    response = client.get("/api/listening-practice/2026-07-30/audio/2")
+
+    assert response.status_code == 404
 
 
 def test_submit_scores_immediately_and_reveals_transcript(db_session_factory):
@@ -97,11 +136,11 @@ def test_submit_scores_immediately_and_reveals_transcript(db_session_factory):
     body = response.json()
     assert body["score"] == 0
     assert body["total"] == 1
-    assert body["script_text"] == "A script about nevertheless."
+    assert body["sections"][0]["script_text"] == "A script about nevertheless."
     answer = body["answers"][0]
     assert answer["correct"] is False
-    assert answer["learner_answer_index"] == 0
-    assert answer["correct_option_index"] == 1
+    assert answer["learner_answer"] == 0
+    assert answer["correct_answer"] == 1
 
 
 def test_submitting_twice_returns_the_original_result_instead_of_500(db_session_factory):
@@ -126,7 +165,7 @@ def test_get_after_submission_reveals_the_transcript(db_session_factory):
 
     response = client.get("/api/listening-practice/2026-07-30")
 
-    assert response.json()["script_text"] == "A script about nevertheless."
+    assert response.json()["sections"][0]["script_text"] == "A script about nevertheless."
 
 
 def _failing_provider() -> FakeAIProvider:

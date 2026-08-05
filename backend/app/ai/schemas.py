@@ -130,34 +130,114 @@ class QuizGenerationResult(BaseModel):
         return self
 
 
+# Full IELTS Reading/Listening question-type catalog, per
+# docs/adr/2026-08-05-ielts-exam-structure-band-scaling.md. Only a subset is
+# actually generated at the beginner tier (multiple_choice/true_false_not_given
+# for Reading, multiple_choice/note_completion for Listening) — the remaining
+# types are reserved for the standard/advanced-tier rollout stages so this
+# shape does not need to change again between stages.
+OPTION_BASED_QUESTION_TYPES = frozenset({
+    "multiple_choice",
+    "true_false_not_given",
+    "yes_no_not_given",
+    "matching_headings",
+    "matching_information",
+    "matching_features",
+    "diagram_labelling",
+    "plan_map_diagram_labelling",
+    "matching",
+})
+TEXT_BASED_QUESTION_TYPES = frozenset({
+    "sentence_completion",
+    "summary_completion",
+    "table_completion",
+    "flow_chart_completion",
+    "short_answer",
+    "form_completion",
+    "note_completion",
+})
+QuestionType = Literal[
+    "multiple_choice",
+    "true_false_not_given",
+    "yes_no_not_given",
+    "matching_headings",
+    "matching_information",
+    "matching_features",
+    "sentence_completion",
+    "summary_completion",
+    "table_completion",
+    "flow_chart_completion",
+    "diagram_labelling",
+    "short_answer",
+    "form_completion",
+    "note_completion",
+    "matching",
+    "plan_map_diagram_labelling",
+]
+
+
 class GeneratedQuestion(_RequiredTextModel):
     question_text: str
-    options: list[str]
-    correct_option_index: int = Field(ge=0)
+    question_type: QuestionType = "multiple_choice"
+    options: list[str] | None = None
+    correct_option_index: int | None = Field(default=None, ge=0)
+    accepted_answers: list[str] | None = None
+    # Shared instructions for a block of questions (e.g. "Questions 6-9: choose
+    # the correct heading..."), introduced at the standard tier for grouped
+    # types like matching/summary completion — None for standalone questions.
+    group_instructions: str | None = None
 
     @model_validator(mode="after")
-    def validate_correct_index_in_range(self):
-        if self.correct_option_index >= len(self.options):
-            raise ValueError("correct_option_index must index into options")
+    def validate_shape_for_question_type(self):
+        if self.question_type in TEXT_BASED_QUESTION_TYPES:
+            if not self.accepted_answers:
+                raise ValueError(
+                    f"{self.question_type} questions require at least one accepted answer"
+                )
+        else:
+            if not self.options:
+                raise ValueError(f"{self.question_type} questions require options")
+            if self.correct_option_index is None or self.correct_option_index >= len(
+                self.options
+            ):
+                raise ValueError("correct_option_index must index into options")
+        return self
+
+
+# beginner = 1 passage/section, standard = 2, advanced = 3 passages/4 sections
+# with the full question-type catalog — see
+# docs/adr/2026-08-05-ielts-exam-structure-band-scaling.md.
+GenerationTier = Literal["beginner", "standard", "advanced"]
+
+
+class GeneratedPassage(_RequiredTextModel):
+    title: str | None = None
+    passage_text: str
+    questions: list[GeneratedQuestion] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_has_questions(self):
+        if not self.questions:
+            raise ValueError("a passage requires at least one question")
         return self
 
 
 class ReadingExerciseGenerationRequest(_RequiredTextModel):
     focus_description: str
+    tier: GenerationTier = "beginner"
 
 
 class ReadingExerciseGenerationResult(BaseModel):
     status: Literal["ok", "error"]
     error_message: str | None = None
-    passage_text: str | None = None
-    questions: list[GeneratedQuestion] = Field(default_factory=list)
+    passages: list[GeneratedPassage] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_status_shape(self):
-        if self.status == "ok" and not (
-            self.passage_text and self.passage_text.strip() and self.questions
-        ):
-            raise ValueError("successful reading exercise result requires a passage and questions")
+        if self.status == "ok" and not self.passages:
+            raise ValueError(
+                "successful reading exercise result requires at least one passage"
+            )
         if self.status == "error" and not (
             self.error_message and self.error_message.strip()
         ):
@@ -165,22 +245,36 @@ class ReadingExerciseGenerationResult(BaseModel):
         return self
 
 
+class GeneratedSection(_RequiredTextModel):
+    # social_conversation, monologue, educational_discussion, academic_lecture —
+    # only social_conversation/monologue are used at standard tier for now.
+    context_type: str = "monologue"
+    script_text: str
+    questions: list[GeneratedQuestion] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_has_questions(self):
+        if not self.questions:
+            raise ValueError("a section requires at least one question")
+        return self
+
+
 class ListeningScriptGenerationRequest(_RequiredTextModel):
     focus_description: str
+    tier: GenerationTier = "beginner"
 
 
 class ListeningScriptGenerationResult(BaseModel):
     status: Literal["ok", "error"]
     error_message: str | None = None
-    script_text: str | None = None
-    questions: list[GeneratedQuestion] = Field(default_factory=list)
+    sections: list[GeneratedSection] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_status_shape(self):
-        if self.status == "ok" and not (
-            self.script_text and self.script_text.strip() and self.questions
-        ):
-            raise ValueError("successful listening script result requires a script and questions")
+        if self.status == "ok" and not self.sections:
+            raise ValueError(
+                "successful listening script result requires at least one section"
+            )
         if self.status == "error" and not (
             self.error_message and self.error_message.strip()
         ):

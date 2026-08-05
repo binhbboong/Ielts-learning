@@ -1,20 +1,33 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import {
   MistakeQuickAddComponent,
   MistakeQuickAddData,
 } from '../../../mistakes/pages/quick-add/mistake-quick-add.component';
-import { ListeningAnswerResult } from '../../models/listening-exercise.model';
+import { CountdownTimerComponent } from '../../../core/exam/countdown-timer.component';
+import { isTextBasedQuestionType } from '../../../core/exam/question-types';
+import { isBeginnerPhase } from '../../../core/exam/phase-tier';
+import {
+  ListeningAnswerResult,
+  ListeningQuestion,
+  ListeningSection,
+} from '../../models/listening-exercise.model';
 import { ListeningPracticeFacade } from '../../state/listening-practice.facade';
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+interface ListeningSectionView {
+  section: ListeningSection;
+  questions: { question: ListeningQuestion; flatIndex: number }[];
+}
+
 @Component({
   selector: 'app-listening-exercise',
   standalone: true,
-  imports: [RouterLink, MistakeQuickAddComponent],
+  imports: [RouterLink, FormsModule, MistakeQuickAddComponent, CountdownTimerComponent],
   templateUrl: './listening-exercise.component.html',
   styleUrl: './listening-exercise.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -23,34 +36,60 @@ export class ListeningExerciseComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   readonly facade = inject(ListeningPracticeFacade);
   day = '';
-  selectedAnswers: (number | null)[] = [];
+  selectedAnswers: (number | string | null)[] = [];
   openQuickAddIndex: number | null = null;
+  readonly isTextBasedQuestionType = isTextBasedQuestionType;
+
+  get showTimer(): boolean {
+    const exercise = this.facade.exercise();
+    return Boolean(
+      exercise && !isBeginnerPhase(exercise.phase) && exercise.targetMinutes,
+    );
+  }
 
   async ngOnInit(): Promise<void> {
     this.day = this.route.snapshot.paramMap.get('day') ?? todayIso();
     await this.facade.load(this.day);
-    const questionCount = this.facade.exercise()?.questions.length ?? 0;
+    const questionCount = this.flatQuestions.length;
     this.selectedAnswers = new Array(questionCount).fill(null);
   }
 
-  get audioUrl(): string {
-    return this.facade.audioUrl(this.day);
+  get flatQuestions(): ListeningQuestion[] {
+    return (this.facade.exercise()?.sections ?? []).flatMap((s) => s.questions);
+  }
+
+  get sectionViews(): ListeningSectionView[] {
+    let index = 0;
+    return (this.facade.exercise()?.sections ?? []).map((section) => ({
+      section,
+      questions: section.questions.map((question) => ({ question, flatIndex: index++ })),
+    }));
+  }
+
+  audioUrl(order: number): string {
+    return this.facade.audioUrl(this.day, order);
   }
 
   selectAnswer(questionIndex: number, optionIndex: number): void {
     this.selectedAnswers[questionIndex] = optionIndex;
   }
 
+  setTextAnswer(questionIndex: number, value: string): void {
+    this.selectedAnswers[questionIndex] = value;
+  }
+
   get canSubmit(): boolean {
     return (
       this.selectedAnswers.length > 0 &&
-      this.selectedAnswers.every((answer) => answer !== null)
+      this.selectedAnswers.every(
+        (answer) => answer !== null && !(typeof answer === 'string' && !answer.trim()),
+      )
     );
   }
 
   async submit(): Promise<void> {
     if (!this.canSubmit) return;
-    await this.facade.submit(this.selectedAnswers as number[]);
+    await this.facade.submit(this.selectedAnswers as (number | string)[]);
   }
 
   async retryScript(): Promise<void> {
@@ -69,12 +108,18 @@ export class ListeningExerciseComponent implements OnInit {
     this.openQuickAddIndex = null;
   }
 
+  private displayAnswer(answer: ListeningAnswerResult, value: number | string | null): string {
+    if (value === null) return '';
+    if (typeof value === 'string') return value;
+    return answer.options?.[value] ?? '';
+  }
+
   quickAddData(answer: ListeningAnswerResult): MistakeQuickAddData {
     return {
       skill: 'listening',
       source: `Listening practice ${this.day}: ${answer.questionText}`,
-      ownAnswer: answer.options[answer.learnerAnswerIndex],
-      correctAnswer: answer.options[answer.correctOptionIndex],
+      ownAnswer: this.displayAnswer(answer, answer.learnerAnswer),
+      correctAnswer: this.displayAnswer(answer, answer.correctAnswer),
     };
   }
 }

@@ -5,7 +5,9 @@ from app.ai.schemas import (
     ChatRequest,
     ChatResult,
     CriterionFeedback,
+    GeneratedPassage,
     GeneratedQuestion,
+    GeneratedSection,
     ListeningScriptGenerationRequest,
     ListeningScriptGenerationResult,
     QuizGenerationRequest,
@@ -140,6 +142,56 @@ def _question(correct_index: int = 2) -> GeneratedQuestion:
     )
 
 
+def test_generated_question_defaults_to_multiple_choice():
+    question = GeneratedQuestion(
+        question_text="What caused the delay?",
+        options=["Weather", "Funding"],
+        correct_option_index=0,
+    )
+
+    assert question.question_type == "multiple_choice"
+
+
+def test_generated_question_accepts_true_false_not_given_as_option_based():
+    question = GeneratedQuestion(
+        question_text="The delay was caused by funding shortfalls.",
+        question_type="true_false_not_given",
+        options=["True", "False", "Not Given"],
+        correct_option_index=1,
+    )
+
+    assert question.correct_option_index == 1
+    assert question.accepted_answers is None
+
+
+def test_generated_question_option_based_type_requires_options():
+    with pytest.raises(ValidationError):
+        GeneratedQuestion(
+            question_text="The delay was caused by funding shortfalls.",
+            question_type="true_false_not_given",
+        )
+
+
+def test_generated_question_completion_type_requires_accepted_answers():
+    with pytest.raises(ValidationError):
+        GeneratedQuestion(
+            question_text="Complete the note: the team missed the ___ deadline.",
+            question_type="note_completion",
+        )
+
+
+def test_generated_question_completion_type_accepts_answer_variants():
+    question = GeneratedQuestion(
+        question_text="Complete the note: the team missed the ___ deadline.",
+        question_type="note_completion",
+        accepted_answers=["funding", "budget"],
+    )
+
+    assert question.options is None
+    assert question.correct_option_index is None
+    assert question.accepted_answers == ["funding", "budget"]
+
+
 def test_reading_exercise_request_requires_focus_description():
     request = ReadingExerciseGenerationRequest(focus_description="the word 'nevertheless'")
 
@@ -151,18 +203,22 @@ def test_reading_exercise_request_requires_focus_description():
 def test_reading_exercise_result_discriminates_success_from_error():
     success = ReadingExerciseGenerationResult(
         status="ok",
-        passage_text="A short passage.",
-        questions=[_question()],
+        passages=[GeneratedPassage(passage_text="A short passage.", questions=[_question()])],
     )
     failure = ReadingExerciseGenerationResult(status="error", error_message="provider timeout")
 
-    assert success.passage_text == "A short passage."
-    assert success.questions[0].correct_option_index == 2
-    assert failure.passage_text is None
+    assert success.passages[0].passage_text == "A short passage."
+    assert success.passages[0].questions[0].correct_option_index == 2
+    assert failure.passages == []
     with pytest.raises(ValidationError):
         ReadingExerciseGenerationResult(status="ok")
     with pytest.raises(ValidationError):
         ReadingExerciseGenerationResult(status="error")
+
+
+def test_reading_exercise_result_rejects_a_passage_with_no_questions():
+    with pytest.raises(ValidationError):
+        GeneratedPassage(passage_text="A short passage.", questions=[])
 
 
 def test_listening_script_request_requires_focus_description():
@@ -176,14 +232,18 @@ def test_listening_script_request_requires_focus_description():
 def test_listening_script_result_discriminates_success_from_error():
     success = ListeningScriptGenerationResult(
         status="ok",
-        script_text="A short script.",
-        questions=[_question()],
+        sections=[GeneratedSection(script_text="A short script.", questions=[_question()])],
     )
     failure = ListeningScriptGenerationResult(status="error", error_message="provider timeout")
 
-    assert success.script_text == "A short script."
-    assert failure.script_text is None
+    assert success.sections[0].script_text == "A short script."
+    assert failure.sections == []
     with pytest.raises(ValidationError):
         ListeningScriptGenerationResult(status="ok")
     with pytest.raises(ValidationError):
         ListeningScriptGenerationResult(status="error")
+
+
+def test_listening_script_result_rejects_a_section_with_no_questions():
+    with pytest.raises(ValidationError):
+        GeneratedSection(script_text="A short script.", questions=[])

@@ -35,4 +35,15 @@ describe('WritingCoachRepository', () => {
     api.get.and.returnValue(throwError(() => new Error('offline')));
     await expectAsync(new WritingCoachRepository(api).list()).toBeRejected();
   });
+
+  it('appends a day query param when listing for a specific day', async () => {
+    const api = jasmine.createSpyObj<ApiClient>('ApiClient', ['get', 'post']);
+    api.get.and.returnValue(of([]));
+
+    await new WritingCoachRepository(api).list('2026-07-30');
+
+    expect(api.get).toHaveBeenCalledWith(
+      '/api/writing-coach/submissions?day=2026-07-30',
+    );
+  });
 });

@@ -7,20 +7,54 @@ from app.ai import get_ai_provider
 from app.ai.provider import AIProvider
 from app.core.db import get_db
 from app.core.security import require_learner
+from app.models.daily_lesson_plan import DailyFocus
 from app.models.reading_practice import ReadingExercise
 from app.models.user import User
 from app.schemas.reading_practice import (
     ReadingAnswerResult,
     ReadingExerciseAnswering,
+    ReadingPassageAnswering,
     ReadingSubmissionResult,
     ReadingSubmitRequest,
 )
-from app.services import reading_practice as service
+from app.services import exam_question_types, reading_practice as service
 
 router = APIRouter(
     prefix="/api/reading-practice",
     dependencies=[Depends(require_learner)],
 )
+
+
+def _build_exercise_answering(
+    db: Session, exercise: ReadingExercise, user_id
+) -> ReadingExerciseAnswering:
+    passages = service.get_passages(db, exercise.id) if exercise.status == "ready" else []
+    questions = service.get_questions(db, exercise.id) if exercise.status == "ready" else []
+    questions_by_passage: dict = {}
+    for question in questions:
+        questions_by_passage.setdefault(question.passage_id, []).append(question)
+    focus = (
+        db.query(DailyFocus)
+        .filter_by(user_id=user_id, day=exercise.day, skill="reading")
+        .one_or_none()
+    )
+    return ReadingExerciseAnswering(
+        day=exercise.day,
+        status=exercise.status,
+        focus_reference=exercise.focus_reference,
+        passages=[
+            ReadingPassageAnswering(
+                id=passage.id,
+                title=passage.title,
+                passage_text=passage.passage_text,
+                order=passage.order,
+                questions=questions_by_passage.get(passage.id, []),
+            )
+            for passage in passages
+        ],
+        phase=focus.phase if focus else None,
+        target_minutes=focus.estimated_minutes if focus else None,
+    )
 
 
 @router.get("/{day}", response_model=ReadingExerciseAnswering)
@@ -31,13 +65,7 @@ def get_exercise(
     user: User = Depends(require_learner),
 ) -> ReadingExerciseAnswering:
     exercise = service.get_or_create_exercise(db, day, None, provider, user.id)
-    return ReadingExerciseAnswering(
-        day=exercise.day,
-        status=exercise.status,
-        focus_reference=exercise.focus_reference,
-        passage_text=exercise.passage_text if exercise.status == "ready" else None,
-        questions=service.get_questions(db, exercise.id),
-    )
+    return _build_exercise_answering(db, exercise, user.id)
 
 
 @router.post("/{day}/submit", response_model=ReadingSubmissionResult)
@@ -56,10 +84,11 @@ def submit(
     answers = [
         ReadingAnswerResult(
             question_text=question.question_text,
+            question_type=question.question_type,
             options=question.options,
-            learner_answer_index=answer,
-            correct_option_index=question.correct_option_index,
-            correct=question.correct_option_index == answer,
+            learner_answer=answer,
+            correct_answer=exam_question_types.canonical_correct_answer(question),
+            correct=exam_question_types.is_correct(question, answer),
         )
         for question, answer in zip(questions, submission.answers)
     ]
@@ -76,10 +105,4 @@ def retry(
     user: User = Depends(require_learner),
 ) -> ReadingExerciseAnswering:
     exercise = service.retry_exercise(db, day, provider, user.id)
-    return ReadingExerciseAnswering(
-        day=exercise.day,
-        status=exercise.status,
-        focus_reference=exercise.focus_reference,
-        passage_text=exercise.passage_text if exercise.status == "ready" else None,
-        questions=service.get_questions(db, exercise.id),
-    )
+    return _build_exercise_answering(db, exercise, user.id)

@@ -16,6 +16,8 @@ export class WritingCoachFacade {
   private readonly draftSignal = signal<WritingSubmissionCreate | null>(null);
   private readonly currentSignal = signal<WritingSubmissionDetail | null>(null);
   private readonly submissionsSignal = signal<WritingSubmissionSummary[]>([]);
+  private readonly latestForDaySignal = signal<WritingSubmissionSummary | null>(null);
+  private readonly latestForDayStateSignal = signal<WritingLoadState>('idle');
 
   readonly submissionState = this.submissionStateSignal.asReadonly();
   readonly listState = this.listStateSignal.asReadonly();
@@ -23,6 +25,8 @@ export class WritingCoachFacade {
   readonly draft = this.draftSignal.asReadonly();
   readonly current = this.currentSignal.asReadonly();
   readonly submissions = this.submissionsSignal.asReadonly();
+  readonly latestForDay = this.latestForDaySignal.asReadonly();
+  readonly latestForDayState = this.latestForDayStateSignal.asReadonly();
 
   constructor(private readonly repository: WritingCoachRepository) {}
 
@@ -42,6 +46,19 @@ export class WritingCoachFacade {
 
   retry(): Promise<void> {
     return this.submit();
+  }
+
+  async loadLatestForDay(day: string): Promise<void> {
+    this.latestForDayStateSignal.set('loading');
+    try {
+      const submissions = await this.repository.list(day);
+      this.latestForDaySignal.set(submissions[0] ?? null);
+      this.latestForDayStateSignal.set('ready');
+    } catch (error) {
+      this.latestForDaySignal.set(null);
+      this.latestForDayStateSignal.set('error');
+      throw error;
+    }
   }
 
   async loadSubmissions(): Promise<void> {

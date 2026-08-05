@@ -3,23 +3,35 @@ export type ReadingExerciseStatus = 'ready' | 'failed';
 export interface ReadingQuestion {
   id: string;
   questionText: string;
-  options: string[];
+  questionType: string;
+  options: string[] | null;
+  groupInstructions: string | null;
   order: number;
+}
+
+export interface ReadingPassage {
+  id: string;
+  title: string | null;
+  passageText: string;
+  order: number;
+  questions: ReadingQuestion[];
 }
 
 export interface ReadingExercise {
   day: string;
   status: ReadingExerciseStatus;
   focusReference: string | null;
-  passageText: string | null;
-  questions: ReadingQuestion[];
+  passages: ReadingPassage[];
+  phase: string | null;
+  targetMinutes: number | null;
 }
 
 export interface ReadingAnswerResult {
   questionText: string;
-  options: string[];
-  learnerAnswerIndex: number;
-  correctOptionIndex: number;
+  questionType: string;
+  options: string[] | null;
+  learnerAnswer: number | string;
+  correctAnswer: number | string | null;
   correct: boolean;
 }
 

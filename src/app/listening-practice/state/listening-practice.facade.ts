@@ -22,8 +22,8 @@ export class ListeningPracticeFacade {
 
   constructor(private readonly repository: ListeningPracticeRepository) {}
 
-  audioUrl(day: string): string {
-    return this.repository.audioUrl(day);
+  audioUrl(day: string, order: number): string {
+    return this.repository.audioUrl(day, order);
   }
 
   async load(day: string): Promise<void> {
@@ -38,7 +38,7 @@ export class ListeningPracticeFacade {
     }
   }
 
-  async submit(answers: number[]): Promise<void> {
+  async submit(answers: (number | string)[]): Promise<void> {
     const day = this.daySignal();
     if (!day) return;
     this.submitStateSignal.set('loading');
