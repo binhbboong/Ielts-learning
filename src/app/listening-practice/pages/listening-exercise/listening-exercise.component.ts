@@ -5,7 +5,9 @@ import {
   MistakeQuickAddComponent,
   MistakeQuickAddData,
 } from '../../../mistakes/pages/quick-add/mistake-quick-add.component';
+import { CountdownTimerComponent } from '../../../core/exam/countdown-timer.component';
 import { isTextBasedQuestionType } from '../../../core/exam/question-types';
+import { isBeginnerPhase } from '../../../core/exam/phase-tier';
 import {
   ListeningAnswerResult,
   ListeningQuestion,
@@ -25,7 +27,7 @@ interface ListeningSectionView {
 @Component({
   selector: 'app-listening-exercise',
   standalone: true,
-  imports: [RouterLink, FormsModule, MistakeQuickAddComponent],
+  imports: [RouterLink, FormsModule, MistakeQuickAddComponent, CountdownTimerComponent],
   templateUrl: './listening-exercise.component.html',
   styleUrl: './listening-exercise.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -37,6 +39,13 @@ export class ListeningExerciseComponent implements OnInit {
   selectedAnswers: (number | string | null)[] = [];
   openQuickAddIndex: number | null = null;
   readonly isTextBasedQuestionType = isTextBasedQuestionType;
+
+  get showTimer(): boolean {
+    const exercise = this.facade.exercise();
+    return Boolean(
+      exercise && !isBeginnerPhase(exercise.phase) && exercise.targetMinutes,
+    );
+  }
 
   async ngOnInit(): Promise<void> {
     this.day = this.route.snapshot.paramMap.get('day') ?? todayIso();

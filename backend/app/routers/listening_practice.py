@@ -7,6 +7,7 @@ from app.ai import get_ai_provider
 from app.ai.provider import AIProvider
 from app.core.db import get_db
 from app.core.security import require_learner
+from app.models.daily_lesson_plan import DailyFocus
 from app.models.listening_practice import (
     ListeningExercise,
     ListeningSection,
@@ -30,13 +31,18 @@ router = APIRouter(
 
 
 def _build_exercise_answering(
-    db: Session, exercise: ListeningExercise, *, reveal_scripts: bool
+    db: Session, exercise: ListeningExercise, user_id, *, reveal_scripts: bool
 ) -> ListeningExerciseAnswering:
     sections = service.get_sections(db, exercise.id)
     questions = service.get_questions(db, exercise.id)
     questions_by_section: dict = {}
     for question in questions:
         questions_by_section.setdefault(question.section_id, []).append(question)
+    focus = (
+        db.query(DailyFocus)
+        .filter_by(user_id=user_id, day=exercise.day, skill="listening")
+        .one_or_none()
+    )
     return ListeningExerciseAnswering(
         day=exercise.day,
         status=exercise.status,
@@ -51,6 +57,8 @@ def _build_exercise_answering(
             )
             for section in sections
         ],
+        phase=focus.phase if focus else None,
+        target_minutes=focus.estimated_minutes if focus else None,
     )
 
 
@@ -67,7 +75,7 @@ def get_exercise(
         db.query(ListeningSubmission).filter_by(exercise_id=exercise.id).first()
         is not None
     )
-    return _build_exercise_answering(db, exercise, reveal_scripts=has_submission)
+    return _build_exercise_answering(db, exercise, user.id, reveal_scripts=has_submission)
 
 
 @router.get("/{day}/audio/{order}")
@@ -113,7 +121,7 @@ def submit(
         )
         for question, answer in zip(questions, submission.answers)
     ]
-    revealed = _build_exercise_answering(db, exercise, reveal_scripts=True)
+    revealed = _build_exercise_answering(db, exercise, user.id, reveal_scripts=True)
     return ListeningSubmissionResult(
         day=day,
         score=submission.score,
@@ -131,7 +139,7 @@ def retry_script(
     user: User = Depends(require_learner),
 ) -> ListeningExerciseAnswering:
     exercise = service.retry_script(db, day, provider, user.id)
-    return _build_exercise_answering(db, exercise, reveal_scripts=False)
+    return _build_exercise_answering(db, exercise, user.id, reveal_scripts=False)
 
 
 @router.post("/{day}/retry-audio", response_model=ListeningExerciseAnswering)
@@ -142,4 +150,4 @@ def retry_audio(
     user: User = Depends(require_learner),
 ) -> ListeningExerciseAnswering:
     exercise = service.retry_audio(db, day, tts, user.id)
-    return _build_exercise_answering(db, exercise, reveal_scripts=False)
+    return _build_exercise_answering(db, exercise, user.id, reveal_scripts=False)

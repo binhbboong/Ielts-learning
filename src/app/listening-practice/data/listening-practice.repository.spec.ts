@@ -7,6 +7,7 @@ describe('ListeningPracticeRepository', () => {
     const api = jasmine.createSpyObj<ApiClient>('ApiClient', ['get', 'post']);
     api.get.and.returnValue(of({
       day: '2026-07-30', status: 'ready', focus_reference: "the word 'nevertheless'",
+      phase: 'development', target_minutes: 38,
       sections: [
         {
           id: 's1', context_type: 'monologue', script_text: null, order: 1,
@@ -45,6 +46,8 @@ describe('ListeningPracticeRepository', () => {
 
     const exercise = await repository.get('2026-07-30');
     expect(exercise.sections[0].questions[0].questionText).toBe('What is discussed?');
+    expect(exercise.phase).toBe('development');
+    expect(exercise.targetMinutes).toBe(38);
 
     const result = await repository.submit('2026-07-30', [1]);
     expect(result.score).toBe(1);
@@ -75,6 +78,19 @@ describe('ListeningPracticeRepository', () => {
     expect(repository.audioUrl('2026-07-30', 2)).toBe(
       '/api/listening-practice/2026-07-30/audio/2',
     );
+  });
+
+  it('defaults phase and targetMinutes to null when absent', async () => {
+    const api = jasmine.createSpyObj<ApiClient>('ApiClient', ['get', 'post']);
+    api.get.and.returnValue(of({
+      day: '2026-07-30', status: 'ready', focus_reference: null, sections: [],
+    }));
+    const repository = new ListeningPracticeRepository(api);
+
+    const exercise = await repository.get('2026-07-30');
+
+    expect(exercise.phase).toBeNull();
+    expect(exercise.targetMinutes).toBeNull();
   });
 
   it('propagates failures', async () => {

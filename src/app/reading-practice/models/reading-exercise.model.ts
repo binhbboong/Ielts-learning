@@ -22,6 +22,8 @@ export interface ReadingExercise {
   status: ReadingExerciseStatus;
   focusReference: string | null;
   passages: ReadingPassage[];
+  phase: string | null;
+  targetMinutes: number | null;
 }
 
 export interface ReadingAnswerResult {

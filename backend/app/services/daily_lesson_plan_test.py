@@ -460,6 +460,43 @@ def test_ensure_today_generated_is_idempotent_and_triggers_no_further_generation
         session.close()
 
 
+def test_ensure_today_generated_at_advanced_phase_requests_advanced_tier_and_skill_minutes(
+    db_session_factory,
+):
+    session = db_session_factory()
+    try:
+        provider = _full_provider()
+        tts = FakeTextToSpeech(
+            SynthesisResult(status="ok", audio_bytes=b"audio", content_type="audio/mpeg")
+        )
+        target_day = date(2026, 7, 30)
+        # Week 18 (17 weeks after start) lands in the exam_readiness phase per
+        # _PHASES — see plan_context().
+        get_or_create_profile(session, LEGACY_USER_ID, target_day - timedelta(weeks=17))
+
+        ensure_today_generated(session, target_day, provider, tts)
+
+        assert provider.reading_exercise_requests[0].tier == "advanced"
+        assert provider.listening_script_requests[0].tier == "advanced"
+        focuses = {
+            f.skill: f
+            for f in session.query(DailyFocus).filter_by(day=target_day).all()
+        }
+        assert focuses["reading"].phase == "exam_readiness"
+        advanced_primary_minutes = {"reading": 60, "listening": 40, "writing": 60}
+        primary_skill = next(
+            skill for skill, focus in focuses.items() if focus.priority == "primary"
+        )
+        assert focuses[primary_skill].estimated_minutes == (
+            advanced_primary_minutes[primary_skill]
+        )
+        for skill, focus in focuses.items():
+            if skill != primary_skill:
+                assert focus.estimated_minutes == 25
+    finally:
+        session.close()
+
+
 def test_get_overview_includes_all_three_daily_skills_for_the_effective_day(
     db_session_factory,
 ):

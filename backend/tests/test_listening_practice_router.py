@@ -6,6 +6,8 @@ from app.ai.schemas import GeneratedQuestion, GeneratedSection, ListeningScriptG
 from app.ai.testing import FakeAIProvider
 from app.core.db import get_db
 from app.core.security import SESSION_COOKIE_NAME, create_session_token
+from app.models.daily_lesson_plan import DailyFocus
+from app.models.user import LEGACY_USER_ID
 from app.routers.listening_practice import router as listening_router
 from app.services.text_to_speech import (
     FakeTextToSpeech,
@@ -78,6 +80,28 @@ def test_get_exercise_generates_on_first_request_and_withholds_transcript(
     questions = body["sections"][0]["questions"]
     assert len(questions) == 1
     assert "correct_option_index" not in questions[0]
+
+
+def test_get_exercise_includes_phase_and_target_minutes_from_the_days_daily_focus(
+    db_session_factory,
+):
+    with db_session_factory() as session:
+        session.add(
+            DailyFocus(
+                user_id=LEGACY_USER_ID, day="2026-07-30", skill="listening",
+                focus_kind="default", target_band=6.5, estimated_minutes=40,
+                priority="primary", phase="exam_readiness",
+                rationale="Scheduled rotation",
+            )
+        )
+        session.commit()
+    client = _client(db_session_factory)
+
+    response = client.get("/api/listening-practice/2026-07-30")
+
+    body = response.json()
+    assert body["phase"] == "exam_readiness"
+    assert body["target_minutes"] == 40
 
 
 def test_get_audio_serves_the_stored_bytes_with_content_type(db_session_factory):

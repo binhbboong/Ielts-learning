@@ -30,6 +30,12 @@ class ListeningExerciseAnswering(BaseModel):
     status: str
     focus_reference: str | None
     sections: list[ListeningSectionAnswering]
+    # phase/target_minutes come from the day's DailyFocus (Epic-1) when one
+    # exists, so the frontend can show a non-blocking countdown timer at
+    # standard/advanced tier and none at beginner tier — see
+    # docs/adr/2026-08-05-ielts-exam-structure-band-scaling.md.
+    phase: str | None = None
+    target_minutes: int | None = None
 
 
 class ListeningSubmitRequest(BaseModel):

@@ -5,6 +5,7 @@ describe('ReadingPracticeFacade', () => {
   const exercise = {
     day: '2026-07-30', status: 'ready' as const,
     focusReference: "the word 'nevertheless'",
+    phase: 'foundation', targetMinutes: 20,
     passages: [{
       id: 'p1', title: null, passageText: 'A passage.', order: 1,
       questions: [{

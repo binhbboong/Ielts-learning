@@ -20,6 +20,8 @@ export interface ListeningExercise {
   status: string;
   focusReference: string | null;
   sections: ListeningSection[];
+  phase: string | null;
+  targetMinutes: number | null;
 }
 
 export interface ListeningAnswerResult {

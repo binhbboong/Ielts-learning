@@ -32,15 +32,16 @@ CHECKPOINT_PASS_RATIO = 0.8
 PRIMARY_SKILL_MINUTES = 20
 SUPPORT_SKILL_MINUTES = 10
 # Per-tier (primary, support) minutes, per docs/adr/2026-08-05-ielts-exam-
-# structure-band-scaling.md revision 6. "advanced" isn't listed yet — Reading/
-# Listening structural generation is capped at "standard" until Stage 3 ships
-# real advanced-tier content (see _content_tier below), so advanced-phase
-# learners get standard-tier minutes for now rather than promising more
-# generated content than actually exists.
+# structure-band-scaling.md revision 6.
 _MINUTES_BY_TIER = {
     "beginner": (PRIMARY_SKILL_MINUTES, SUPPORT_SKILL_MINUTES),
     "standard": (38, 18),
 }
+# Advanced tier approaches real exam duration, which varies by skill (Reading
+# ~60 min, Listening ~30-40 min, Writing ~60 min) rather than one shared
+# number — support days stay a reduced, not full-length, version.
+_ADVANCED_PRIMARY_MINUTES_BY_SKILL = {"reading": 60, "listening": 40, "writing": 60}
+_ADVANCED_SUPPORT_MINUTES = 25
 _PRIMARY_SKILL_BY_WEEKDAY = {
     0: "reading",
     1: "listening",
@@ -141,13 +142,11 @@ def _prompt_complexity_tier(phase: str) -> str:
 
 
 def _content_tier(phase: str) -> str:
-    """Reading/Listening structural generation (passages/sections + question-
-    type catalog) currently implements the beginner and standard tiers only —
-    advanced-tier structure (3 passages/4 sections, full type catalog) is
-    Stage 3 follow-up work. Advanced phases get standard-tier content until
-    then, so the daily overview never promises more than what's generated."""
-    tier = _prompt_complexity_tier(phase)
-    return "standard" if tier == "advanced" else tier
+    """Reading/Listening structural generation tier (beginner=1 passage/
+    section, standard=2, advanced=3 passages/4 sections with the full
+    question-type catalog) — same phase mapping as Writing/Speaking prompt
+    complexity."""
+    return _prompt_complexity_tier(phase)
 
 
 def _writing_task_for_day(day: date) -> str:
@@ -330,9 +329,13 @@ def get_skill_status(
 def _skill_minutes_and_priority(day: date, skill: str, phase: str) -> tuple[int, str]:
     primary_skill = _PRIMARY_SKILL_BY_WEEKDAY[day.weekday()]
     tier = _prompt_complexity_tier(phase)
-    primary_minutes, support_minutes = _MINUTES_BY_TIER.get(
-        tier, _MINUTES_BY_TIER["standard"]
-    )
+    if tier == "advanced":
+        primary_minutes = _ADVANCED_PRIMARY_MINUTES_BY_SKILL.get(skill, 60)
+        support_minutes = _ADVANCED_SUPPORT_MINUTES
+    else:
+        primary_minutes, support_minutes = _MINUTES_BY_TIER.get(
+            tier, _MINUTES_BY_TIER["standard"]
+        )
     if skill == primary_skill:
         return primary_minutes, "primary"
     return support_minutes, "support"

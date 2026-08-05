@@ -74,6 +74,9 @@
       </section>
     } @else {
       <section class="listening-card">
+        @if (showTimer) {
+          <app-countdown-timer [minutes]="exercise.targetMinutes!" />
+        }
         @if (exercise.focusReference) {
           <p class="focus-note">Targets: {{ exercise.focusReference }}</p>
         }

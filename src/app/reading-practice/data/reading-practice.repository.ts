@@ -36,6 +36,8 @@ function exercise(value: any): ReadingExercise {
     status: value.status,
     focusReference: value.focus_reference,
     passages: (value.passages ?? []).map(passage),
+    phase: value.phase ?? null,
+    targetMinutes: value.target_minutes ?? null,
   };
 }
 

@@ -5,7 +5,9 @@ import {
   MistakeQuickAddComponent,
   MistakeQuickAddData,
 } from '../../../mistakes/pages/quick-add/mistake-quick-add.component';
+import { CountdownTimerComponent } from '../../../core/exam/countdown-timer.component';
 import { isTextBasedQuestionType } from '../../../core/exam/question-types';
+import { isBeginnerPhase } from '../../../core/exam/phase-tier';
 import {
   ReadingAnswerResult,
   ReadingPassage,
@@ -25,7 +27,7 @@ interface PassageSection {
 @Component({
   selector: 'app-reading-exercise',
   standalone: true,
-  imports: [RouterLink, FormsModule, MistakeQuickAddComponent],
+  imports: [RouterLink, FormsModule, MistakeQuickAddComponent, CountdownTimerComponent],
   templateUrl: './reading-exercise.component.html',
   styleUrl: './reading-exercise.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -36,6 +38,13 @@ export class ReadingExerciseComponent implements OnInit {
   selectedAnswers: (number | string | null)[] = [];
   openQuickAddIndex: number | null = null;
   readonly isTextBasedQuestionType = isTextBasedQuestionType;
+
+  get showTimer(): boolean {
+    const exercise = this.facade.exercise();
+    return Boolean(
+      exercise && !isBeginnerPhase(exercise.phase) && exercise.targetMinutes,
+    );
+  }
 
   async ngOnInit(): Promise<void> {
     const day = this.route.snapshot.paramMap.get('day') ?? todayIso();

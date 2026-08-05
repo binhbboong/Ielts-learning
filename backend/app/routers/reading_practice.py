@@ -7,6 +7,7 @@ from app.ai import get_ai_provider
 from app.ai.provider import AIProvider
 from app.core.db import get_db
 from app.core.security import require_learner
+from app.models.daily_lesson_plan import DailyFocus
 from app.models.reading_practice import ReadingExercise
 from app.models.user import User
 from app.schemas.reading_practice import (
@@ -24,12 +25,19 @@ router = APIRouter(
 )
 
 
-def _build_exercise_answering(db: Session, exercise: ReadingExercise) -> ReadingExerciseAnswering:
+def _build_exercise_answering(
+    db: Session, exercise: ReadingExercise, user_id
+) -> ReadingExerciseAnswering:
     passages = service.get_passages(db, exercise.id) if exercise.status == "ready" else []
     questions = service.get_questions(db, exercise.id) if exercise.status == "ready" else []
     questions_by_passage: dict = {}
     for question in questions:
         questions_by_passage.setdefault(question.passage_id, []).append(question)
+    focus = (
+        db.query(DailyFocus)
+        .filter_by(user_id=user_id, day=exercise.day, skill="reading")
+        .one_or_none()
+    )
     return ReadingExerciseAnswering(
         day=exercise.day,
         status=exercise.status,
@@ -44,6 +52,8 @@ def _build_exercise_answering(db: Session, exercise: ReadingExercise) -> Reading
             )
             for passage in passages
         ],
+        phase=focus.phase if focus else None,
+        target_minutes=focus.estimated_minutes if focus else None,
     )
 
 
@@ -55,7 +65,7 @@ def get_exercise(
     user: User = Depends(require_learner),
 ) -> ReadingExerciseAnswering:
     exercise = service.get_or_create_exercise(db, day, None, provider, user.id)
-    return _build_exercise_answering(db, exercise)
+    return _build_exercise_answering(db, exercise, user.id)
 
 
 @router.post("/{day}/submit", response_model=ReadingSubmissionResult)
@@ -95,4 +105,4 @@ def retry(
     user: User = Depends(require_learner),
 ) -> ReadingExerciseAnswering:
     exercise = service.retry_exercise(db, day, provider, user.id)
-    return _build_exercise_answering(db, exercise)
+    return _build_exercise_answering(db, exercise, user.id)

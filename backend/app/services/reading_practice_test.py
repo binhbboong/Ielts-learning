@@ -1,5 +1,6 @@
 from datetime import date
 
+from app.ai.local_provider import LocalAIProvider
 from app.ai.schemas import (
     GeneratedPassage,
     GeneratedQuestion,
@@ -151,6 +152,21 @@ def test_standard_tier_requests_and_persists_two_passages(db_session_factory):
     questions = get_questions(session, exercise.id)
     assert [q.question_type for q in questions] == ["multiple_choice", "matching_headings"]
     assert questions[1].group_instructions == "Match each paragraph to a heading."
+    session.close()
+
+
+def test_advanced_tier_requests_and_persists_three_passages(db_session_factory):
+    session = db_session_factory()
+    provider = LocalAIProvider()
+
+    exercise = get_or_create_exercise(
+        session, date(2026, 7, 30), "focus", provider, tier="advanced",
+    )
+
+    passages = get_passages(session, exercise.id)
+    assert len(passages) == 3
+    questions = get_questions(session, exercise.id)
+    assert len(questions) == 2 + 2 + 5
     session.close()
 
 

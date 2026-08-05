@@ -5,6 +5,7 @@ describe('ListeningPracticeFacade', () => {
   const exercise = {
     day: '2026-07-30', status: 'ready',
     focusReference: "the word 'nevertheless'",
+    phase: 'foundation', targetMinutes: 20,
     sections: [{
       id: 's1', contextType: 'monologue', scriptText: null, order: 1,
       questions: [{

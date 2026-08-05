@@ -36,6 +36,8 @@ function exercise(value: any): ListeningExercise {
     status: value.status,
     focusReference: value.focus_reference,
     sections: (value.sections ?? []).map(section),
+    phase: value.phase ?? null,
+    targetMinutes: value.target_minutes ?? null,
   };
 }
 

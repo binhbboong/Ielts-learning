@@ -204,10 +204,10 @@ class GeneratedQuestion(_RequiredTextModel):
         return self
 
 
-# "advanced" (3 passages/4 sections, full type catalog) is Stage 3 follow-up
-# work, deliberately not accepted here yet — see
+# beginner = 1 passage/section, standard = 2, advanced = 3 passages/4 sections
+# with the full question-type catalog — see
 # docs/adr/2026-08-05-ielts-exam-structure-band-scaling.md.
-GenerationTier = Literal["beginner", "standard"]
+GenerationTier = Literal["beginner", "standard", "advanced"]
 
 
 class GeneratedPassage(_RequiredTextModel):

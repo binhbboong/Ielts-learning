@@ -11,6 +11,8 @@ from app.ai.schemas import (
 from app.ai.testing import FakeAIProvider
 from app.core.db import get_db
 from app.core.security import SESSION_COOKIE_NAME, create_session_token
+from app.models.daily_lesson_plan import DailyFocus
+from app.models.user import LEGACY_USER_ID
 from app.routers.reading_practice import router as reading_router
 
 
@@ -74,6 +76,40 @@ def test_get_exercise_generates_on_first_request_and_omits_correct_answers(
     assert "accepted_answers" not in questions[0]
     assert questions[0]["question_type"] == "multiple_choice"
     assert "options" in questions[0]
+
+
+def test_get_exercise_includes_phase_and_target_minutes_from_the_days_daily_focus(
+    db_session_factory,
+):
+    with db_session_factory() as session:
+        session.add(
+            DailyFocus(
+                user_id=LEGACY_USER_ID, day="2026-07-30", skill="reading",
+                focus_kind="default", target_band=6.0, estimated_minutes=38,
+                priority="primary", phase="development",
+                rationale="Scheduled rotation",
+            )
+        )
+        session.commit()
+    client = _client(db_session_factory)
+
+    response = client.get("/api/reading-practice/2026-07-30")
+
+    body = response.json()
+    assert body["phase"] == "development"
+    assert body["target_minutes"] == 38
+
+
+def test_get_exercise_has_no_phase_or_target_minutes_without_a_daily_focus(
+    db_session_factory,
+):
+    client = _client(db_session_factory)
+
+    response = client.get("/api/reading-practice/2026-07-30")
+
+    body = response.json()
+    assert body["phase"] is None
+    assert body["target_minutes"] is None
 
 
 def test_get_exercise_second_request_returns_the_same_content(db_session_factory):

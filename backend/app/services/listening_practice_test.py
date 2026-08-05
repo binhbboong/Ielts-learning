@@ -1,5 +1,6 @@
 from datetime import date
 
+from app.ai.local_provider import LocalAIProvider
 from app.ai.schemas import (
     GeneratedQuestion,
     GeneratedSection,
@@ -229,6 +230,26 @@ def test_standard_tier_requests_and_persists_two_sections(db_session_factory):
     assert tts.calls == ["Section 1 script.", "Section 2 script."]
     questions = get_questions(session, exercise.id)
     assert [q.question_type for q in questions] == ["multiple_choice", "matching"]
+    session.close()
+
+
+def test_advanced_tier_requests_and_persists_four_sections_with_own_audio(
+    db_session_factory,
+):
+    session = db_session_factory()
+    provider = LocalAIProvider()
+    tts = FakeTextToSpeech(_success_audio_result())
+
+    exercise = get_or_create_exercise(
+        session, date(2026, 7, 30), "focus", provider, tts, tier="advanced",
+    )
+
+    sections = get_sections(session, exercise.id)
+    assert len(sections) == 4
+    assert all(section.audio_bytes == b"fake-audio" for section in sections)
+    assert len(tts.calls) == 4
+    questions = get_questions(session, exercise.id)
+    assert len(questions) == 2 + 2 + 2 + 1
     session.close()
 
 

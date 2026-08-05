@@ -7,6 +7,7 @@ import { ReadingExerciseComponent } from './reading-exercise.component';
 const exercise = {
   day: '2026-07-30', status: 'ready' as const,
   focusReference: "the word 'nevertheless'",
+  phase: 'foundation', targetMinutes: 20,
   passages: [
     {
       id: 'p1', title: null, passageText: 'A passage about nevertheless.', order: 1,
@@ -178,6 +179,37 @@ describe('ReadingExerciseComponent', () => {
 
     expect(data.ownAnswer).toBe('staffing');
     expect(data.correctAnswer).toBe('funding');
+  });
+
+  it('shows no countdown timer at beginner tier', async () => {
+    const { fixture, component } = await setUp();
+
+    // Let Angular's own lifecycle drive ngOnInit exactly once (calling it
+    // manually too, as other tests in this file do for direct property
+    // assertions, would trigger a second unawaited load on detectChanges and
+    // leave exerciseState back at 'loading' when the DOM is inspected).
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(component.showTimer).toBeFalse();
+    expect(
+      fixture.nativeElement.querySelector('app-countdown-timer'),
+    ).toBeNull();
+  });
+
+  it('shows a countdown timer at standard/advanced tier', async () => {
+    const { fixture, component, repository } = await setUp();
+    repository.get.and.resolveTo({ ...exercise, phase: 'consolidation', targetMinutes: 38 });
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(component.showTimer).toBeTrue();
+    expect(
+      fixture.nativeElement.querySelector('app-countdown-timer'),
+    ).not.toBeNull();
   });
 
   it('toggles the quick-add panel open and closed per question', async () => {

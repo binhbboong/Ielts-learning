@@ -7,6 +7,7 @@ import { ListeningExerciseComponent } from './listening-exercise.component';
 const exercise = {
   day: '2026-07-30', status: 'ready',
   focusReference: "the word 'nevertheless'",
+  phase: 'foundation', targetMinutes: 20,
   sections: [
     {
       id: 's1', contextType: 'monologue', scriptText: null, order: 1,
@@ -189,6 +190,29 @@ describe('ListeningExerciseComponent', () => {
 
     expect(data.ownAnswer).toBe('staffing');
     expect(data.correctAnswer).toBe('funding');
+  });
+
+  it('shows no countdown timer at beginner tier', async () => {
+    const { fixture, component } = await setUp();
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(component.showTimer).toBeFalse();
+    expect(fixture.nativeElement.querySelector('app-countdown-timer')).toBeNull();
+  });
+
+  it('shows a countdown timer at standard/advanced tier', async () => {
+    const { fixture, component, repository } = await setUp();
+    repository.get.and.resolveTo({ ...exercise, phase: 'development', targetMinutes: 38 });
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(component.showTimer).toBeTrue();
+    expect(fixture.nativeElement.querySelector('app-countdown-timer')).not.toBeNull();
   });
 
   it('toggles the quick-add panel open and closed per question', async () => {
