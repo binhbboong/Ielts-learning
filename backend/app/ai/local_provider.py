@@ -89,12 +89,21 @@ class LocalAIProvider(AIProvider):
                 f"Local demo passage targeting {focus}. Connect Claude for a real "
                 "IELTS-style Reading passage."
             ),
+            # Beginner-tier catalog (multiple_choice + true_false_not_given) per
+            # docs/adr/2026-08-05-ielts-exam-structure-band-scaling.md.
             questions=[
                 GeneratedQuestion(
                     question_text=f"Local demo question about {focus}?",
+                    question_type="multiple_choice",
                     options=["Option A", "Option B", "Option C", "Option D"],
                     correct_option_index=0,
-                )
+                ),
+                GeneratedQuestion(
+                    question_text=f"The passage's main claim relates to {focus}.",
+                    question_type="true_false_not_given",
+                    options=["True", "False", "Not Given"],
+                    correct_option_index=0,
+                ),
             ],
         )
 
@@ -108,11 +117,19 @@ class LocalAIProvider(AIProvider):
                 f"Local demo script targeting {focus}. Connect Claude for a real "
                 "IELTS-style Listening script."
             ),
+            # Beginner-tier catalog (multiple_choice + note_completion) per
+            # docs/adr/2026-08-05-ielts-exam-structure-band-scaling.md.
             questions=[
                 GeneratedQuestion(
                     question_text=f"Local demo question about {focus}?",
+                    question_type="multiple_choice",
                     options=["Option A", "Option B", "Option C", "Option D"],
                     correct_option_index=0,
-                )
+                ),
+                GeneratedQuestion(
+                    question_text=f"Complete the note: the speaker mentions ___ ({focus}).",
+                    question_type="note_completion",
+                    accepted_answers=["a detail", "detail"],
+                ),
             ],
         )

@@ -38,7 +38,7 @@ export class ListeningPracticeFacade {
     }
   }
 
-  async submit(answers: number[]): Promise<void> {
+  async submit(answers: (number | string)[]): Promise<void> {
     const day = this.daySignal();
     if (!day) return;
     this.submitStateSignal.set('loading');

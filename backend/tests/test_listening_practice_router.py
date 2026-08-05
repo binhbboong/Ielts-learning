@@ -100,8 +100,8 @@ def test_submit_scores_immediately_and_reveals_transcript(db_session_factory):
     assert body["script_text"] == "A script about nevertheless."
     answer = body["answers"][0]
     assert answer["correct"] is False
-    assert answer["learner_answer_index"] == 0
-    assert answer["correct_option_index"] == 1
+    assert answer["learner_answer"] == 0
+    assert answer["correct_answer"] == 1
 
 
 def test_submitting_twice_returns_the_original_result_instead_of_500(db_session_factory):

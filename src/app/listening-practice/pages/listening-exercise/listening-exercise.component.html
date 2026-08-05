@@ -38,9 +38,18 @@
           @for (answer of result.answers; track $index; let ai = $index) {
             <li [class.correct]="answer.correct" [class.wrong]="!answer.correct">
               <p>{{ answer.questionText }}</p>
-              <p>Your answer: {{ answer.options[answer.learnerAnswerIndex] }}</p>
+              @if (isTextBasedQuestionType(answer.questionType)) {
+                <p>Your answer: {{ answer.learnerAnswer }}</p>
+                @if (!answer.correct) {
+                  <p>Accepted answer: {{ answer.correctAnswer }}</p>
+                }
+              } @else {
+                <p>Your answer: {{ answer.options![$any(answer.learnerAnswer)] }}</p>
+                @if (!answer.correct) {
+                  <p>Correct answer: {{ answer.options![$any(answer.correctAnswer)] }}</p>
+                }
+              }
               @if (!answer.correct) {
-                <p>Correct answer: {{ answer.options[answer.correctOptionIndex] }}</p>
                 @if (openQuickAddIndex === ai) {
                   <app-mistake-quick-add
                     [data]="quickAddData(answer)"
@@ -73,17 +82,28 @@
           @for (question of exercise.questions; track question.id; let qi = $index) {
             <li>
               <p>{{ question.questionText }}</p>
-              <div class="options">
-                @for (option of question.options; track $index; let oi = $index) {
-                  <button
-                    type="button"
-                    class="option"
-                    [class.selected]="selectedAnswers[qi] === oi"
-                    (click)="selectAnswer(qi, oi)">
-                    {{ option }}
-                  </button>
-                }
-              </div>
+              @if (isTextBasedQuestionType(question.questionType)) {
+                <input
+                  type="text"
+                  class="text-answer"
+                  [attr.data-testid]="'text-answer-' + qi"
+                  [ngModel]="selectedAnswers[qi]"
+                  (ngModelChange)="setTextAnswer(qi, $event)"
+                  name="answer-{{ qi }}"
+                />
+              } @else {
+                <div class="options">
+                  @for (option of question.options; track $index; let oi = $index) {
+                    <button
+                      type="button"
+                      class="option"
+                      [class.selected]="selectedAnswers[qi] === oi"
+                      (click)="selectAnswer(qi, oi)">
+                      {{ option }}
+                    </button>
+                  }
+                </div>
+              }
             </li>
           }
         </ol>

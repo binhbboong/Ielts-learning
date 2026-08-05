@@ -148,6 +148,44 @@ def test_score_submission_is_idempotent_when_already_submitted(db_session_factor
     session.close()
 
 
+def _mixed_type_result() -> ReadingExerciseGenerationResult:
+    return ReadingExerciseGenerationResult(
+        status="ok",
+        passage_text="A passage with mixed question types.",
+        questions=[
+            GeneratedQuestion(
+                question_text="What is discussed?",
+                question_type="multiple_choice",
+                options=["A", "B", "C", "D"],
+                correct_option_index=1,
+            ),
+            GeneratedQuestion(
+                question_text="The delay was caused by funding shortfalls.",
+                question_type="true_false_not_given",
+                options=["True", "False", "Not Given"],
+                correct_option_index=0,
+            ),
+        ],
+    )
+
+
+def test_score_submission_grades_true_false_not_given_as_option_based(
+    db_session_factory,
+):
+    session = db_session_factory()
+    provider = FakeAIProvider(reading_exercise_result=_mixed_type_result())
+    exercise = get_or_create_exercise(session, date(2026, 7, 30), "focus", provider)
+
+    submission = score_submission(session, exercise, [1, 0])
+
+    assert submission.score == 2
+    questions = session.query(ReadingQuestion).filter_by(exercise_id=exercise.id).order_by(
+        ReadingQuestion.order
+    ).all()
+    assert questions[1].question_type == "true_false_not_given"
+    session.close()
+
+
 def test_retry_after_failure_reuses_the_original_focus_and_succeeds(db_session_factory):
     session = db_session_factory()
     failing_provider = FakeAIProvider(

@@ -8,7 +8,10 @@ const exercise = {
   day: '2026-07-30', status: 'ready' as const,
   focusReference: "the word 'nevertheless'", passageText: 'A passage about nevertheless.',
   questions: [
-    { id: 'q1', questionText: 'What is discussed?', options: ['A', 'B', 'C', 'D'], order: 1 },
+    {
+      id: 'q1', questionText: 'What is discussed?', questionType: 'multiple_choice',
+      options: ['A', 'B', 'C', 'D'], order: 1,
+    },
   ],
 };
 
@@ -66,8 +69,8 @@ describe('ReadingExerciseComponent', () => {
     repository.submit.and.resolveTo({
       day: '2026-07-30', score: 1, total: 1,
       answers: [{
-        questionText: 'What is discussed?', options: ['A', 'B', 'C', 'D'],
-        learnerAnswerIndex: 1, correctOptionIndex: 1, correct: true,
+        questionText: 'What is discussed?', questionType: 'multiple_choice',
+        options: ['A', 'B', 'C', 'D'], learnerAnswer: 1, correctAnswer: 1, correct: true,
       }],
     });
     await component.ngOnInit();
@@ -95,8 +98,8 @@ describe('ReadingExerciseComponent', () => {
     await component.ngOnInit();
 
     const data = component.quickAddData({
-      questionText: 'What is discussed?', options: ['A', 'B', 'C', 'D'],
-      learnerAnswerIndex: 0, correctOptionIndex: 2, correct: false,
+      questionText: 'What is discussed?', questionType: 'multiple_choice',
+      options: ['A', 'B', 'C', 'D'], learnerAnswer: 0, correctAnswer: 2, correct: false,
     });
 
     expect(data.skill).toBe('reading');

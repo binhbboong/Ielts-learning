@@ -15,7 +15,7 @@ from app.schemas.reading_practice import (
     ReadingSubmissionResult,
     ReadingSubmitRequest,
 )
-from app.services import reading_practice as service
+from app.services import exam_question_types, reading_practice as service
 
 router = APIRouter(
     prefix="/api/reading-practice",
@@ -56,10 +56,11 @@ def submit(
     answers = [
         ReadingAnswerResult(
             question_text=question.question_text,
+            question_type=question.question_type,
             options=question.options,
-            learner_answer_index=answer,
-            correct_option_index=question.correct_option_index,
-            correct=question.correct_option_index == answer,
+            learner_answer=answer,
+            correct_answer=exam_question_types.canonical_correct_answer(question),
+            correct=exam_question_types.is_correct(question, answer),
         )
         for question, answer in zip(questions, submission.answers)
     ]

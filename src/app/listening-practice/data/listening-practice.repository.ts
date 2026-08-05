@@ -12,6 +12,7 @@ function question(value: any): ListeningQuestion {
   return {
     id: value.id,
     questionText: value.question_text,
+    questionType: value.question_type,
     options: value.options,
     order: value.order,
   };
@@ -30,9 +31,10 @@ function exercise(value: any): ListeningExercise {
 function answerResult(value: any): ListeningAnswerResult {
   return {
     questionText: value.question_text,
+    questionType: value.question_type,
     options: value.options,
-    learnerAnswerIndex: value.learner_answer_index,
-    correctOptionIndex: value.correct_option_index,
+    learnerAnswer: value.learner_answer,
+    correctAnswer: value.correct_answer,
     correct: value.correct,
   };
 }
@@ -61,7 +63,10 @@ export class ListeningPracticeRepository {
     return `/api/listening-practice/${day}/audio`;
   }
 
-  async submit(day: string, answers: number[]): Promise<ListeningSubmissionResult> {
+  async submit(
+    day: string,
+    answers: (number | string)[],
+  ): Promise<ListeningSubmissionResult> {
     return submissionResult(
       await firstValueFrom(
         this.api.post<any>(`/api/listening-practice/${day}/submit`, { answers }),

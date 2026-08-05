@@ -130,15 +130,73 @@ class QuizGenerationResult(BaseModel):
         return self
 
 
+# Full IELTS Reading/Listening question-type catalog, per
+# docs/adr/2026-08-05-ielts-exam-structure-band-scaling.md. Only a subset is
+# actually generated at the beginner tier (multiple_choice/true_false_not_given
+# for Reading, multiple_choice/note_completion for Listening) — the remaining
+# types are reserved for the standard/advanced-tier rollout stages so this
+# shape does not need to change again between stages.
+OPTION_BASED_QUESTION_TYPES = frozenset({
+    "multiple_choice",
+    "true_false_not_given",
+    "yes_no_not_given",
+    "matching_headings",
+    "matching_information",
+    "matching_features",
+    "diagram_labelling",
+    "plan_map_diagram_labelling",
+    "matching",
+})
+TEXT_BASED_QUESTION_TYPES = frozenset({
+    "sentence_completion",
+    "summary_completion",
+    "table_completion",
+    "flow_chart_completion",
+    "short_answer",
+    "form_completion",
+    "note_completion",
+})
+QuestionType = Literal[
+    "multiple_choice",
+    "true_false_not_given",
+    "yes_no_not_given",
+    "matching_headings",
+    "matching_information",
+    "matching_features",
+    "sentence_completion",
+    "summary_completion",
+    "table_completion",
+    "flow_chart_completion",
+    "diagram_labelling",
+    "short_answer",
+    "form_completion",
+    "note_completion",
+    "matching",
+    "plan_map_diagram_labelling",
+]
+
+
 class GeneratedQuestion(_RequiredTextModel):
     question_text: str
-    options: list[str]
-    correct_option_index: int = Field(ge=0)
+    question_type: QuestionType = "multiple_choice"
+    options: list[str] | None = None
+    correct_option_index: int | None = Field(default=None, ge=0)
+    accepted_answers: list[str] | None = None
 
     @model_validator(mode="after")
-    def validate_correct_index_in_range(self):
-        if self.correct_option_index >= len(self.options):
-            raise ValueError("correct_option_index must index into options")
+    def validate_shape_for_question_type(self):
+        if self.question_type in TEXT_BASED_QUESTION_TYPES:
+            if not self.accepted_answers:
+                raise ValueError(
+                    f"{self.question_type} questions require at least one accepted answer"
+                )
+        else:
+            if not self.options:
+                raise ValueError(f"{self.question_type} questions require options")
+            if self.correct_option_index is None or self.correct_option_index >= len(
+                self.options
+            ):
+                raise ValueError("correct_option_index must index into options")
         return self
 
 

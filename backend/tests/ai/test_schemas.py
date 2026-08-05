@@ -140,6 +140,56 @@ def _question(correct_index: int = 2) -> GeneratedQuestion:
     )
 
 
+def test_generated_question_defaults_to_multiple_choice():
+    question = GeneratedQuestion(
+        question_text="What caused the delay?",
+        options=["Weather", "Funding"],
+        correct_option_index=0,
+    )
+
+    assert question.question_type == "multiple_choice"
+
+
+def test_generated_question_accepts_true_false_not_given_as_option_based():
+    question = GeneratedQuestion(
+        question_text="The delay was caused by funding shortfalls.",
+        question_type="true_false_not_given",
+        options=["True", "False", "Not Given"],
+        correct_option_index=1,
+    )
+
+    assert question.correct_option_index == 1
+    assert question.accepted_answers is None
+
+
+def test_generated_question_option_based_type_requires_options():
+    with pytest.raises(ValidationError):
+        GeneratedQuestion(
+            question_text="The delay was caused by funding shortfalls.",
+            question_type="true_false_not_given",
+        )
+
+
+def test_generated_question_completion_type_requires_accepted_answers():
+    with pytest.raises(ValidationError):
+        GeneratedQuestion(
+            question_text="Complete the note: the team missed the ___ deadline.",
+            question_type="note_completion",
+        )
+
+
+def test_generated_question_completion_type_accepts_answer_variants():
+    question = GeneratedQuestion(
+        question_text="Complete the note: the team missed the ___ deadline.",
+        question_type="note_completion",
+        accepted_answers=["funding", "budget"],
+    )
+
+    assert question.options is None
+    assert question.correct_option_index is None
+    assert question.accepted_answers == ["funding", "budget"]
+
+
 def test_reading_exercise_request_requires_focus_description():
     request = ReadingExerciseGenerationRequest(focus_description="the word 'nevertheless'")
 

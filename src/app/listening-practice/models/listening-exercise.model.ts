@@ -1,7 +1,8 @@
 export interface ListeningQuestion {
   id: string;
   questionText: string;
-  options: string[];
+  questionType: string;
+  options: string[] | null;
   order: number;
 }
 
@@ -15,9 +16,10 @@ export interface ListeningExercise {
 
 export interface ListeningAnswerResult {
   questionText: string;
-  options: string[];
-  learnerAnswerIndex: number;
-  correctOptionIndex: number;
+  questionType: string;
+  options: string[] | null;
+  learnerAnswer: number | string;
+  correctAnswer: number | string | null;
   correct: boolean;
 }
 

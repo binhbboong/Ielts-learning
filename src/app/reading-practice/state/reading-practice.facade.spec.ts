@@ -5,13 +5,16 @@ describe('ReadingPracticeFacade', () => {
   const exercise = {
     day: '2026-07-30', status: 'ready' as const,
     focusReference: "the word 'nevertheless'", passageText: 'A passage.',
-    questions: [{ id: 'q1', questionText: 'What is discussed?', options: ['A', 'B'], order: 1 }],
+    questions: [{
+      id: 'q1', questionText: 'What is discussed?', questionType: 'multiple_choice',
+      options: ['A', 'B'], order: 1,
+    }],
   };
   const result = {
     day: '2026-07-30', score: 1, total: 1,
     answers: [{
-      questionText: 'What is discussed?', options: ['A', 'B'],
-      learnerAnswerIndex: 1, correctOptionIndex: 1, correct: true,
+      questionText: 'What is discussed?', questionType: 'multiple_choice',
+      options: ['A', 'B'], learnerAnswer: 1, correctAnswer: 1, correct: true,
     }],
   };
 

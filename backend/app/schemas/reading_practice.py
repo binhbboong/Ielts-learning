@@ -10,7 +10,8 @@ class ReadingQuestionAnswering(BaseModel):
 
     id: uuid.UUID
     question_text: str
-    options: list[str]
+    question_type: str
+    options: list[str] | None
     order: int
 
 
@@ -23,14 +24,15 @@ class ReadingExerciseAnswering(BaseModel):
 
 
 class ReadingSubmitRequest(BaseModel):
-    answers: list[int]
+    answers: list[int | str]
 
 
 class ReadingAnswerResult(BaseModel):
     question_text: str
-    options: list[str]
-    learner_answer_index: int
-    correct_option_index: int
+    question_type: str
+    options: list[str] | None
+    learner_answer: int | str
+    correct_answer: int | str | None
     correct: bool
 
 

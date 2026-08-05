@@ -218,3 +218,40 @@ def test_score_submission_is_idempotent_when_already_submitted(db_session_factor
     assert second.score == 2
     assert second.answers == [0, 0, 2]
     session.close()
+
+
+def _mixed_type_result() -> ListeningScriptGenerationResult:
+    return ListeningScriptGenerationResult(
+        status="ok",
+        script_text="A script with mixed question types.",
+        questions=[
+            GeneratedQuestion(
+                question_text="What is discussed?",
+                question_type="multiple_choice",
+                options=["A", "B", "C", "D"],
+                correct_option_index=1,
+            ),
+            GeneratedQuestion(
+                question_text="Complete the note: the team missed the ___ deadline.",
+                question_type="note_completion",
+                accepted_answers=["funding", "budget"],
+            ),
+        ],
+    )
+
+
+def test_score_submission_grades_note_completion_as_text_based(db_session_factory):
+    session = db_session_factory()
+    provider = FakeAIProvider(listening_script_result=_mixed_type_result())
+    tts = FakeTextToSpeech(_success_audio_result())
+    exercise = get_or_create_exercise(session, date(2026, 7, 30), "focus", provider, tts)
+
+    submission = score_submission(session, exercise, [1, "  Funding  "])
+
+    assert submission.score == 2
+    questions = session.query(ListeningQuestion).filter_by(
+        exercise_id=exercise.id
+    ).order_by(ListeningQuestion.order).all()
+    assert questions[1].question_type == "note_completion"
+    assert questions[1].accepted_answers == ["funding", "budget"]
+    session.close()

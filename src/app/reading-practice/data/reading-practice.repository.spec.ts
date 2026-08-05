@@ -8,15 +8,18 @@ describe('ReadingPracticeRepository', () => {
     api.get.and.returnValue(of({
       day: '2026-07-30', status: 'ready', focus_reference: "the word 'nevertheless'",
       passage_text: 'A passage.', questions: [
-        { id: 'q1', question_text: 'What is discussed?', options: ['A', 'B', 'C', 'D'], order: 1 },
+        {
+          id: 'q1', question_text: 'What is discussed?', question_type: 'multiple_choice',
+          options: ['A', 'B', 'C', 'D'], order: 1,
+        },
       ],
     }));
     api.post.and.returnValues(
       of({
         day: '2026-07-30', score: 1, total: 1, answers: [
           {
-            question_text: 'What is discussed?', options: ['A', 'B', 'C', 'D'],
-            learner_answer_index: 1, correct_option_index: 1, correct: true,
+            question_text: 'What is discussed?', question_type: 'multiple_choice',
+            options: ['A', 'B', 'C', 'D'], learner_answer: 1, correct_answer: 1, correct: true,
           },
         ],
       }),

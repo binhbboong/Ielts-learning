@@ -64,6 +64,8 @@ def test_get_exercise_generates_on_first_request_and_omits_correct_answers(
     assert body["passage_text"] == "A passage about nevertheless."
     assert len(body["questions"]) == 1
     assert "correct_option_index" not in body["questions"][0]
+    assert "accepted_answers" not in body["questions"][0]
+    assert body["questions"][0]["question_type"] == "multiple_choice"
     assert "options" in body["questions"][0]
 
 
@@ -90,8 +92,9 @@ def test_submit_scores_immediately_and_returns_quick_add_ready_data(db_session_f
     assert body["total"] == 1
     answer = body["answers"][0]
     assert answer["correct"] is False
-    assert answer["learner_answer_index"] == 0
-    assert answer["correct_option_index"] == 1
+    assert answer["learner_answer"] == 0
+    assert answer["correct_answer"] == 1
+    assert answer["question_type"] == "multiple_choice"
     assert answer["question_text"] == "What is discussed?"
     assert answer["options"] == ["A", "B", "C", "D"]
 

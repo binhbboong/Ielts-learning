@@ -48,8 +48,17 @@ class ListeningQuestion(Base):
         UUID(as_uuid=True), ForeignKey("listening_exercises.id"), nullable=False, index=True
     )
     question_text: Mapped[str] = mapped_column(Text, nullable=False)
-    options: Mapped[list] = mapped_column(ARRAY(Text), nullable=False)
-    correct_option_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    # question_type/accepted_answers added per
+    # docs/adr/2026-08-05-ielts-exam-structure-band-scaling.md. options/
+    # correct_option_index are used by option-based types (multiple_choice,
+    # true_false_not_given, matching, ...); accepted_answers is used by
+    # text-based/completion types instead — see app.services.exam_question_types.
+    question_type: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default="multiple_choice"
+    )
+    options: Mapped[list | None] = mapped_column(ARRAY(Text), nullable=True)
+    correct_option_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    accepted_answers: Mapped[list | None] = mapped_column(ARRAY(Text), nullable=True)
     order: Mapped[int] = mapped_column(Integer, nullable=False)
 
 

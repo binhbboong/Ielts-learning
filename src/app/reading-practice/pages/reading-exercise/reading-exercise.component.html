@@ -32,9 +32,9 @@
           @for (answer of result.answers; track $index; let ai = $index) {
             <li [class.correct]="answer.correct" [class.wrong]="!answer.correct">
               <p>{{ answer.questionText }}</p>
-              <p>Your answer: {{ answer.options[answer.learnerAnswerIndex] }}</p>
+              <p>Your answer: {{ answer.options[answer.learnerAnswer] }}</p>
               @if (!answer.correct) {
-                <p>Correct answer: {{ answer.options[answer.correctOptionIndex] }}</p>
+                <p>Correct answer: {{ answer.options[answer.correctAnswer] }}</p>
                 @if (openQuickAddIndex === ai) {
                   <app-mistake-quick-add
                     [data]="quickAddData(answer)"

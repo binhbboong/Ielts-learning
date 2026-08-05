@@ -8,7 +8,21 @@ const exercise = {
   day: '2026-07-30', status: 'ready',
   focusReference: "the word 'nevertheless'", scriptText: null,
   questions: [
-    { id: 'q1', questionText: 'What is discussed?', options: ['A', 'B', 'C', 'D'], order: 1 },
+    {
+      id: 'q1', questionText: 'What is discussed?', questionType: 'multiple_choice',
+      options: ['A', 'B', 'C', 'D'], order: 1,
+    },
+  ],
+};
+
+const mixedTypeExercise = {
+  ...exercise,
+  questions: [
+    ...exercise.questions,
+    {
+      id: 'q2', questionText: 'Complete the note: the team missed the ___ deadline.',
+      questionType: 'note_completion', options: null, order: 2,
+    },
   ],
 };
 
@@ -60,8 +74,8 @@ describe('ListeningExerciseComponent', () => {
     repository.submit.and.resolveTo({
       day: '2026-07-30', score: 1, total: 1, scriptText: 'A script.',
       answers: [{
-        questionText: 'What is discussed?', options: ['A', 'B', 'C', 'D'],
-        learnerAnswerIndex: 1, correctOptionIndex: 1, correct: true,
+        questionText: 'What is discussed?', questionType: 'multiple_choice',
+        options: ['A', 'B', 'C', 'D'], learnerAnswer: 1, correctAnswer: 1, correct: true,
       }],
     });
     await component.ngOnInit();
@@ -71,6 +85,36 @@ describe('ListeningExerciseComponent', () => {
 
     expect(repository.submit).toHaveBeenCalledWith('2026-07-30', [1]);
     expect(component.facade.result()?.scriptText).toBe('A script.');
+  });
+
+  it('does not allow submit until a text-based question has a non-blank answer', async () => {
+    const { component, repository } = await setUp({}, '2026-07-30');
+    repository.get.and.resolveTo(mixedTypeExercise);
+    await component.ngOnInit();
+    component.selectAnswer(0, 1);
+    expect(component.canSubmit).toBeFalse();
+
+    component.setTextAnswer(1, '   ');
+    expect(component.canSubmit).toBeFalse();
+
+    component.setTextAnswer(1, 'funding');
+    expect(component.canSubmit).toBeTrue();
+  });
+
+  it('submits a mix of option indexes and free text answers', async () => {
+    const { component, repository } = await setUp();
+    repository.get.and.resolveTo(mixedTypeExercise);
+    repository.submit.and.resolveTo({
+      day: '2026-07-30', score: 2, total: 2, scriptText: 'A script.',
+      answers: [],
+    });
+    await component.ngOnInit();
+    component.selectAnswer(0, 1);
+    component.setTextAnswer(1, 'funding');
+
+    await component.submit();
+
+    expect(repository.submit).toHaveBeenCalledWith('2026-07-30', [1, 'funding']);
   });
 
   it('retries the script when script generation failed', async () => {
@@ -96,19 +140,32 @@ describe('ListeningExerciseComponent', () => {
     expect(repository.retryScript).not.toHaveBeenCalled();
   });
 
-  it('builds pre-filled quick-add data from a wrong answer with skill listening', async () => {
+  it('builds pre-filled quick-add data from a wrong option-based answer with skill listening', async () => {
     const { component } = await setUp();
     await component.ngOnInit();
 
     const data = component.quickAddData({
-      questionText: 'What is discussed?', options: ['A', 'B', 'C', 'D'],
-      learnerAnswerIndex: 0, correctOptionIndex: 2, correct: false,
+      questionText: 'What is discussed?', questionType: 'multiple_choice',
+      options: ['A', 'B', 'C', 'D'], learnerAnswer: 0, correctAnswer: 2, correct: false,
     });
 
     expect(data.skill).toBe('listening');
     expect(data.ownAnswer).toBe('A');
     expect(data.correctAnswer).toBe('C');
     expect(data.source).toContain('What is discussed?');
+  });
+
+  it('builds pre-filled quick-add data from a wrong text-based answer', async () => {
+    const { component } = await setUp();
+    await component.ngOnInit();
+
+    const data = component.quickAddData({
+      questionText: 'Complete the note.', questionType: 'note_completion', options: null,
+      learnerAnswer: 'staffing', correctAnswer: 'funding', correct: false,
+    });
+
+    expect(data.ownAnswer).toBe('staffing');
+    expect(data.correctAnswer).toBe('funding');
   });
 
   it('toggles the quick-add panel open and closed per question', async () => {

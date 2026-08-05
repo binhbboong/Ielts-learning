@@ -65,8 +65,8 @@ export class ReadingExerciseComponent implements OnInit {
     return {
       skill: 'reading',
       source: `Reading practice ${day}: ${answer.questionText}`,
-      ownAnswer: answer.options[answer.learnerAnswerIndex],
-      correctAnswer: answer.options[answer.correctOptionIndex],
+      ownAnswer: answer.options[answer.learnerAnswer],
+      correctAnswer: answer.options[answer.correctAnswer],
     };
   }
 }

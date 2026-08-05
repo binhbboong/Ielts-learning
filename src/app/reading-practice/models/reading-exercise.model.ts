@@ -3,6 +3,7 @@ export type ReadingExerciseStatus = 'ready' | 'failed';
 export interface ReadingQuestion {
   id: string;
   questionText: string;
+  questionType: string;
   options: string[];
   order: number;
 }
@@ -17,9 +18,10 @@ export interface ReadingExercise {
 
 export interface ReadingAnswerResult {
   questionText: string;
+  questionType: string;
   options: string[];
-  learnerAnswerIndex: number;
-  correctOptionIndex: number;
+  learnerAnswer: number;
+  correctAnswer: number;
   correct: boolean;
 }
 

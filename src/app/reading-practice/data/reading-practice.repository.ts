@@ -12,6 +12,7 @@ function question(value: any): ReadingQuestion {
   return {
     id: value.id,
     questionText: value.question_text,
+    questionType: value.question_type,
     options: value.options,
     order: value.order,
   };
@@ -30,9 +31,10 @@ function exercise(value: any): ReadingExercise {
 function answerResult(value: any): ReadingAnswerResult {
   return {
     questionText: value.question_text,
+    questionType: value.question_type,
     options: value.options,
-    learnerAnswerIndex: value.learner_answer_index,
-    correctOptionIndex: value.correct_option_index,
+    learnerAnswer: value.learner_answer,
+    correctAnswer: value.correct_answer,
     correct: value.correct,
   };
 }

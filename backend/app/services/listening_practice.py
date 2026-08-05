@@ -10,6 +10,7 @@ from app.models.listening_practice import (
     ListeningQuestion,
     ListeningSubmission,
 )
+from app.services import exam_question_types
 from app.services.export_utils import serialize_all, serialize_row
 from app.services.text_to_speech import TextToSpeech
 from app.models.user import LEGACY_USER_ID
@@ -32,8 +33,10 @@ def _persist_questions(db: Session, exercise: ListeningExercise, questions) -> N
             ListeningQuestion(
                 exercise_id=exercise.id,
                 question_text=question.question_text,
+                question_type=question.question_type,
                 options=question.options,
                 correct_option_index=question.correct_option_index,
+                accepted_answers=question.accepted_answers,
                 order=order,
             )
         )
@@ -131,7 +134,7 @@ def retry_audio(
 
 
 def score_submission(
-    db: Session, exercise: ListeningExercise, answers: list[int]
+    db: Session, exercise: ListeningExercise, answers: list[int | str]
 ) -> ListeningSubmission:
     existing = (
         db.query(ListeningSubmission).filter_by(exercise_id=exercise.id).one_or_none()
@@ -143,7 +146,7 @@ def score_submission(
     score = sum(
         1
         for question, answer in zip(questions, answers)
-        if question.correct_option_index == answer
+        if exam_question_types.is_correct(question, answer)
     )
     submission = ListeningSubmission(
         exercise_id=exercise.id, answers=answers, score=score
