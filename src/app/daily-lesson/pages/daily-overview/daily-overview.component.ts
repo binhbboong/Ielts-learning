@@ -21,7 +21,10 @@ export class DailyOverviewComponent implements OnInit {
   readonly facade = inject(DailyLessonFacade);
   readonly vocabulary = inject(VocabularyFacade);
   readonly today = todayIso();
-  readonly skillOrder: readonly Skill[] = ['reading', 'listening', 'writing', 'speaking'];
+  // Speaking is no longer part of the daily rotation/checkpoint (it remains a
+  // standalone feature reachable from the secondary-links nav) — see
+  // docs/adr/2026-08-05-remove-speaking-from-daily-checkpoint.md.
+  readonly skillOrder: readonly Skill[] = ['reading', 'listening', 'writing'];
   readonly vocabularyRevealed = signal(false);
   readonly vocabularyAssessing = signal(false);
   readonly addingRecommendation = signal<string | null>(null);

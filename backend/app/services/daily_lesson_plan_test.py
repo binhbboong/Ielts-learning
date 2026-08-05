@@ -32,13 +32,10 @@ from app.services.daily_lesson_plan import (
 from app.services.text_to_speech import FakeTextToSpeech, SynthesisResult
 
 
-def _passing_criterion() -> dict:
-    return {"band_score": 6.5, "feedback": "ok", "strengths": [], "weaknesses": []}
-
-
 def _pass_all_checkpoints(session, day, provider, tts) -> None:
-    """Generate and fully pass all 4 skills + vocabulary quiz for `day`, so
-    get_effective_day() advances past it."""
+    """Generate and fully pass all 3 daily skills + vocabulary quiz for `day`, so
+    get_effective_day() advances past it. Speaking is no longer part of the daily
+    rotation/checkpoint (docs/adr/2026-08-05-remove-speaking-from-daily-checkpoint.md)."""
     ensure_today_generated(session, day, provider, tts)
     reading_exercise = session.query(ReadingExercise).filter_by(day=day).one()
     session.add(ReadingSubmission(exercise_id=reading_exercise.id, answers=[0], score=1))
@@ -50,15 +47,6 @@ def _pass_all_checkpoints(session, day, provider, tts) -> None:
         WritingSubmission(
             question_text="Some people believe...", task_type="task2",
             response_text="Essay", status="complete", day=day, overall_band=6.5,
-        )
-    )
-    session.add(
-        SpeakingSubmission(
-            question_id=None, prompt_text="Describe a memorable trip.", day=day,
-            audio_storage_ref="ref", audio_duration_seconds=10, status="COMPLETE",
-            fluency_and_coherence=_passing_criterion(),
-            lexical_resource=_passing_criterion(),
-            grammatical_range_and_accuracy=_passing_criterion(),
         )
     )
     session.add(
@@ -397,7 +385,7 @@ def _full_provider() -> FakeAIProvider:
     )
 
 
-def test_ensure_today_generated_creates_all_four_skills_on_first_call(
+def test_ensure_today_generated_creates_all_three_daily_skills_on_first_call(
     db_session_factory,
 ):
     session = db_session_factory()
@@ -412,12 +400,9 @@ def test_ensure_today_generated_creates_all_four_skills_on_first_call(
         assert get_skill_status(session, date(2026, 7, 30), "reading") == "ready"
         assert get_skill_status(session, date(2026, 7, 30), "listening") == "ready"
         assert get_skill_status(session, date(2026, 7, 30), "writing") == "ready"
-        assert get_skill_status(session, date(2026, 7, 30), "speaking") == "ready"
         focuses = session.query(DailyFocus).filter_by(day=date(2026, 7, 30)).all()
-        assert {focus.skill for focus in focuses} == {
-            "reading", "listening", "writing", "speaking",
-        }
-        assert sum(focus.estimated_minutes for focus in focuses) == 50
+        assert {focus.skill for focus in focuses} == {"reading", "listening", "writing"}
+        assert sum(focus.estimated_minutes for focus in focuses) == 40
         assert sum(1 for f in focuses if f.priority == "primary") == 1
     finally:
         session.close()
@@ -438,12 +423,14 @@ def test_ensure_today_generated_is_idempotent_and_triggers_no_further_generation
 
         assert len(provider.reading_exercise_requests) == 1
         assert len(provider.listening_script_requests) == 1
-        assert len(provider.chat_requests) == 2
+        assert len(provider.chat_requests) == 1
     finally:
         session.close()
 
 
-def test_get_overview_includes_all_four_skills_for_the_effective_day(db_session_factory):
+def test_get_overview_includes_all_three_daily_skills_for_the_effective_day(
+    db_session_factory,
+):
     session = db_session_factory()
     try:
         provider = _full_provider()
@@ -454,7 +441,7 @@ def test_get_overview_includes_all_four_skills_for_the_effective_day(db_session_
         result = get_overview(session, date(2026, 7, 30), provider, tts)
 
         skills_seen = {entry.skill for entry in result.entries}
-        assert skills_seen == {"reading", "listening", "writing", "speaking"}
+        assert skills_seen == {"reading", "listening", "writing"}
         assert all(entry.day == date(2026, 7, 30) for entry in result.entries)
         assert result.effective_day == date(2026, 7, 30)
         assert result.checkpoint.passed_count == 0
@@ -502,9 +489,7 @@ def test_effective_day_advances_once_checkpoint_fully_passed(db_session_factory)
 
         assert result.effective_day == date(2026, 7, 30)
         today_entries = [e for e in result.entries if e.day == date(2026, 7, 30)]
-        assert {e.skill for e in today_entries} == {
-            "reading", "listening", "writing", "speaking",
-        }
+        assert {e.skill for e in today_entries} == {"reading", "listening", "writing"}
         # The now-fully-passed prior day's skills do not carry over into the view.
         assert all(e.day == date(2026, 7, 30) for e in result.entries)
     finally:
@@ -525,10 +510,10 @@ def test_evaluate_checkpoint_reports_per_skill_and_vocabulary_quiz_pass(
         checkpoint = evaluate_checkpoint(session, date(2026, 7, 29))
 
         assert checkpoint.skills == {
-            "reading": True, "listening": True, "writing": True, "speaking": True,
+            "reading": True, "listening": True, "writing": True,
         }
         assert checkpoint.vocabulary_quiz is True
-        assert checkpoint.passed_count == 5
+        assert checkpoint.passed_count == 4
         assert checkpoint.all_passed is True
     finally:
         session.close()
@@ -661,9 +646,7 @@ def test_pregenerate_upcoming_days_generates_effective_day_and_the_next(
         assert processed == [today, today + timedelta(days=1)]
         for day in processed:
             focuses = session.query(DailyFocus).filter_by(day=day).all()
-            assert {f.skill for f in focuses} == {
-                "reading", "listening", "writing", "speaking",
-            }
+            assert {f.skill for f in focuses} == {"reading", "listening", "writing"}
     finally:
         session.close()
 
@@ -680,11 +663,11 @@ def test_pregenerate_upcoming_days_skips_already_generated_content(db_session_fa
         pregenerate_upcoming_days(session, provider, tts, LEGACY_USER_ID, today)
         pregenerate_upcoming_days(session, provider, tts, LEGACY_USER_ID, today)
 
-        # Each of the 2 days generates reading once and listening once; a second
-        # run must not trigger any further generation calls.
+        # Each of the 2 days generates reading once, listening once, and writing's
+        # chat-based prompt once; a second run must not trigger further generation.
         assert len(provider.reading_exercise_requests) == 2
         assert len(provider.listening_script_requests) == 2
-        assert len(provider.chat_requests) == 4
+        assert len(provider.chat_requests) == 2
     finally:
         session.close()
 

@@ -132,6 +132,18 @@ describe('DailyOverviewComponent', () => {
     ]);
   });
 
+  it('offers a standalone link to Speaking practice outside the daily skill grid', async () => {
+    const { fixture, component } = await setUp();
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const link = fixture.nativeElement.querySelector(
+      '[data-testid="speaking-practice-link"]',
+    );
+    expect(link).not.toBeNull();
+    expect(component.skillOrder).not.toContain('speaking');
+  });
+
   it('labels a done Writing entry as retryable, other done skills as review-only', async () => {
     const { component } = await setUp();
 

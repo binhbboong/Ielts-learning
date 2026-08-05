@@ -24,7 +24,13 @@ from app.services import listening_practice, reading_practice, vocabulary as voc
 from app.services.text_to_speech import TextToSpeech
 
 _LISTENING_FAILED_STATES = {"script_failed", "audio_failed"}
-ALL_SKILLS = ("reading", "listening", "writing", "speaking")
+# Speaking was removed from the daily rotation/checkpoint per
+# docs/adr/2026-08-05-remove-speaking-from-daily-checkpoint.md — it remains a
+# standalone, learner-initiated feature (Speaking Coach) outside this daily plan.
+# The per-skill helper functions below still recognize "speaking" for that
+# standalone flow; they are simply never called with it from ALL_SKILLS-driven
+# daily generation/checkpoint loops anymore.
+ALL_SKILLS = ("reading", "listening", "writing")
 CHECKPOINT_PASS_RATIO = 0.8
 PRIMARY_SKILL_MINUTES = 20
 SUPPORT_SKILL_MINUTES = 10
@@ -32,10 +38,10 @@ _PRIMARY_SKILL_BY_WEEKDAY = {
     0: "reading",
     1: "listening",
     2: "writing",
-    3: "speaking",
-    4: "reading",
-    5: "listening",
-    6: "writing",
+    3: "reading",
+    4: "listening",
+    5: "writing",
+    6: "reading",
 }
 _PHASES = (
     ("foundation", 4.5),
