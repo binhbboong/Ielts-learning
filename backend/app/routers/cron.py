@@ -43,3 +43,11 @@ def run_migrations() -> dict[str, str]:
     schedule) — see app/services/db_migrations.py for why this exists."""
     revision = db_migrations.upgrade_to_head()
     return {"revision": revision}
+
+
+@router.get("/debug-checkpoint", dependencies=[Depends(verify_cron_secret)])
+def debug_checkpoint(day: str | None = None, db: Session = Depends(get_db)) -> dict:
+    """Diagnostic snapshot of a single day's checkpoint — see
+    app/services/daily_lesson_plan.py:debug_checkpoint for why this exists."""
+    target_day = date.fromisoformat(day) if day else date.today()
+    return service.debug_checkpoint(db, target_day)

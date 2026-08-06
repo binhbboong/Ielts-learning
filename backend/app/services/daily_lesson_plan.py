@@ -523,6 +523,88 @@ def evaluate_checkpoint(
     )
 
 
+def debug_checkpoint(
+    db: Session, day: date, user_id: uuid.UUID = LEGACY_USER_ID
+) -> dict:
+    """Read-only diagnostic snapshot of exactly what evaluate_checkpoint() saw
+    for `day` — the actual score/band achieved on each skill next to what was
+    required, so "why didn't this day unlock" can be answered from real data
+    instead of guessing. Exposed via the CRON_SECRET-protected
+    GET /api/cron/debug-checkpoint route."""
+    profile = get_or_create_profile(db, user_id, day)
+    week, phase, required_band = plan_context(profile, day)
+    checkpoint = evaluate_checkpoint(db, day, user_id)
+
+    reading_exercise = (
+        db.query(ReadingExercise).filter_by(user_id=user_id, day=day).one_or_none()
+    )
+    reading_submission = (
+        db.query(ReadingSubmission).filter_by(exercise_id=reading_exercise.id).one_or_none()
+        if reading_exercise is not None
+        else None
+    )
+    reading_total = (
+        len(reading_practice.get_questions(db, reading_exercise.id))
+        if reading_exercise is not None
+        else 0
+    )
+
+    listening_exercise = (
+        db.query(ListeningExercise).filter_by(user_id=user_id, day=day).one_or_none()
+    )
+    listening_submission = (
+        db.query(ListeningSubmission)
+        .filter_by(exercise_id=listening_exercise.id)
+        .one_or_none()
+        if listening_exercise is not None
+        else None
+    )
+    listening_total = (
+        len(listening_practice.get_questions(db, listening_exercise.id))
+        if listening_exercise is not None
+        else 0
+    )
+
+    writing_submission = (
+        db.query(WritingSubmission)
+        .filter_by(user_id=user_id, day=day)
+        .order_by(WritingSubmission.id.desc())
+        .first()
+    )
+
+    quiz_result = vocabulary_service.get_quiz_result(db, day, user_id)
+
+    return {
+        "day": day.isoformat(),
+        "week": week,
+        "phase": phase,
+        "required_band": required_band,
+        "all_passed": checkpoint.all_passed,
+        "passed_count": checkpoint.passed_count,
+        "required_count": checkpoint.required_count,
+        "reading": {
+            "passed": checkpoint.skills.get("reading", False),
+            "score": reading_submission.score if reading_submission else None,
+            "total": reading_total,
+        },
+        "listening": {
+            "passed": checkpoint.skills.get("listening", False),
+            "score": listening_submission.score if listening_submission else None,
+            "total": listening_total,
+        },
+        "writing": {
+            "passed": checkpoint.skills.get("writing", False),
+            "overall_band": writing_submission.overall_band if writing_submission else None,
+            "status": writing_submission.status if writing_submission else None,
+        },
+        "vocabulary_quiz": {
+            "passed": checkpoint.vocabulary_quiz,
+            "correct": quiz_result.correct if quiz_result else None,
+            "total": quiz_result.total if quiz_result else None,
+        },
+    }
+
+
 def get_effective_day(
     db: Session, user_id: uuid.UUID, today: date
 ) -> date:

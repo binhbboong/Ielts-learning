@@ -1,3 +1,4 @@
+from datetime import date
 from pathlib import Path
 
 from alembic import command
@@ -11,6 +12,7 @@ from app.ai.testing import FakeAIProvider
 from app.core.config import settings
 from app.core.db import get_db
 from app.models import speaking_question  # noqa: F401 registers the FK target table
+from app.models.writing_submission import WritingSubmission
 from app.routers.cron import router as cron_router
 from app.services.text_to_speech import (
     FakeTextToSpeech,
@@ -119,3 +121,47 @@ def test_run_migrations_upgrades_the_configured_database_to_head(monkeypatch):
         assert response.json() == {"revision": "0021"}
     finally:
         command.downgrade(cfg, "base")
+
+
+def test_debug_checkpoint_rejects_missing_or_wrong_secret(db_session_factory, monkeypatch):
+    monkeypatch.setattr(settings, "CRON_SECRET", "the-real-secret")
+    client = _client(db_session_factory)
+
+    no_header = client.get("/api/cron/debug-checkpoint")
+    assert no_header.status_code == 401
+
+
+def test_debug_checkpoint_reports_the_days_required_band_and_actual_writing_band(
+    db_session_factory, monkeypatch
+):
+    monkeypatch.setattr(settings, "CRON_SECRET", "the-real-secret")
+    client = _client(db_session_factory)
+    day = date(2026, 8, 6)
+
+    with db_session_factory() as session:
+        session.add(
+            WritingSubmission(
+                question_text="Describe a place you like.",
+                task_type="task2",
+                response_text="Essay text.",
+                status="complete",
+                day=day,
+                overall_band=3.5,
+            )
+        )
+        session.commit()
+
+    response = client.get(
+        f"/api/cron/debug-checkpoint?day={day.isoformat()}",
+        headers={"Authorization": "Bearer the-real-secret"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    # A brand-new profile's first day is the foundation phase (target_band 4.5).
+    assert body["phase"] == "foundation"
+    assert body["required_band"] == 4.5
+    assert body["writing"] == {
+        "passed": False, "overall_band": 3.5, "status": "complete",
+    }
+    assert body["all_passed"] is False
