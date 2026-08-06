@@ -588,7 +588,41 @@ def test_evaluate_checkpoint_reports_per_skill_and_vocabulary_quiz_pass(
         session.close()
 
 
-def test_evaluate_checkpoint_fails_writing_below_minimum_skill_band(db_session_factory):
+def test_evaluate_checkpoint_fails_writing_below_the_days_phase_target_band(
+    db_session_factory,
+):
+    session = db_session_factory()
+    try:
+        provider = _full_provider()
+        tts = FakeTextToSpeech(
+            SynthesisResult(status="ok", audio_bytes=b"audio", content_type="audio/mpeg")
+        )
+        # Day 1 of a fresh profile is the "foundation" phase (plan_context ->
+        # target_band 4.5, see _PHASES) — 4.0 is below that.
+        _pass_all_checkpoints(session, date(2026, 7, 29), provider, tts)
+        low_band_submission = (
+            session.query(WritingSubmission).filter_by(day=date(2026, 7, 29)).one()
+        )
+        low_band_submission.overall_band = 4.0
+        session.commit()
+
+        checkpoint = evaluate_checkpoint(session, date(2026, 7, 29))
+
+        assert checkpoint.skills["writing"] is False
+        assert checkpoint.all_passed is False
+    finally:
+        session.close()
+
+
+def test_evaluate_checkpoint_passes_writing_at_the_foundation_phase_target_band(
+    db_session_factory,
+):
+    """Regression test: the checkpoint used to require profile.minimum_skill_band
+    (a fixed 6.0 for every learner) regardless of phase, so a foundation-phase
+    learner writing exactly at the ~4.5 band their content is intentionally
+    scoped to (see _PROMPT_INSTRUCTION's beginner tier) could never pass the
+    daily checkpoint and would be stuck on day 1 forever. It must now compare
+    against that day's own phase-scaled target_band instead."""
     session = db_session_factory()
     try:
         provider = _full_provider()
@@ -596,16 +630,15 @@ def test_evaluate_checkpoint_fails_writing_below_minimum_skill_band(db_session_f
             SynthesisResult(status="ok", audio_bytes=b"audio", content_type="audio/mpeg")
         )
         _pass_all_checkpoints(session, date(2026, 7, 29), provider, tts)
-        low_band_submission = (
+        submission = (
             session.query(WritingSubmission).filter_by(day=date(2026, 7, 29)).one()
         )
-        low_band_submission.overall_band = 5.0
+        submission.overall_band = 4.5
         session.commit()
 
         checkpoint = evaluate_checkpoint(session, date(2026, 7, 29))
 
-        assert checkpoint.skills["writing"] is False
-        assert checkpoint.all_passed is False
+        assert checkpoint.skills["writing"] is True
     finally:
         session.close()
 

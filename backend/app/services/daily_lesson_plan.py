@@ -431,7 +431,7 @@ def _reading_or_listening_checkpoint(
 
 
 def _writing_checkpoint(
-    db: Session, day: date, user_id: uuid.UUID, profile: StudyProfile
+    db: Session, day: date, user_id: uuid.UUID, required_band: float
 ) -> bool:
     return (
         db.query(WritingSubmission)
@@ -439,7 +439,7 @@ def _writing_checkpoint(
             WritingSubmission.user_id == user_id,
             WritingSubmission.day == day,
             WritingSubmission.overall_band.isnot(None),
-            WritingSubmission.overall_band >= profile.minimum_skill_band,
+            WritingSubmission.overall_band >= required_band,
         )
         .first()
         is not None
@@ -447,7 +447,7 @@ def _writing_checkpoint(
 
 
 def _speaking_checkpoint(
-    db: Session, day: date, user_id: uuid.UUID, profile: StudyProfile
+    db: Session, day: date, user_id: uuid.UUID, required_band: float
 ) -> bool:
     submissions = (
         db.query(SpeakingSubmission).filter_by(user_id=user_id, day=day).all()
@@ -461,14 +461,20 @@ def _speaking_checkpoint(
         if not all(criteria):
             continue
         average = sum(c["band_score"] for c in criteria) / len(criteria)
-        if average >= profile.minimum_skill_band:
+        if average >= required_band:
             return True
     return False
 
 
 def evaluate_skill_checkpoint(
-    db: Session, day: date, skill: str, user_id: uuid.UUID, profile: StudyProfile
+    db: Session, day: date, skill: str, user_id: uuid.UUID, required_band: float
 ) -> bool:
+    """`required_band` is the same phase-scaled band plan_context() uses to
+    generate that day's content (e.g. 4.5 for a foundation-phase learner) —
+    not the profile's fixed minimum_skill_band, which stays constant
+    regardless of phase and previously made the writing/speaking checkpoint
+    impossible to pass for early-phase learners (their content is
+    intentionally easier than the target they'd be graded against)."""
     if skill == "reading":
         return _reading_or_listening_checkpoint(
             db, day, ReadingExercise, reading_practice.get_questions, ReadingSubmission,
@@ -480,9 +486,9 @@ def evaluate_skill_checkpoint(
             ListeningSubmission, user_id,
         )
     if skill == "writing":
-        return _writing_checkpoint(db, day, user_id, profile)
+        return _writing_checkpoint(db, day, user_id, required_band)
     if skill == "speaking":
-        return _speaking_checkpoint(db, day, user_id, profile)
+        return _speaking_checkpoint(db, day, user_id, required_band)
     raise ValueError(f"unknown skill: {skill}")
 
 
@@ -500,8 +506,9 @@ def evaluate_checkpoint(
     db: Session, day: date, user_id: uuid.UUID = LEGACY_USER_ID
 ) -> CheckpointStatus:
     profile = get_or_create_profile(db, user_id, day)
+    _, _, required_band = plan_context(profile, day)
     skills = {
-        skill: evaluate_skill_checkpoint(db, day, skill, user_id, profile)
+        skill: evaluate_skill_checkpoint(db, day, skill, user_id, required_band)
         for skill in ALL_SKILLS
     }
     quiz_result = vocabulary_service.get_quiz_result(db, day, user_id)
