@@ -323,14 +323,20 @@ def test_missed_day_prefers_fresh_progressive_words_over_reusing_library(
     assert stored.target_band == 4.5
 
 
-def test_untouched_old_duplicate_queue_is_replaced_on_resume(
+def test_old_duplicate_queue_replaces_only_unanswered_words_on_resume(
     db_session, monkeypatch
 ):
-    monkeypatch.setattr(vocabulary_service, "DAILY_REVIEW_TARGET", 1)
+    monkeypatch.setattr(vocabulary_service, "DAILY_REVIEW_TARGET", 2)
     missed_day = clock.learner_today() - timedelta(days=1)
-    word = VocabularyWord(
-        word="duplicate",
-        meaning="already used on another day",
+    answered_word = VocabularyWord(
+        word="answered-duplicate",
+        meaning="already answered on the make-up day",
+        interval_index=2,
+        next_due_date=missed_day + timedelta(days=30),
+    )
+    unanswered_word = VocabularyWord(
+        word="unanswered-duplicate",
+        meaning="not answered on the make-up day",
         interval_index=2,
         next_due_date=missed_day + timedelta(days=30),
     )
@@ -339,21 +345,35 @@ def test_untouched_old_duplicate_queue_is_replaced_on_resume(
         completed_at=datetime.now(timezone.utc),
     )
     active = ReviewSession(day=missed_day)
-    db_session.add_all([word, previous, active])
+    db_session.add_all([answered_word, unanswered_word, previous, active])
     db_session.flush()
     db_session.add_all(
         [
             ReviewSessionItem(
                 session_id=previous.id,
-                word_id=word.id,
+                word_id=answered_word.id,
+                position=0,
+                outcome="remembered",
+                assessed_at=datetime.now(timezone.utc),
+            ),
+            ReviewSessionItem(
+                session_id=previous.id,
+                word_id=unanswered_word.id,
+                position=1,
+                outcome="remembered",
+                assessed_at=datetime.now(timezone.utc),
+            ),
+            ReviewSessionItem(
+                session_id=active.id,
+                word_id=answered_word.id,
                 position=0,
                 outcome="remembered",
                 assessed_at=datetime.now(timezone.utc),
             ),
             ReviewSessionItem(
                 session_id=active.id,
-                word_id=word.id,
-                position=0,
+                word_id=unanswered_word.id,
+                position=1,
             ),
         ]
     )
@@ -363,9 +383,17 @@ def test_untouched_old_duplicate_queue_is_replaced_on_resume(
     current = get_current_item(db_session, today=missed_day)
 
     assert resumed.id == active.id
-    assert current.item.word != "duplicate"
+    assert current.item.position == 1
+    assert current.item.word != "unanswered-duplicate"
     replacement = db_session.get(VocabularyWord, current.item.word_id)
     assert replacement.source == "make_up_backfill"
+    answered_item = (
+        db_session.query(ReviewSessionItem)
+        .filter_by(session_id=active.id, position=0)
+        .one()
+    )
+    assert answered_item.word_id == answered_word.id
+    assert answered_item.outcome == "remembered"
 
 
 def test_resume_returns_exact_first_unassessed_item(db_session, monkeypatch):

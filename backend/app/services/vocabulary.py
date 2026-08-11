@@ -495,7 +495,7 @@ def _replace_untouched_duplicate_make_up_words(
             .order_by(ReviewSessionItem.position)
         )
     )
-    if not items or any(item.outcome is not None for item in items):
+    if not items:
         return
     used_on_other_days = set(
         session.scalars(
@@ -507,7 +507,11 @@ def _replace_untouched_duplicate_make_up_words(
             )
         )
     )
-    duplicates = [item for item in items if item.word_id in used_on_other_days]
+    duplicates = [
+        item
+        for item in items
+        if item.outcome is None and item.word_id in used_on_other_days
+    ]
     replacements = _progressive_make_up_words(
         session, user_id, len(duplicates), today=today
     )
