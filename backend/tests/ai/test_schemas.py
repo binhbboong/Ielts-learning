@@ -147,6 +147,34 @@ def test_writing_result_recovers_overall_band_wrapped_in_ai_feedback_object():
     assert wrapped.overall_band == 4.5
 
 
+def test_writing_result_recovers_single_string_strengths_and_weaknesses():
+    criterion = {
+        "band_score": 4.5,
+        "feedback": "Specific feedback.",
+        "strengths": "The meaning is clear.",
+        "weaknesses": "Use a complete verb phrase.",
+    }
+    result = WritingEvaluationResult(
+        status="ok",
+        task_response=criterion,
+        coherence_and_cohesion=criterion,
+        lexical_resource=criterion,
+        grammatical_range_and_accuracy=criterion,
+        overall_band={"band_score": 4.5, "feedback": "Accidentally wrapped."},
+        corrections=[
+            SentenceCorrection(
+                original="It helps me everything.",
+                corrected="It helps me do everything.",
+                explanation="Use 'help + object + verb'.",
+            )
+        ],
+    )
+
+    assert result.overall_band == 4.5
+    assert result.task_response.strengths == ["The meaning is clear."]
+    assert result.task_response.weaknesses == ["Use a complete verb phrase."]
+
+
 def test_writing_result_rejects_ambiguous_overall_band_object():
     with pytest.raises(ValidationError, match="does not contain a numeric score"):
         WritingEvaluationResult(

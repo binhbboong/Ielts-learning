@@ -61,6 +61,17 @@ class CriterionFeedback(_RequiredTextModel):
     strengths: list[str] = Field(default_factory=list)
     weaknesses: list[str] = Field(default_factory=list)
 
+    @field_validator("strengths", "weaknesses", mode="before")
+    @classmethod
+    def normalize_feedback_lists(cls, value):
+        # Models occasionally return one feedback sentence instead of a JSON
+        # array. It still represents one valid item, so preserve it as a list.
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [value]
+        return value
+
 
 class SentenceCorrection(_RequiredTextModel):
     original: str
@@ -87,6 +98,21 @@ class WritingEvaluationResult(BaseModel):
     grammatical_range_and_accuracy: CriterionFeedback | None = None
     overall_band: float | None = Field(default=None, ge=0, le=9)
     corrections: list[SentenceCorrection] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_provider_payload(cls, value):
+        """Normalize common provider shape drift before nested validation."""
+        if not isinstance(value, dict):
+            return value
+        normalized = dict(value)
+        overall_band = normalized.get("overall_band")
+        if isinstance(overall_band, dict):
+            for key in ("band_score", "overall_band", "score", "value"):
+                if key in overall_band:
+                    normalized["overall_band"] = overall_band[key]
+                    break
+        return normalized
 
     @field_validator("overall_band", mode="before")
     @classmethod

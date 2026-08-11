@@ -39,7 +39,9 @@ Return JSON only with keys: task_response, coherence_and_cohesion, lexical_resou
 grammatical_range_and_accuracy, overall_band, corrections. Each criterion must contain
 band_score, feedback, strengths, weaknesses and cite exact submitted wording. Corrections must
 contain at least one object with original, corrected, explanation. The four criterion fields are
-objects, but overall_band MUST be one JSON number such as 4.5 — never an object or string."""
+objects, but overall_band MUST be one JSON number such as 4.5 — never an object or string.
+Within every criterion, strengths and weaknesses MUST each be a JSON array of strings, even
+when there is only one item; for example: "strengths": ["The meaning is clear."]."""
         try:
             message = self.client.messages.create(
                 model=self.model,

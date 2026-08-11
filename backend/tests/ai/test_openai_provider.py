@@ -108,8 +108,8 @@ def test_openai_writing_evaluation_recovers_wrapped_overall_band():
     criterion = {
         "band_score": 4.5,
         "feedback": "Specific feedback about 'I go school'.",
-        "strengths": ["The meaning is clear."],
-        "weaknesses": ["A preposition is missing."],
+        "strengths": "The meaning is clear.",
+        "weaknesses": "A preposition is missing.",
     }
     payload = {
         "task_response": criterion,
@@ -138,5 +138,8 @@ def test_openai_writing_evaluation_recovers_wrapped_overall_band():
 
     assert result.status == "ok"
     assert result.overall_band == 4.5
+    assert result.task_response.strengths == ["The meaning is clear."]
+    assert result.task_response.weaknesses == ["A preposition is missing."]
     prompt = client.responses.last_kwargs["input"]
     assert "overall_band MUST be one JSON number" in prompt
+    assert "strengths and weaknesses MUST each be a JSON array" in prompt
