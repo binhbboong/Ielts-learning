@@ -5,6 +5,7 @@ import pytest
 from app.core import clock
 from app.models.vocabulary import (
     ReviewSessionItem,
+    VocabularyQuizItem,
     VocabularyWord,
 )
 from app.schemas.vocabulary import ReviewOutcome, VocabularyWordCreate
@@ -292,6 +293,30 @@ def test_review_sessions_can_stay_active_for_two_different_days(db_session, monk
     assert today_session.day == today
     assert get_current_item(db_session, today=missed_day).item.session_id == missed_session.id
     assert get_current_item(db_session, today=today).item.session_id == today_session.id
+
+
+def test_missed_day_reuses_existing_library_words_when_nothing_was_due(
+    db_session, monkeypatch
+):
+    monkeypatch.setattr(vocabulary_service, "DAILY_REVIEW_TARGET", 1)
+    monkeypatch.setattr(vocabulary_service, "_backfill_daily_words", lambda *_args, **_kwargs: [])
+    missed_day = clock.learner_today() - timedelta(days=1)
+    db_session.add(
+        VocabularyWord(
+            word="reusable",
+            meaning="available to study again",
+            interval_index=2,
+            next_due_date=missed_day + timedelta(days=30),
+        )
+    )
+    db_session.commit()
+
+    review_session = start_or_resume_review(db_session, today=missed_day)
+
+    assert review_session is not None
+    current = get_current_item(db_session, today=missed_day)
+    assert current.kind == "item"
+    assert current.item.word == "reusable"
 
 
 def test_resume_returns_exact_first_unassessed_item(db_session, monkeypatch):
@@ -587,6 +612,47 @@ def test_quiz_below_threshold_is_not_passed(db_session, monkeypatch):
     assert result.summary.total == 5
     assert result.summary.passed is False
     assert 0 / 5 < QUIZ_PASS_THRESHOLD
+
+
+def test_failed_quiz_can_be_retried_and_clears_previous_answers(
+    db_session, monkeypatch
+):
+    monkeypatch.setattr(vocabulary_service, "DAILY_REVIEW_TARGET", 2)
+    today = date(2026, 7, 29)
+    db_session.add_all(
+        [
+            VocabularyWord(
+                word=word,
+                meaning=f"meaning-{word}",
+                interval_index=0,
+                next_due_date=today,
+            )
+            for word in ["a", "b"]
+        ]
+    )
+    db_session.commit()
+    _complete_review(db_session, today)
+
+    result = get_or_start_quiz_item(db_session, day=today)
+    while result.kind == "item":
+        wrong_index = next(
+            index
+            for index, option in enumerate(result.item.options)
+            if option != f"meaning-{result.item.word}"
+        )
+        result = answer_current_quiz_item(db_session, wrong_index, day=today)
+    assert result.summary.passed is False
+
+    retried = get_or_start_quiz_item(
+        db_session, day=today, retry_failed=True
+    )
+
+    assert retried.kind == "item"
+    assert retried.item.position == 0
+    assert all(
+        item.selected_option_index is None
+        for item in db_session.query(VocabularyQuizItem).all()
+    )
 
 
 def test_quiz_result_is_none_before_submission(db_session, monkeypatch):

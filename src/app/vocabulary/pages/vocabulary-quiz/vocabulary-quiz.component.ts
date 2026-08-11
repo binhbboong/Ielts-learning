@@ -29,4 +29,8 @@ export class VocabularyQuizComponent {
       this.answering.set(false);
     }
   }
+
+  retry(): void {
+    void this.facade.startQuiz(this.day ?? undefined).catch(() => undefined);
+  }
 }

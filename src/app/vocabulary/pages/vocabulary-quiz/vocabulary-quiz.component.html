@@ -39,6 +39,7 @@
           <p class="quiz-page__fail">
             Below the 80% checkpoint. Review the words and try again later.
           </p>
+          <button type="button" (click)="retry()">Try the checkpoint again</button>
         }
         <a routerLink="/" [queryParams]="day ? { day } : null">Back to lesson</a>
       </section>

@@ -63,6 +63,22 @@ describe('VocabularyQuizComponent', () => {
     expect(text).toContain('Checkpoint passed');
   });
 
+  it('lets the learner retry a failed checkpoint', () => {
+    const { fixture, facade } = setup({
+      status: 'complete',
+      summary: { quizId: 'q1', correct: 2, total: 5, passed: false },
+    });
+    fixture.detectChanges();
+
+    const retry = Array.from(
+      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).find((button) => button.textContent?.includes('Try the checkpoint again'));
+    retry?.click();
+
+    expect(retry).toBeDefined();
+    expect(facade.startQuiz).toHaveBeenCalledTimes(2);
+  });
+
   it('shows a not-ready state distinct from complete', () => {
     const { fixture } = setup({ status: 'not_ready' });
     fixture.detectChanges();

@@ -422,6 +422,12 @@ def _session_for_day(
     )
 
 
+def get_review_session_for_day(
+    session: Session, *, day: date, user_id=LEGACY_USER_ID
+) -> ReviewSession | None:
+    return _session_for_day(session, user_id, day)
+
+
 def start_or_resume_review(
     session: Session, *, today: date | None = None, user_id=LEGACY_USER_ID
 ) -> ReviewSession | None:
@@ -449,6 +455,31 @@ def start_or_resume_review(
         session, user_id, DAILY_REVIEW_TARGET - len(due_words), today=current_date
     )
     queue_words = due_words + backfilled
+
+    # A missed lesson must remain actionable even when none of the learner's
+    # existing words were due on that historical date. Reuse library words to
+    # create a stable make-up queue; today's queue keeps normal SRS semantics.
+    remaining = DAILY_REVIEW_TARGET - len(queue_words)
+    if current_date < learner_today() and remaining > 0:
+        queued_ids = [word.id for word in queue_words]
+        make_up_query = select(VocabularyWord).where(
+            VocabularyWord.user_id == user_id
+        )
+        if queued_ids:
+            make_up_query = make_up_query.where(
+                VocabularyWord.id.not_in(queued_ids)
+            )
+        make_up_words = list(
+            session.scalars(
+                make_up_query.order_by(
+                    VocabularyWord.next_due_date,
+                    VocabularyWord.last_reviewed_at,
+                    VocabularyWord.id,
+                ).limit(remaining)
+            )
+        )
+        queue_words.extend(make_up_words)
+
     if not queue_words:
         return None
 
@@ -765,7 +796,11 @@ def _build_quiz(session: Session, user_id, day: date) -> VocabularyQuiz | None:
 
 
 def get_or_start_quiz_item(
-    session: Session, *, day: date, user_id=LEGACY_USER_ID
+    session: Session,
+    *,
+    day: date,
+    user_id=LEGACY_USER_ID,
+    retry_failed: bool = False,
 ) -> QuizItemResult:
     quiz = session.query(VocabularyQuiz).filter_by(user_id=user_id, day=day).one_or_none()
     if quiz is None:
@@ -774,7 +809,19 @@ def get_or_start_quiz_item(
             return QuizItemResult(kind="not_ready")
 
     if quiz.submitted_at is not None:
-        return QuizItemResult(kind="complete", summary=_quiz_summary(quiz))
+        summary = _quiz_summary(quiz)
+        if not retry_failed or summary.passed:
+            return QuizItemResult(kind="complete", summary=summary)
+
+        session.query(VocabularyQuizItem).filter_by(quiz_id=quiz.id).update(
+            {VocabularyQuizItem.selected_option_index: None},
+            synchronize_session=False,
+        )
+        quiz.submitted_at = None
+        quiz.correct = None
+        quiz.total = None
+        session.commit()
+        session.refresh(quiz)
 
     item = (
         session.query(VocabularyQuizItem)

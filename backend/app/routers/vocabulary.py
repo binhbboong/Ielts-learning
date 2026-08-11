@@ -47,6 +47,22 @@ def _current_body(result):
     return {"status": result.kind}
 
 
+def _review_body_for_day(db: Session, target: date, user_id):
+    result = service.get_current_item(db, today=target, user_id=user_id)
+    if result.kind in {"nothing_due", "not_started"}:
+        review_session = service.get_review_session_for_day(
+            db, day=target, user_id=user_id
+        )
+        if review_session is not None and review_session.completed_at is not None:
+            return {
+                "status": "complete",
+                "summary": service.get_review_complete_summary(
+                    db, review_session.id, user_id
+                ).model_dump(mode="json"),
+            }
+    return _current_body(result)
+
+
 def _quiz_body(result):
     if result.kind == "item":
         return {"status": "item", "item": result.item.model_dump(mode="json")}
@@ -136,9 +152,7 @@ def start_review(
     try:
         target = _target_day(day)
         service.start_or_resume_review(db, today=target, user_id=user.id)
-        return _current_body(
-            service.get_current_item(db, today=target, user_id=user.id)
-        )
+        return _review_body_for_day(db, target, user.id)
     except HTTPException:
         raise
     except Exception:
@@ -152,9 +166,7 @@ def current_item(
     user: User = Depends(require_learner),
 ):
     try:
-        return _current_body(
-            service.get_current_item(db, today=_target_day(day), user_id=user.id)
-        )
+        return _review_body_for_day(db, _target_day(day), user.id)
     except HTTPException:
         raise
     except Exception:
@@ -200,7 +212,10 @@ def start_quiz(
     try:
         return _quiz_body(
             service.get_or_start_quiz_item(
-                db, day=_target_day(day), user_id=user.id
+                db,
+                day=_target_day(day),
+                user_id=user.id,
+                retry_failed=True,
             )
         )
     except HTTPException:

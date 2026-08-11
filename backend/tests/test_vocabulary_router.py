@@ -114,6 +114,36 @@ def test_review_start_assess_and_complete_round_trip(db_session_factory, monkeyp
     assert assessed.json()["summary"]["remembered"] == 1
 
 
+def test_completed_make_up_review_reopens_at_checkpoint_link(
+    db_session_factory, monkeypatch
+):
+    monkeypatch.setattr("app.services.vocabulary.DAILY_REVIEW_TARGET", 1)
+    missed_day = date(2026, 7, 29)
+    with db_session_factory() as session:
+        session.add(
+            VocabularyWord(
+                word="make-up",
+                meaning="completed later",
+                interval_index=0,
+                next_due_date=missed_day,
+            )
+        )
+        session.commit()
+    client = _client(db_session_factory)
+    query = f"?day={missed_day.isoformat()}"
+
+    client.post(f"/api/vocabulary/review/start{query}")
+    completed = client.post(
+        f"/api/vocabulary/review/current/assess{query}",
+        json={"outcome": "remembered"},
+    )
+    reopened = client.get(f"/api/vocabulary/review/current{query}")
+
+    assert completed.json()["status"] == "complete"
+    assert reopened.json()["status"] == "complete"
+    assert reopened.json()["summary"]["total_reviewed"] == 1
+
+
 def test_history_route_shows_word_added_and_reviewed_today(db_session_factory, monkeypatch):
     monkeypatch.setattr("app.services.vocabulary.DAILY_REVIEW_TARGET", 1)
     with db_session_factory() as session:
