@@ -51,6 +51,132 @@
   margin: 0;
 }
 
+.lesson-calendar {
+  padding: clamp(1rem, 3vw, 1.5rem);
+  border: 1px solid #d5dfdc;
+  border-radius: 0.9rem;
+}
+
+.lesson-calendar__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.lesson-calendar__heading h2,
+.lesson-calendar__heading p {
+  margin: 0;
+}
+
+.lesson-calendar__heading h2 {
+  margin-bottom: 0.25rem;
+}
+
+.today-button {
+  flex: 0 0 auto;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid #15594d;
+  border-radius: 0.55rem;
+  color: #15594d;
+  background: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.lesson-calendar__weekdays,
+.lesson-calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.lesson-calendar__weekdays {
+  margin-bottom: 0.4rem;
+  color: #71807c;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.lesson-calendar__day {
+  display: flex;
+  min-height: 3.25rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  border: 1px solid transparent;
+  border-radius: 0.6rem;
+  color: #33433f;
+  background: #f3f6f5;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.lesson-calendar__day small {
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.lesson-calendar__day--missed {
+  border-color: #efc27c;
+  color: #8a4b13;
+  background: #fff3df;
+}
+
+.lesson-calendar__day--complete {
+  color: #15594d;
+  background: #dff1ea;
+}
+
+.lesson-calendar__day--today {
+  color: #fff;
+  background: #15594d;
+}
+
+.lesson-calendar__day--inactive,
+.lesson-calendar__day--upcoming {
+  color: #a6b0ad;
+  background: #f7f8f8;
+  cursor: default;
+}
+
+.lesson-calendar__day--selected {
+  outline: 3px solid #f0b64c;
+}
+
+.lesson-calendar__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin-top: 1rem;
+  color: #61716c;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.lesson-calendar__legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.lesson-calendar__legend i {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 0.2rem;
+}
+
+.legend-today { background: #15594d; }
+.legend-missed { background: #f3c779; }
+.legend-complete { background: #8bc8b5; }
+
 .checkpoint-summary {
   padding: 1.25rem;
   border: 1px solid #d5dfdc;
@@ -430,6 +556,20 @@ button:disabled {
 }
 
 @media (max-width: 38rem) {
+  .lesson-calendar__heading {
+    flex-direction: column;
+  }
+
+  .lesson-calendar__day {
+    min-height: 2.75rem;
+    font-size: 0.82rem;
+  }
+
+  .lesson-calendar__weekdays,
+  .lesson-calendar__grid {
+    gap: 0.25rem;
+  }
+
   .vocabulary-lesson__heading,
   .daily-recall-card__progress {
     flex-direction: column;

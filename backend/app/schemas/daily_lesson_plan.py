@@ -41,6 +41,14 @@ class PregenerationResponse(BaseModel):
     errors: dict[str, str]
 
 
+class LessonCalendarDay(BaseModel):
+    day: date
+    status: str
+    selected: bool
+    passed_count: int
+    required_count: int
+
+
 class DailyOverviewResponse(BaseModel):
     exam_type: str
     week: int
@@ -50,4 +58,5 @@ class DailyOverviewResponse(BaseModel):
     review_minutes: int
     effective_day: date
     checkpoint: CheckpointStatus
+    calendar_days: list[LessonCalendarDay]
     skills: list[SkillOverviewEntry]

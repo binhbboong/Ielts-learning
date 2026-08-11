@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.ai import get_ai_provider
@@ -12,6 +12,7 @@ from app.models.user import User
 from app.schemas.daily_lesson_plan import (
     CheckpointStatus,
     DailyOverviewResponse,
+    LessonCalendarDay,
     SkillOverviewEntry,
 )
 from app.services import daily_lesson_plan as service
@@ -25,6 +26,7 @@ router = APIRouter(
 
 @router.get("/overview", response_model=DailyOverviewResponse)
 def overview(
+    day: date | None = None,
     db: Session = Depends(get_db),
     provider: AIProvider = Depends(get_ai_provider),
     tts: TextToSpeech = Depends(get_text_to_speech),
@@ -32,8 +34,15 @@ def overview(
 ) -> DailyOverviewResponse:
     today = date.today()
     profile = service.get_or_create_profile(db, user.id, today)
-    week, phase, target_band = service.plan_context(profile, today)
-    result = service.get_overview(db, today, provider, tts, user.id)
+    lesson_day = day or today
+    if lesson_day > today:
+        raise HTTPException(status_code=400, detail="Future lessons are not available yet")
+    if lesson_day < profile.start_date:
+        raise HTTPException(status_code=400, detail="This date is before your study plan")
+    week, phase, target_band = service.plan_context(profile, lesson_day)
+    result = service.get_overview(
+        db, today, provider, tts, user.id, requested_day=lesson_day
+    )
     return DailyOverviewResponse(
         exam_type=profile.exam_type,
         week=week,
@@ -50,6 +59,16 @@ def overview(
             required_count=result.checkpoint.required_count,
             all_passed=result.checkpoint.all_passed,
         ),
+        calendar_days=[
+            LessonCalendarDay(
+                day=item.day,
+                status=item.status,
+                selected=item.selected,
+                passed_count=item.passed_count,
+                required_count=item.required_count,
+            )
+            for item in result.calendar_days
+        ],
         skills=[
             SkillOverviewEntry(
                 day=entry.day,

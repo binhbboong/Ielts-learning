@@ -24,12 +24,55 @@
       </p>
     </section>
 
+    <section class="lesson-calendar" data-testid="lesson-calendar" aria-labelledby="lesson-calendar-title">
+      <header class="lesson-calendar__heading">
+        <div>
+          <p class="step-label">Recent 5 weeks</p>
+          <h2 id="lesson-calendar-title">Learning calendar</h2>
+          <p>Today's lesson comes first. Choose an orange day whenever you want to catch up.</p>
+        </div>
+        @if (overview.effectiveDay !== today) {
+          <button type="button" class="today-button" (click)="facade.load()">Back to today</button>
+        }
+      </header>
+      <div class="lesson-calendar__weekdays" aria-hidden="true">
+        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+      </div>
+      <div class="lesson-calendar__grid">
+        @for (item of overview.calendarDays ?? []; track item.day) {
+          <button
+            type="button"
+            [class]="'lesson-calendar__day lesson-calendar__day--' + item.status"
+            [class.lesson-calendar__day--selected]="item.selected"
+            [disabled]="item.status === 'inactive' || item.status === 'upcoming'"
+            [attr.aria-pressed]="item.selected"
+            [attr.aria-label]="calendarTitle(item)"
+            [title]="calendarTitle(item)"
+            (click)="selectDay(item)"
+          >
+            <span>{{ item.day.slice(8, 10) }}</span>
+            @if (item.status === 'missed') {
+              <small>{{ item.passedCount }}/{{ item.requiredCount }}</small>
+            } @else if (item.status === 'complete') {
+              <small aria-hidden="true">✓</small>
+            } @else if (item.status === 'today') {
+              <small>today</small>
+            }
+          </button>
+        }
+      </div>
+      <footer class="lesson-calendar__legend">
+        <span><i class="legend-today"></i>Today</span>
+        <span><i class="legend-missed"></i>Needs make-up</span>
+        <span><i class="legend-complete"></i>Complete</span>
+      </footer>
+    </section>
+
     @if (overview.effectiveDay !== today) {
       <section class="catch-up-banner" data-testid="catch-up-banner" role="status">
-        <strong>Catching up on {{ overview.effectiveDay }}</strong>
+        <strong>Make-up lesson for {{ calendarDayLabel(overview.effectiveDay) }}</strong>
         <p>
-          Clear all 5 checkpoints below to unlock the lessons you've missed since, up through
-          today.
+          Complete the three focused skills below. Today's lesson stays available and is never locked.
         </p>
       </section>
     }
@@ -53,11 +96,11 @@
       </ul>
       @if (overview.checkpoint.allPassed) {
         <p class="checkpoint-summary__message checkpoint-summary__message--passed">
-          Today's checkpoint is complete — tomorrow's lesson is unlocked.
+          {{ overview.effectiveDay === today ? "Today's checkpoint is complete." : 'This make-up day is complete.' }}
         </p>
       } @else {
         <p class="checkpoint-summary__message">
-          Pass all 5 to unlock the next day.
+          Incomplete lessons remain in the calendar so you can return anytime.
         </p>
       }
     </section>
@@ -180,7 +223,7 @@
       <section class="skills-section">
         <header>
           <p class="step-label">Continue learning</p>
-          <h2>Today's focused skills</h2>
+          <h2>{{ overview.effectiveDay === today ? "Today's focused skills" : 'Make-up focused skills' }}</h2>
         </header>
         <div class="skill-grid">
           @for (entry of overview.skills; track entry.skill + entry.day) {
@@ -202,10 +245,10 @@
               <p class="focus-note">{{ entry.rationale }}</p>
               @switch (entry.status) {
                 @case ('ready') {
-                  <a class="button-link primary" [routerLink]="skillRoute(entry)">Start</a>
+                  <a class="button-link primary" [routerLink]="skillRoute(entry)" [queryParams]="skillQueryParams(entry)">Start</a>
                 }
                 @case ('done') {
-                  <a class="button-link" [routerLink]="skillRoute(entry)">{{ doneActionLabel(entry) }}</a>
+                  <a class="button-link" [routerLink]="skillRoute(entry)" [queryParams]="skillQueryParams(entry)">{{ doneActionLabel(entry) }}</a>
                 }
                 @case ('generating') {
                   <span class="hint">Generating...</span>

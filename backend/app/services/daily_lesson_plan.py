@@ -712,58 +712,131 @@ class DailyOverviewResult:
     entries: list[SkillOverviewEntry]
     effective_day: date
     checkpoint: CheckpointStatus
+    calendar_days: list["LessonCalendarDay"]
+
+
+@dataclass
+class LessonCalendarDay:
+    day: date
+    status: str
+    selected: bool
+    passed_count: int
+    required_count: int = len(ALL_SKILLS)
+
+
+def _lesson_calendar(
+    db: Session,
+    today: date,
+    selected_day: date,
+    start_date: date,
+    user_id: uuid.UUID,
+) -> list[LessonCalendarDay]:
+    """Return a five-week calendar ending with the current week."""
+    calendar_start = today - timedelta(days=today.weekday() + 28)
+    calendar_end = calendar_start + timedelta(days=34)
+    generated_days = {
+        row[0]
+        for row in (
+            db.query(DailyFocus.day)
+            .filter(
+                DailyFocus.user_id == user_id,
+                DailyFocus.day >= calendar_start,
+                DailyFocus.day <= min(today, calendar_end),
+            )
+            .distinct()
+            .all()
+        )
+    }
+
+    days: list[LessonCalendarDay] = []
+    day = calendar_start
+    while day <= calendar_end:
+        passed_count = 0
+        if day in generated_days:
+            passed_count = sum(
+                get_skill_status(db, day, skill, user_id) == "done"
+                for skill in ALL_SKILLS
+            )
+
+        if day < start_date:
+            status = "inactive"
+        elif day > today:
+            status = "upcoming"
+        elif day == today:
+            status = "today"
+        elif passed_count == len(ALL_SKILLS):
+            status = "complete"
+        else:
+            status = "missed"
+
+        days.append(
+            LessonCalendarDay(
+                day=day,
+                status=status,
+                selected=day == selected_day,
+                passed_count=passed_count,
+            )
+        )
+        day += timedelta(days=1)
+    return days
 
 
 def get_overview(
     db: Session, today: date, provider: AIProvider, tts: TextToSpeech,
     user_id: uuid.UUID = LEGACY_USER_ID,
+    requested_day: date | None = None,
 ) -> DailyOverviewResult:
-    effective_day = get_effective_day(db, user_id, today)
+    effective_day = requested_day or today
     ensure_today_generated(db, effective_day, provider, tts, user_id)
 
     entries: list[SkillOverviewEntry] = []
     focuses = (
         db.query(DailyFocus)
-        .filter(DailyFocus.user_id == user_id, DailyFocus.day <= effective_day)
-        .order_by(DailyFocus.day, DailyFocus.skill)
+        .filter(DailyFocus.user_id == user_id, DailyFocus.day == effective_day)
+        .order_by(DailyFocus.skill)
         .all()
     )
     for focus in focuses:
         status = get_skill_status(db, focus.day, focus.skill, user_id)
-        if focus.day == effective_day or status != "done":
-            writing_config = (
-                writing_level_config(focus.phase, focus.task_type)
-                if focus.skill == "writing"
-                else None
+        writing_config = (
+            writing_level_config(focus.phase, focus.task_type)
+            if focus.skill == "writing"
+            else None
+        )
+        entries.append(
+            SkillOverviewEntry(
+                day=focus.day,
+                skill=focus.skill,
+                status=status,
+                focus_reference=focus.focus_reference,
+                target_band=focus.target_band,
+                estimated_minutes=focus.estimated_minutes,
+                priority=focus.priority,
+                phase=focus.phase,
+                rationale=focus.rationale,
+                generated_prompt_text=focus.generated_prompt_text,
+                task_type=focus.task_type,
+                writing_level=writing_config.level if writing_config else None,
+                exercise_type=writing_config.exercise_type if writing_config else None,
+                exercise_label=writing_config.label if writing_config else None,
+                objective=writing_config.objective if writing_config else None,
+                min_sentences=writing_config.min_sentences if writing_config else None,
+                max_sentences=writing_config.max_sentences if writing_config else None,
+                min_words=writing_config.min_words if writing_config else None,
+                max_words=writing_config.max_words if writing_config else None,
+                sentence_frames=writing_config.sentence_frames if writing_config else (),
+                show_ielts_band=writing_config.show_ielts_band if writing_config else False,
             )
-            entries.append(
-                SkillOverviewEntry(
-                    day=focus.day,
-                    skill=focus.skill,
-                    status=status,
-                    focus_reference=focus.focus_reference,
-                    target_band=focus.target_band,
-                    estimated_minutes=focus.estimated_minutes,
-                    priority=focus.priority,
-                    phase=focus.phase,
-                    rationale=focus.rationale,
-                    generated_prompt_text=focus.generated_prompt_text,
-                    task_type=focus.task_type,
-                    writing_level=writing_config.level if writing_config else None,
-                    exercise_type=writing_config.exercise_type if writing_config else None,
-                    exercise_label=writing_config.label if writing_config else None,
-                    objective=writing_config.objective if writing_config else None,
-                    min_sentences=writing_config.min_sentences if writing_config else None,
-                    max_sentences=writing_config.max_sentences if writing_config else None,
-                    min_words=writing_config.min_words if writing_config else None,
-                    max_words=writing_config.max_words if writing_config else None,
-                    sentence_frames=writing_config.sentence_frames if writing_config else (),
-                    show_ielts_band=writing_config.show_ielts_band if writing_config else False,
-                )
-            )
+        )
     checkpoint = evaluate_checkpoint(db, effective_day, user_id)
+    profile = get_or_create_profile(db, user_id, today)
     return DailyOverviewResult(
-        entries=entries, effective_day=effective_day, checkpoint=checkpoint
+        entries=entries,
+        effective_day=effective_day,
+        checkpoint=checkpoint,
+        calendar_days=_lesson_calendar(
+            db, today, effective_day, profile.start_date, user_id
+        ),
     )
 
 

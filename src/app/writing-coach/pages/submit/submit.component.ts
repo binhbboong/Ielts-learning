@@ -1,7 +1,7 @@
 import { Location, NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DailyLessonFacade } from '../../../daily-lesson/state/daily-lesson.facade';
 import { SkillOverviewEntry } from '../../../daily-lesson/models/daily-focus.model';
 import { WritingTaskType } from '../../models/writing-submission.model';
@@ -17,6 +17,7 @@ import { WritingCoachFacade } from '../../state/writing-coach.facade';
 })
 export class WritingSubmitComponent implements OnInit {
   private readonly location = inject(Location);
+  private readonly route = inject(ActivatedRoute);
   readonly facade = inject(WritingCoachFacade);
   private readonly dailyLessonFacade = inject(DailyLessonFacade);
   taskType: WritingTaskType = 'task2';
@@ -29,8 +30,9 @@ export class WritingSubmitComponent implements OnInit {
   readonly writingAgain = signal(false);
 
   async ngOnInit(): Promise<void> {
-    if (this.dailyLessonFacade.state() === 'idle') {
-      await this.dailyLessonFacade.load().catch(() => undefined);
+    const requestedDay = this.route.snapshot.queryParamMap.get('day');
+    if (requestedDay || this.dailyLessonFacade.state() === 'idle') {
+      await this.dailyLessonFacade.load(requestedDay ?? undefined).catch(() => undefined);
     }
     const overview = this.dailyLessonFacade.overview();
     const entry = overview?.skills.find(

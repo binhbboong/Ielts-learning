@@ -34,6 +34,16 @@ export interface CheckpointStatus {
   allPassed: boolean;
 }
 
+export type LessonCalendarStatus = 'inactive' | 'upcoming' | 'today' | 'complete' | 'missed';
+
+export interface LessonCalendarDay {
+  day: string;
+  status: LessonCalendarStatus;
+  selected: boolean;
+  passedCount: number;
+  requiredCount: number;
+}
+
 export interface DailyOverview {
   examType: string;
   week: number;
@@ -43,5 +53,6 @@ export interface DailyOverview {
   reviewMinutes: number;
   effectiveDay: string;
   checkpoint: CheckpointStatus;
+  calendarDays?: LessonCalendarDay[];
   skills: SkillOverviewEntry[];
 }

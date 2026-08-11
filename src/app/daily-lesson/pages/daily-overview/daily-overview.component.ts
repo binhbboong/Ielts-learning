@@ -2,11 +2,14 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 import { RouterLink } from '@angular/router';
 import { ReviewOutcome } from '../../../vocabulary/models/review-session.model';
 import { VocabularyFacade } from '../../../vocabulary/state/vocabulary.facade';
-import { Skill, SkillOverviewEntry } from '../../models/daily-focus.model';
+import { LessonCalendarDay, Skill, SkillOverviewEntry } from '../../models/daily-focus.model';
 import { DailyLessonFacade } from '../../state/daily-lesson.facade';
 
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${month}-${day}`;
 }
 
 @Component({
@@ -59,8 +62,33 @@ export class DailyOverviewComponent implements OnInit {
     return [base];
   }
 
+  skillQueryParams(entry: Pick<SkillOverviewEntry, 'skill' | 'day'>): Record<string, string> | null {
+    return entry.skill === 'writing' ? { day: entry.day } : null;
+  }
+
   async retry(skill: string, day: string): Promise<void> {
     await this.facade.retry(skill, day);
+  }
+
+  async selectDay(item: LessonCalendarDay): Promise<void> {
+    if (item.status === 'inactive' || item.status === 'upcoming' || item.selected) return;
+    await this.facade.load(item.day === this.today ? undefined : item.day);
+  }
+
+  calendarDayLabel(day: string): string {
+    return new Intl.DateTimeFormat('en', { weekday: 'short', day: 'numeric', month: 'short' })
+      .format(new Date(`${day}T00:00:00`));
+  }
+
+  calendarTitle(item: LessonCalendarDay): string {
+    const labels: Record<LessonCalendarDay['status'], string> = {
+      inactive: 'Before your study plan',
+      upcoming: 'Not available yet',
+      today: item.passedCount === item.requiredCount ? 'Today · complete' : 'Today’s lesson',
+      complete: 'Completed · open to review',
+      missed: `Needs make-up · ${item.passedCount}/${item.requiredCount} skills complete`,
+    };
+    return `${this.calendarDayLabel(item.day)} · ${labels[item.status]}`;
   }
 
   revealVocabulary(): void {

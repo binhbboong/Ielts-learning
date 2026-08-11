@@ -4,6 +4,7 @@ import { ApiClient } from '../../core/api/api-client';
 import {
   CheckpointStatus,
   DailyOverview,
+  LessonCalendarDay,
   SkillOverviewEntry,
 } from '../models/daily-focus.model';
 
@@ -48,9 +49,10 @@ function entry(value: any): SkillOverviewEntry {
 export class DailyLessonRepository {
   constructor(private readonly api: ApiClient) {}
 
-  async getOverview(): Promise<DailyOverview> {
+  async getOverview(day?: string): Promise<DailyOverview> {
+    const query = day ? `?day=${encodeURIComponent(day)}` : '';
     const value = await firstValueFrom(
-      this.api.get<any>('/api/daily-lesson/overview'),
+      this.api.get<any>(`/api/daily-lesson/overview${query}`),
     );
     return {
       examType: value.exam_type,
@@ -61,6 +63,15 @@ export class DailyLessonRepository {
       reviewMinutes: value.review_minutes,
       effectiveDay: value.effective_day,
       checkpoint: checkpoint(value.checkpoint),
+      calendarDays: (value.calendar_days ?? []).map(
+        (item: any): LessonCalendarDay => ({
+          day: item.day,
+          status: item.status,
+          selected: item.selected,
+          passedCount: item.passed_count,
+          requiredCount: item.required_count,
+        }),
+      ),
       skills: (value.skills ?? []).map(entry),
     };
   }

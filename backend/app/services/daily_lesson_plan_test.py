@@ -524,7 +524,7 @@ def test_get_overview_includes_all_three_daily_skills_for_the_effective_day(
         session.close()
 
 
-def test_effective_day_does_not_advance_past_an_incomplete_checkpoint(db_session_factory):
+def test_today_is_prioritized_when_a_previous_checkpoint_is_incomplete(db_session_factory):
     session = db_session_factory()
     try:
         provider = _full_provider()
@@ -537,10 +537,41 @@ def test_effective_day_does_not_advance_past_an_incomplete_checkpoint(db_session
 
         result = get_overview(session, date(2026, 7, 30), provider, tts)
 
-        # Effective day stays pinned to the unfinished 29th — the 30th never generates.
+        assert result.effective_day == date(2026, 7, 30)
+        assert {e.day for e in result.entries} == {date(2026, 7, 30)}
+        assert session.query(DailyFocus).filter_by(day=date(2026, 7, 30)).count() == 3
+
+        missed = next(item for item in result.calendar_days if item.day == date(2026, 7, 29))
+        selected = next(item for item in result.calendar_days if item.day == date(2026, 7, 30))
+        assert missed.status == "missed"
+        assert missed.passed_count == 0
+        assert selected.status == "today"
+        assert selected.selected is True
+    finally:
+        session.close()
+
+
+def test_a_missed_day_can_be_selected_for_make_up(db_session_factory):
+    session = db_session_factory()
+    try:
+        provider = _full_provider()
+        tts = FakeTextToSpeech(
+            SynthesisResult(status="ok", audio_bytes=b"audio", content_type="audio/mpeg")
+        )
+
+        result = get_overview(
+            session,
+            date(2026, 7, 30),
+            provider,
+            tts,
+            requested_day=date(2026, 7, 29),
+        )
+
         assert result.effective_day == date(2026, 7, 29)
-        assert {e.day for e in result.entries} == {date(2026, 7, 29)}
-        assert session.query(DailyFocus).filter_by(day=date(2026, 7, 30)).count() == 0
+        assert {entry.day for entry in result.entries} == {date(2026, 7, 29)}
+        selected = next(item for item in result.calendar_days if item.selected)
+        assert selected.day == date(2026, 7, 29)
+        assert selected.status == "missed"
     finally:
         session.close()
 

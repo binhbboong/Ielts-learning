@@ -14,10 +14,10 @@ export class DailyLessonFacade {
 
   constructor(private readonly repository: DailyLessonRepository) {}
 
-  async load(): Promise<void> {
+  async load(day?: string): Promise<void> {
     this.stateSignal.set('loading');
     try {
-      this.overviewSignal.set(await this.repository.getOverview());
+      this.overviewSignal.set(await this.repository.getOverview(day));
       this.stateSignal.set('ready');
     } catch {
       this.stateSignal.set('error');
