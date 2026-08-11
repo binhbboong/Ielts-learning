@@ -318,6 +318,7 @@ def test_missed_day_prefers_fresh_progressive_words_over_reusing_library(
     current = get_current_item(db_session, today=missed_day)
     assert current.kind == "item"
     assert current.item.word != "reusable"
+    assert current.item.is_new is True
     stored = db_session.get(VocabularyWord, current.item.word_id)
     assert stored.source == "make_up_backfill"
     assert stored.target_band == 4.5

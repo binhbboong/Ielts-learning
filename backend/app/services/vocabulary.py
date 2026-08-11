@@ -655,7 +655,7 @@ def get_current_item(
             example=item.word.example,
             position=item.position,
             total=total or 0,
-            is_new=item.word.source == "daily_backfill",
+            is_new=item.word.source in {"daily_backfill", "make_up_backfill"},
         ),
     )
 
