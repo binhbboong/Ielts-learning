@@ -26,11 +26,18 @@
     <ol class="coach-list">
       @for (item of facade.submissions(); track item.id) {
         <li class="coach-card">
-          <p class="eyebrow">{{ item.taskType === 'task1' ? 'Task 1' : 'Task 2' }}</p>
+          <p class="eyebrow">
+            @if (item.practiceLevel) { Level {{ item.practiceLevel }} · }
+            {{ exerciseLabel(item.exerciseType, item.taskType) }}
+          </p>
           <h2>{{ item.questionExcerpt }}</h2>
           <p>{{ item.createdAt | date: 'mediumDate' }}</p>
           @if (item.status === 'complete') {
-            <p>Overall band <strong>{{ item.overallBand }}</strong></p>
+            @if (isDevelopmental(item.exerciseType)) {
+              <p>Sentence-level feedback ready</p>
+            } @else {
+              <p>Overall band <strong>{{ item.overallBand }}</strong></p>
+            }
           } @else {
             <p class="error-state">Evaluation failed. Your submitted text is preserved.</p>
           }

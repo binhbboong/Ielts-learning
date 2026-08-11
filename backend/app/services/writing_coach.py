@@ -11,19 +11,23 @@ from app.models.writing_submission import WritingSubmission
 from app.schemas.writing_submission import WritingSubmissionCreate
 from app.services.export_utils import serialize_all
 from app.models.user import LEGACY_USER_ID
+from app.services.writing_levels import writing_level_config
 
 
-def _level_context(db: Session, day, user_id) -> tuple[float | None, str | None]:
+def _level_context(
+    db: Session, day, user_id
+) -> tuple[float | None, str | None, str | None, int | None]:
     if day is None:
-        return None, None
+        return None, None, None, None
     focus = (
         db.query(DailyFocus)
         .filter_by(user_id=user_id, day=day, skill="writing")
         .one_or_none()
     )
     if focus is None:
-        return None, None
-    return focus.target_band, focus.phase
+        return None, None, None, None
+    config = writing_level_config(focus.phase, focus.task_type)
+    return focus.target_band, focus.phase, config.exercise_type, config.level
 
 
 def _run_with_timeout(provider, request, timeout_seconds):
@@ -44,15 +48,23 @@ def create_and_evaluate(
     timeout_seconds: float = 25,
     user_id=LEGACY_USER_ID,
 ) -> WritingSubmission:
-    target_band, phase = _level_context(db, payload.day, user_id)
+    target_band, phase, exercise_type, practice_level = _level_context(
+        db, payload.day, user_id
+    )
     request = WritingEvaluationRequest(
-        **payload.model_dump(), target_band=target_band, phase=phase
+        **payload.model_dump(),
+        target_band=target_band,
+        phase=phase,
+        exercise_type=exercise_type,
+        practice_level=practice_level,
     )
     result = _run_with_timeout(provider, request, timeout_seconds)
     valid = result is not None and result.status == "ok" and bool(result.corrections)
     submission = WritingSubmission(
         user_id=user_id,
         **payload.model_dump(),
+        exercise_type=exercise_type,
+        practice_level=practice_level,
         status="complete" if valid else "failed",
         error_message=(
             None if valid

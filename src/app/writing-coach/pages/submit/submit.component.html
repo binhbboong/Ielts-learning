@@ -2,8 +2,8 @@
   <header class="coach-heading">
     <div>
       <p class="eyebrow">Writing coach</p>
-      <h1>Evaluate a response</h1>
-      <p>Get criterion-by-criterion feedback tied to your exact prompt and wording.</p>
+      <h1>Build your writing</h1>
+      <p>Practice at the right level, from clear sentences to complete IELTS tasks.</p>
     </div>
     <a routerLink="/writing/history">Past submissions</a>
   </header>
@@ -12,7 +12,12 @@
     <section class="coach-card state-card">
       @if (result.status === 'complete') {
         <p class="eyebrow">Evaluation complete</p>
-        <h2>Overall band {{ result.overallBand }}</h2>
+        @if (isDevelopmental(result.exerciseType)) {
+          <h2>Level {{ result.practiceLevel }} practice complete</h2>
+          <p>Your sentence-level feedback is ready.</p>
+        } @else {
+          <h2>Overall band {{ result.overallBand }}</h2>
+        }
         <a class="button-link primary" [routerLink]="['/writing/submissions', result.id]">
           Open full feedback
         </a>
@@ -32,7 +37,11 @@
         <section class="coach-card state-card" data-testid="writing-latest-attempt">
           <p class="eyebrow">Today's latest attempt</p>
           @if (latest.status === 'complete') {
-            <h2>Overall band {{ latest.overallBand }}</h2>
+            @if (isDevelopmental(latest.exerciseType)) {
+              <h2>Level {{ latest.practiceLevel }} practice complete</h2>
+            } @else {
+              <h2>Overall band {{ latest.overallBand }}</h2>
+            }
           } @else {
             <h2>Evaluation did not complete</h2>
           }
@@ -52,28 +61,59 @@
   <ng-template #writingForm>
     <form class="coach-card coach-form" (ngSubmit)="submit()">
       @if (promptDay) {
-        <p class="daily-prompt-banner" data-testid="daily-prompt-banner">
-          Today's AI-generated prompt ({{ promptPhase }} phase, target band {{ promptTargetBand }}).
-          You can edit it below if you'd rather answer something else.
-        </p>
+        <section class="level-card" data-testid="writing-level-card">
+          <div class="level-number">{{ practiceEntry?.writingLevel }}</div>
+          <div>
+            <p class="eyebrow">Your next step</p>
+            <h2>{{ practiceEntry?.exerciseLabel }}</h2>
+            <p>{{ practiceEntry?.objective }}</p>
+            <p class="target-line">
+              Target: {{ practiceEntry?.minSentences }}–{{ practiceEntry?.maxSentences }} sentences
+              · {{ practiceEntry?.minWords }}–{{ practiceEntry?.maxWords }} words
+            </p>
+          </div>
+        </section>
+      }
+      @if (showIeltsTaskSelector) {
+        <label>
+          IELTS task
+          <select name="taskType" [(ngModel)]="taskType">
+            <option value="task1">Task 1</option>
+            <option value="task2">Task 2</option>
+          </select>
+        </label>
       }
       <label>
-        IELTS task
-        <select name="taskType" [(ngModel)]="taskType">
-          <option value="task1">Task 1</option>
-          <option value="task2">Task 2</option>
-        </select>
+        Today's writing activity
+        <textarea name="questionText" rows="6" [(ngModel)]="questionText" required></textarea>
       </label>
-      <label>
-        Exact task or question
-        <textarea name="questionText" rows="4" [(ngModel)]="questionText" required></textarea>
-      </label>
+      @if (practiceEntry?.sentenceFrames?.length) {
+        <aside class="writing-help">
+          <p class="eyebrow">Optional sentence starters</p>
+          <div class="frame-list">
+            @for (frame of practiceEntry?.sentenceFrames ?? []; track frame) {
+              <span>{{ frame }}</span>
+            }
+          </div>
+        </aside>
+      }
       <label>
         Your response
         <textarea name="responseText" rows="14" [(ngModel)]="responseText" required></textarea>
       </label>
+      @if (practiceEntry) {
+        <div class="response-progress" [class.target-met]="meetsMinimumTarget" aria-live="polite">
+          <span>{{ sentenceCount }} / {{ practiceEntry.minSentences }} minimum sentences</span>
+          <span>{{ wordCount }} / {{ practiceEntry.minWords }} minimum words</span>
+          <strong>{{ meetsMinimumTarget ? 'Ready for feedback' : 'Keep writing' }}</strong>
+        </div>
+      }
       @if (facade.submissionState() === 'loading') {
-        <p role="status">Evaluating your response against all four IELTS criteria...</p>
+        <p role="status">
+          {{ practiceEntry?.showIeltsBand
+            ? 'Evaluating your response against all four IELTS criteria...'
+            : 'Checking your sentences and preparing your next improvement step...' }}
+        </p>
       }
       @if (facade.submissionState() === 'error') {
         <div class="error-state" data-testid="writing-error" role="alert">
@@ -85,7 +125,7 @@
       <div class="actions">
         <button class="primary" type="submit"
           [disabled]="!canSubmit || facade.submissionState() === 'loading'">
-          {{ facade.submissionState() === 'loading' ? 'Evaluating...' : 'Evaluate response' }}
+          {{ facade.submissionState() === 'loading' ? 'Evaluating...' : 'Get feedback' }}
         </button>
         <button type="button" (click)="cancel()">Cancel</button>
       </div>

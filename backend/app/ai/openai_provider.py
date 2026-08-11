@@ -18,6 +18,7 @@ from app.ai.schemas import (
     WritingEvaluationRequest,
     WritingEvaluationResult,
     level_context_line,
+    writing_evaluation_context_line,
 )
 from app.core.config import settings
 
@@ -43,10 +44,10 @@ class OpenAIProvider(AIProvider):
     def evaluate_writing(
         self, request: WritingEvaluationRequest
     ) -> WritingEvaluationResult:
-        prompt = f"""Evaluate this IELTS Writing {request.task_type} response.
+        prompt = f"""Evaluate this Writing response for its assigned learning activity.
 Question: {request.question_text}
 Response: {request.response_text}
-{level_context_line(request.target_band, request.phase)}
+{writing_evaluation_context_line(request.target_band, request.phase, request.exercise_type, request.practice_level)}
 Return JSON only with keys: task_response, coherence_and_cohesion, lexical_resource,
 grammatical_range_and_accuracy, overall_band, corrections. Each criterion must contain
 band_score, feedback, strengths, weaknesses and cite exact submitted wording. Corrections must

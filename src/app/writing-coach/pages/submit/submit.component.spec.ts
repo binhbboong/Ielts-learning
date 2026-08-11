@@ -210,4 +210,52 @@ describe('WritingSubmitComponent', () => {
     expect(component.writingAgain()).toBeTrue();
     expect(fixture.nativeElement.querySelector('textarea[name="responseText"]')).not.toBeNull();
   });
+
+  it('shows foundation targets, hides IELTS task choice, and requires the minimum', async () => {
+    const repository = jasmine.createSpyObj<WritingCoachRepository>(
+      'WritingCoachRepository', ['submit'],
+    );
+    const dailyLessonRepository = dailyLessonRepositoryStub();
+    dailyLessonRepository.getOverview.and.resolveTo({
+      examType: 'ielts_academic', week: 1, phase: 'foundation', targetBand: 4.5,
+      totalMinutes: 60, reviewMinutes: 10, effectiveDay: '2026-07-30',
+      checkpoint: {
+        day: '2026-07-30',
+        skills: { reading: false, listening: false, writing: false, speaking: false },
+        vocabularyQuiz: false, passedCount: 0, requiredCount: 4, allPassed: false,
+      },
+      skills: [{
+        day: '2026-07-30', skill: 'writing', status: 'ready', focusReference: null,
+        targetBand: 4.5, estimatedMinutes: 20, priority: 'primary', phase: 'foundation',
+        rationale: 'Scheduled', generatedPromptText: 'Write about your favourite activity.',
+        taskType: null, writingLevel: 1, exerciseType: 'sentence_building',
+        exerciseLabel: 'Sentence foundations',
+        objective: 'Write a few clear sentences.', minSentences: 1, maxSentences: 3,
+        minWords: 8, maxWords: 40, sentenceFrames: ['I like ... because ...'],
+        showIeltsBand: false,
+      }],
+    });
+    await TestBed.configureTestingModule({
+      imports: [WritingSubmitComponent],
+      providers: [
+        provideRouter([]),
+        { provide: WritingCoachRepository, useValue: repository },
+        { provide: DailyLessonRepository, useValue: dailyLessonRepository },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(WritingSubmitComponent);
+    const component = fixture.componentInstance;
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="writing-level-card"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('select[name="taskType"]')).toBeNull();
+    component.responseText = 'I like reading.';
+    expect(component.canSubmit).toBeFalse();
+    component.responseText = 'I like reading because it helps me relax every evening.';
+    expect(component.sentenceCount).toBe(1);
+    expect(component.wordCount).toBe(10);
+    expect(component.canSubmit).toBeTrue();
+  });
 });

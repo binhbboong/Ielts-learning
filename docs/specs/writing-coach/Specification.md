@@ -1,4 +1,24 @@
 # Specification: AI-Assisted Writing Coaching
+
+## Revision 5 — Progressive Writing ladder
+
+Decision: `docs/adr/2026-08-11-progressive-writing-ladder.md`.
+
+- FR-27: The six study phases MUST map to six progressively harder Writing levels:
+  sentence foundations, connected sentences, guided paragraph, structured response,
+  full IELTS task, and timed exam practice.
+- FR-28: Levels 1–4 MUST expose a sentence target, word target, learning objective,
+  and optional sentence frames appropriate to the phase; the UI MUST show live
+  sentence/word progress before submission.
+- FR-29: Levels 1–4 MUST NOT be presented as Task 1/Task 2 choices and MUST NOT show
+  an IELTS band as the primary learner-facing result. Feedback MUST instead use
+  developmental labels for instruction fulfilment, sentence connections, word
+  choice, and sentence construction.
+- FR-30: Superseding revision 4's FR-23/FR-25 phase boundary, full Task 1/Task 2
+  alternation begins at `exam_readiness`; `peak_performance` retains the full format
+  with scaffolding removed.
+- FR-31: Each submission tied to a daily activity MUST snapshot its exercise type and
+  practice level so history renders the original learning context after phase changes.
 Related UX: none yet — no wireframe/journey exists for this epic (it's a new epic, not carried over from the client-only architecture)
 
 ## Revision 4 — Task 1 alternates with Task 2 from the standard tier onward

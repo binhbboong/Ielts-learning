@@ -83,10 +83,14 @@ def test_create_and_evaluate_passes_the_days_focus_level_to_the_provider(
         )
         provider = _provider()
 
-        create_and_evaluate(session, payload, provider)
+        submission = create_and_evaluate(session, payload, provider)
 
         assert provider.writing_requests[0].target_band == 4.5
         assert provider.writing_requests[0].phase == "foundation"
+        assert provider.writing_requests[0].exercise_type == "sentence_building"
+        assert provider.writing_requests[0].practice_level == 1
+        assert submission.exercise_type == "sentence_building"
+        assert submission.practice_level == 1
     finally:
         session.close()
 

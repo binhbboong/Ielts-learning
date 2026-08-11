@@ -29,6 +29,8 @@ export interface WritingSubmissionSummary {
   overallBand: number | null;
   taskResponseScore: number | null;
   questionExcerpt: string;
+  exerciseType?: string | null;
+  practiceLevel?: number | null;
 }
 
 export interface WritingSubmissionDetail extends WritingSubmissionCreate {
@@ -42,4 +44,6 @@ export interface WritingSubmissionDetail extends WritingSubmissionCreate {
   overallBand: number | null;
   corrections: WritingCorrection[] | null;
   errorMessage: string | null;
+  exerciseType?: string | null;
+  practiceLevel?: number | null;
 }

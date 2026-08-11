@@ -1,6 +1,6 @@
 from datetime import date
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class SkillOverviewEntry(BaseModel):
@@ -15,6 +15,16 @@ class SkillOverviewEntry(BaseModel):
     rationale: str
     generated_prompt_text: str | None = None
     task_type: str | None = None
+    writing_level: int | None = None
+    exercise_type: str | None = None
+    exercise_label: str | None = None
+    objective: str | None = None
+    min_sentences: int | None = None
+    max_sentences: int | None = None
+    min_words: int | None = None
+    max_words: int | None = None
+    sentence_frames: list[str] = Field(default_factory=list)
+    show_ielts_band: bool = False
 
 
 class CheckpointStatus(BaseModel):

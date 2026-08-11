@@ -47,6 +47,8 @@ def list_submissions(
             id=value.id,
             created_at=value.created_at,
             task_type=value.task_type,
+            exercise_type=value.exercise_type,
+            practice_level=value.practice_level,
             status=value.status,
             overall_band=value.overall_band,
             task_response_score=(

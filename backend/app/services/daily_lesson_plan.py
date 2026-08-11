@@ -17,6 +17,7 @@ from app.models.vocabulary import VocabularyWord
 from app.models.writing_submission import WritingSubmission
 from app.services import listening_practice, reading_practice, vocabulary as vocabulary_service
 from app.services.text_to_speech import TextToSpeech
+from app.services.writing_levels import WritingLevelConfig, writing_level_config
 
 _LISTENING_FAILED_STATES = {"script_failed", "audio_failed"}
 # Speaking was removed from the daily rotation/checkpoint per
@@ -70,6 +71,9 @@ _BEGINNER_PHASES = {"foundation", "core_skills"}
 _ADVANCED_PHASES = {"exam_readiness", "peak_performance"}
 
 _PROMPT_INSTRUCTION = {
+    # The writing entries below are retained only as historical context for the
+    # accepted ADRs. Runtime Writing generation uses _writing_prompt_instruction,
+    # which implements the six-level sentence-to-exam ladder.
     # Beginner tier stays a single short question (no Task 1/2 split — see
     # docs/adr/2026-08-03-writing-speaking-level-adaptation.md). From the
     # standard tier onward, Writing alternates Task 1 (data description) and
@@ -255,21 +259,71 @@ def get_or_create_focus(
     return focus
 
 
+def _writing_prompt_instruction(focus: DailyFocus) -> tuple[str, WritingLevelConfig]:
+    # The first four phases deliberately build from sentences to paragraphs.
+    # Full IELTS Task 1/2 practice begins only in the two exam phases.
+    if focus.phase in _ADVANCED_PHASES:
+        focus.task_type = _writing_task_for_day(focus.day)
+    else:
+        focus.task_type = None
+
+    config = writing_level_config(focus.phase, focus.task_type)
+    instruction = (
+        f"Create one learner-facing Level {config.level} Writing activity titled "
+        f"'{config.label}'. The learner should write {config.min_sentences}-"
+        f"{config.max_sentences} sentences and about {config.min_words}-"
+        f"{config.max_words} words. Objective: {config.objective} "
+        "Use one concrete task with clear success criteria. Return only the activity text, "
+        "without teacher commentary or a model answer. Targeting: {focus}"
+    )
+    if config.sentence_frames:
+        instruction += " Include 2-4 short sentence starters or linking phrases as optional help."
+
+    if focus.task_type == "task1":
+        instruction += (
+            " Make it an IELTS Academic Writing Task 1 prompt. Include all underlying chart, "
+            "table, map, or process data as readable text because the app has no image."
+        )
+    elif focus.task_type == "task2":
+        instruction += (
+            " Make it an IELTS Writing Task 2 prompt. At peak performance, prefer an abstract "
+            "or policy-oriented topic and do not add sentence starters."
+        )
+    elif focus.phase == "foundation":
+        instruction += " Require only simple present-tense sentences about a familiar daily topic."
+    elif focus.phase == "core_skills":
+        instruction += " Ask the learner to connect ideas with because, and, but, or so."
+    elif focus.phase == "development":
+        instruction += " Guide one paragraph: topic sentence, reasons, example, closing sentence."
+    elif focus.phase == "consolidation":
+        instruction += " Guide a short response: opening, developed body, and conclusion."
+    return instruction, config
+
+
 def generate_prompt_text(provider: AIProvider, focus: DailyFocus) -> ChatResult:
     focus_description = focus.focus_reference or f"general IELTS {focus.skill} practice"
     tier = _prompt_complexity_tier(focus.phase)
-    template = _PROMPT_INSTRUCTION[focus.skill][tier]
-    if isinstance(template, dict):
-        # Writing, standard/advanced tier: alternates Task 1/Task 2 by day.
-        focus.task_type = _writing_task_for_day(focus.day)
-        template = template[focus.task_type]
+    writing_config = None
+    if focus.skill == "writing":
+        template, writing_config = _writing_prompt_instruction(focus)
+    else:
+        template = _PROMPT_INSTRUCTION[focus.skill][tier]
     instruction = (
         template.format(focus=focus_description)
         + f". This is IELTS Academic practice targeting band {focus.target_band} "
         + f"during the {focus.phase.replace('_', ' ')} phase. "
         + f"Design it for about {focus.estimated_minutes} minutes."
     )
-    return provider.chat(ChatRequest(message=instruction))
+    result = provider.chat(ChatRequest(message=instruction))
+    if result.status == "ok" and writing_config is not None:
+        return ChatResult(
+            status="ok",
+            message=(
+                f"Level {writing_config.level} · {writing_config.label}\n\n"
+                f"{result.message}"
+            ),
+        )
+    return result
 
 
 def _reading_or_listening_status(
@@ -360,6 +414,17 @@ def ensure_today_generated(
             .one_or_none()
         )
         if existing is not None:
+            if skill == "writing":
+                config = writing_level_config(existing.phase, existing.task_type)
+                expected_prefix = f"Level {config.level} · {config.label}"
+                if not (existing.generated_prompt_text or "").startswith(expected_prefix):
+                    # Upgrade a carried-over prompt created by the old flat 100-150
+                    # word beginner curriculum. A successful replacement is persisted,
+                    # so subsequent overview loads remain idempotent.
+                    result = generate_prompt_text(provider, existing)
+                    if result.status == "ok":
+                        existing.generated_prompt_text = result.message
+                        db.commit()
             continue
 
         focus = get_or_create_focus(
@@ -630,6 +695,16 @@ class SkillOverviewEntry:
     rationale: str
     generated_prompt_text: str | None = None
     task_type: str | None = None
+    writing_level: int | None = None
+    exercise_type: str | None = None
+    exercise_label: str | None = None
+    objective: str | None = None
+    min_sentences: int | None = None
+    max_sentences: int | None = None
+    min_words: int | None = None
+    max_words: int | None = None
+    sentence_frames: tuple[str, ...] = ()
+    show_ielts_band: bool = False
 
 
 @dataclass
@@ -656,6 +731,11 @@ def get_overview(
     for focus in focuses:
         status = get_skill_status(db, focus.day, focus.skill, user_id)
         if focus.day == effective_day or status != "done":
+            writing_config = (
+                writing_level_config(focus.phase, focus.task_type)
+                if focus.skill == "writing"
+                else None
+            )
             entries.append(
                 SkillOverviewEntry(
                     day=focus.day,
@@ -669,6 +749,16 @@ def get_overview(
                     rationale=focus.rationale,
                     generated_prompt_text=focus.generated_prompt_text,
                     task_type=focus.task_type,
+                    writing_level=writing_config.level if writing_config else None,
+                    exercise_type=writing_config.exercise_type if writing_config else None,
+                    exercise_label=writing_config.label if writing_config else None,
+                    objective=writing_config.objective if writing_config else None,
+                    min_sentences=writing_config.min_sentences if writing_config else None,
+                    max_sentences=writing_config.max_sentences if writing_config else None,
+                    min_words=writing_config.min_words if writing_config else None,
+                    max_words=writing_config.max_words if writing_config else None,
+                    sentence_frames=writing_config.sentence_frames if writing_config else (),
+                    show_ielts_band=writing_config.show_ielts_band if writing_config else False,
                 )
             )
     checkpoint = evaluate_checkpoint(db, effective_day, user_id)

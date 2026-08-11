@@ -20,6 +20,7 @@ from app.ai.schemas import (
     WritingEvaluationRequest,
     WritingEvaluationResult,
     level_context_line,
+    writing_evaluation_context_line,
 )
 
 
@@ -83,6 +84,16 @@ def test_level_context_line_includes_band_and_readable_phase_when_known():
     assert "4.5" in line
     assert "foundation phase" in line
     assert "not a flat band-9 standard" in line
+
+
+def test_developmental_writing_context_prioritizes_sentence_level_goals():
+    line = writing_evaluation_context_line(
+        4.5, "foundation", "sentence_building", 1
+    )
+
+    assert "not a full IELTS essay" in line
+    assert "sentence construction" in line
+    assert "one achievable next step" in line
 
 
 def test_writing_result_discriminates_complete_success_from_error():

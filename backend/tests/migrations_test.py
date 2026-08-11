@@ -100,6 +100,8 @@ def test_upgrade_head_adds_daily_prompt_columns_then_downgrade_to_0011_removes_t
 
         writing_columns = {c["name"] for c in inspector.get_columns("writing_submissions")}
         assert "day" in writing_columns
+        assert "exercise_type" in writing_columns
+        assert "practice_level" in writing_columns
 
         speaking_columns = {
             c["name"]: c for c in inspector.get_columns("speaking_submissions")

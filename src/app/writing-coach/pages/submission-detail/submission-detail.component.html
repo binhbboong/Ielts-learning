@@ -16,7 +16,10 @@
     </section>
   } @else if (facade.current(); as item) {
     <section class="coach-card prompt-card">
-      <p class="eyebrow">{{ item.taskType === 'task1' ? 'Task 1' : 'Task 2' }}</p>
+      <p class="eyebrow">
+        @if (item.practiceLevel) { Level {{ item.practiceLevel }} · }
+        {{ exerciseLabel(item.exerciseType, item.taskType) }}
+      </p>
       <h2>Question</h2>
       <p>{{ item.questionText }}</p>
       <details>
@@ -32,17 +35,26 @@
         <a class="button-link primary" routerLink="/writing">Resubmit this response</a>
       </section>
     } @else {
-      <section class="overall">
-        <span>Overall band</span>
-        <strong>{{ item.overallBand }}</strong>
-      </section>
+      @if (isDevelopmental(item.exerciseType)) {
+        <section class="overall developmental-result">
+          <span>Practice completed</span>
+          <strong>Level {{ item.practiceLevel }}</strong>
+        </section>
+      } @else {
+        <section class="overall">
+          <span>Overall band</span>
+          <strong>{{ item.overallBand }}</strong>
+        </section>
+      }
       <div class="feedback-grid">
         @for (criterion of criteria(item); track criterion.label) {
           @if (criterion.value; as feedback) {
             <article class="coach-card criterion-card">
               <div class="criterion-heading">
                 <h2>{{ criterion.label }}</h2>
-                <strong>Band {{ feedback.bandScore }}</strong>
+                @if (!isDevelopmental(item.exerciseType)) {
+                  <strong>Band {{ feedback.bandScore }}</strong>
+                }
               </div>
               <p>{{ feedback.feedback }}</p>
               @if (feedback.strengths.length) {

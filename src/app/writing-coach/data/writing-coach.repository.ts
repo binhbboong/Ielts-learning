@@ -33,6 +33,8 @@ function detail(value: any): WritingSubmissionDetail {
     overallBand: value.overall_band,
     corrections: value.corrections ?? null,
     errorMessage: value.error_message,
+    exerciseType: value.exercise_type ?? null,
+    practiceLevel: value.practice_level ?? null,
   };
 }
 
@@ -66,6 +68,8 @@ export class WritingCoachRepository {
       overallBand: value.overall_band,
       taskResponseScore: value.task_response_score,
       questionExcerpt: value.question_excerpt,
+      exerciseType: value.exercise_type ?? null,
+      practiceLevel: value.practice_level ?? null,
     }));
   }
 

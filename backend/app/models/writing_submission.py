@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, String, Text, text
+from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -24,6 +24,8 @@ class WritingSubmission(Base):
     )
     question_text: Mapped[str] = mapped_column(Text, nullable=False)
     task_type: Mapped[str] = mapped_column(String(5), nullable=False)
+    exercise_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    practice_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
     response_text: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False)
     task_response: Mapped[dict | None] = mapped_column(JSONB, nullable=True)

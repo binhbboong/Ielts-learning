@@ -156,7 +156,8 @@ def test_generate_prompt_text_calls_chat_with_an_instruction_referencing_the_foc
     result = generate_prompt_text(provider, focus)
 
     assert result.status == "ok"
-    assert result.message == "Some people believe..."
+    assert result.message.startswith("Level 1 · Sentence foundations")
+    assert result.message.endswith("Some people believe...")
     assert len(provider.chat_requests) == 1
     assert "writing" in provider.chat_requests[0].message.lower()
     session.close()
@@ -184,7 +185,7 @@ def _focus_at_phase(
     )
 
 
-def test_beginner_phase_gets_part_1_speaking_and_short_writing_prompts():
+def test_beginner_phase_gets_part_1_speaking_and_sentence_expansion_writing():
     provider = FakeAIProvider(
         chat_result=ChatResult(status="ok", message="A generated prompt.")
     )
@@ -196,11 +197,13 @@ def test_beginner_phase_gets_part_1_speaking_and_short_writing_prompts():
     writing_instruction = provider.chat_requests[1].message
     assert "Part 1" in speaking_instruction
     assert "Part 2" not in speaking_instruction
-    assert "100-150 words" in writing_instruction
+    assert "4-6 sentences" in writing_instruction
+    assert "40-80 words" in writing_instruction
+    assert "because, and, but, or so" in writing_instruction
     assert "Task 2" not in writing_instruction
 
 
-def test_standard_phase_keeps_part_2_speaking_and_full_essay_writing_prompts():
+def test_middle_phases_keep_part_2_speaking_and_build_structured_writing():
     provider = FakeAIProvider(
         chat_result=ChatResult(status="ok", message="A generated prompt.")
     )
@@ -209,8 +212,9 @@ def test_standard_phase_keeps_part_2_speaking_and_full_essay_writing_prompts():
     generate_prompt_text(provider, _focus_at_phase("writing", "consolidation", 6.0))
 
     assert "Part 2" in provider.chat_requests[0].message
-    assert "Task 2" in provider.chat_requests[1].message
-    assert "100-150 words" not in provider.chat_requests[1].message
+    assert "8-12 sentences" in provider.chat_requests[1].message
+    assert "120-180 words" in provider.chat_requests[1].message
+    assert "Task 2" not in provider.chat_requests[1].message
 
 
 def test_advanced_phase_gets_part_3_speaking_and_abstract_writing_prompts():
@@ -222,6 +226,7 @@ def test_advanced_phase_gets_part_3_speaking_and_abstract_writing_prompts():
     generate_prompt_text(provider, _focus_at_phase("writing", "peak_performance", 6.5))
 
     assert "Part 3" in provider.chat_requests[0].message
+    assert "IELTS Writing Task 2" in provider.chat_requests[1].message
     assert "abstract or policy-oriented" in provider.chat_requests[1].message
 
 
@@ -236,15 +241,15 @@ def test_beginner_tier_writing_never_sets_a_task_type(db_session_factory):
     assert focus.task_type is None
 
 
-def test_standard_tier_writing_alternates_task_1_and_task_2_by_day(db_session_factory):
+def test_exam_tier_writing_alternates_task_1_and_task_2_by_day(db_session_factory):
     provider = FakeAIProvider(
         chat_result=ChatResult(status="ok", message="A generated prompt.")
     )
     task2_focus = _focus_at_phase(
-        "writing", "consolidation", 6.0, day=date(2026, 7, 30)
+        "writing", "exam_readiness", 6.5, day=date(2026, 7, 30)
     )
     task1_focus = _focus_at_phase(
-        "writing", "consolidation", 6.0, day=date(2026, 7, 31)
+        "writing", "exam_readiness", 6.5, day=date(2026, 7, 31)
     )
 
     generate_prompt_text(provider, task2_focus)
@@ -253,7 +258,7 @@ def test_standard_tier_writing_alternates_task_1_and_task_2_by_day(db_session_fa
     assert task2_focus.task_type == "task2"
     assert task1_focus.task_type == "task1"
     assert "Task 2" in provider.chat_requests[0].message
-    assert "no image-rendering capability" in provider.chat_requests[1].message
+    assert "app has no image" in provider.chat_requests[1].message
     assert "Task 2" not in provider.chat_requests[1].message
 
 

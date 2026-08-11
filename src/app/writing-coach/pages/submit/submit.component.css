@@ -1,1 +1,82 @@
 @import '../writing-coach.shared.css';
+
+.level-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid #b8d9c0;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, #eef8f0, #f8fbf5);
+}
+
+.level-number {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #276d39;
+  font-size: 1.25rem;
+  font-weight: 850;
+}
+
+.level-card h2,
+.level-card p {
+  margin: 0.2rem 0;
+}
+
+.target-line {
+  font-weight: 750;
+}
+
+.writing-help {
+  padding: 0.9rem;
+  border-left: 0.3rem solid #d59b35;
+  border-radius: 0.4rem;
+  background: #fff8e9;
+}
+
+.frame-list,
+.response-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.55rem;
+}
+
+.frame-list span {
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  background: #fff;
+  font-weight: 700;
+}
+
+.response-progress {
+  align-items: center;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  color: #704e16;
+  background: #fff8e9;
+}
+
+.response-progress strong {
+  margin-left: auto;
+}
+
+.response-progress.target-met {
+  color: #226c37;
+  background: #eef6ef;
+}
+
+@media (max-width: 36rem) {
+  .level-card {
+    grid-template-columns: 1fr;
+  }
+
+  .response-progress strong {
+    width: 100%;
+    margin-left: 0;
+  }
+}

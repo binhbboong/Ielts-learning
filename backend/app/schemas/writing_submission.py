@@ -28,6 +28,8 @@ class WritingSubmissionSummary(BaseModel):
     id: uuid.UUID
     created_at: datetime
     task_type: Literal["task1", "task2"]
+    exercise_type: str | None = None
+    practice_level: int | None = None
     status: Literal["complete", "failed"]
     overall_band: float | None
     task_response_score: float | None = None
@@ -40,6 +42,8 @@ class WritingSubmissionDetail(BaseModel):
     id: uuid.UUID
     created_at: datetime
     task_type: Literal["task1", "task2"]
+    exercise_type: str | None = None
+    practice_level: int | None = None
     question_text: str
     response_text: str
     status: Literal["complete", "failed"]

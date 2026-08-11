@@ -31,6 +31,16 @@ function entry(value: any): SkillOverviewEntry {
     rationale: value.rationale,
     generatedPromptText: value.generated_prompt_text ?? null,
     taskType: value.task_type ?? null,
+    writingLevel: value.writing_level ?? null,
+    exerciseType: value.exercise_type ?? null,
+    exerciseLabel: value.exercise_label ?? null,
+    objective: value.objective ?? null,
+    minSentences: value.min_sentences ?? null,
+    maxSentences: value.max_sentences ?? null,
+    minWords: value.min_words ?? null,
+    maxWords: value.max_words ?? null,
+    sentenceFrames: value.sentence_frames ?? [],
+    showIeltsBand: value.show_ielts_band ?? false,
   };
 }
 

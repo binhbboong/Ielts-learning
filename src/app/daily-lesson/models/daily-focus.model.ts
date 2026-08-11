@@ -13,6 +13,16 @@ export interface SkillOverviewEntry {
   rationale: string;
   generatedPromptText: string | null;
   taskType: string | null;
+  writingLevel?: number | null;
+  exerciseType?: string | null;
+  exerciseLabel?: string | null;
+  objective?: string | null;
+  minSentences?: number | null;
+  maxSentences?: number | null;
+  minWords?: number | null;
+  maxWords?: number | null;
+  sentenceFrames?: string[];
+  showIeltsBand?: boolean;
 }
 
 export interface CheckpointStatus {

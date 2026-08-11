@@ -21,7 +21,7 @@ def test_upgrade_to_head_migrates_a_database_starting_from_empty(monkeypatch):
     command.downgrade(cfg, "base")
     try:
         revision = upgrade_to_head()
-        assert revision == "0021"
+        assert revision == "0022"
     finally:
         command.downgrade(cfg, "base")
 
@@ -32,6 +32,6 @@ def test_upgrade_to_head_is_a_no_op_when_already_at_head(monkeypatch):
     command.upgrade(cfg, "head")
     try:
         revision = upgrade_to_head()
-        assert revision == "0021"
+        assert revision == "0022"
     finally:
         command.downgrade(cfg, "base")

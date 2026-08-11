@@ -63,6 +63,16 @@ def overview(
                 rationale=entry.rationale,
                 generated_prompt_text=entry.generated_prompt_text,
                 task_type=entry.task_type,
+                writing_level=entry.writing_level,
+                exercise_type=entry.exercise_type,
+                exercise_label=entry.exercise_label,
+                objective=entry.objective,
+                min_sentences=entry.min_sentences,
+                max_sentences=entry.max_sentences,
+                min_words=entry.min_words,
+                max_words=entry.max_words,
+                sentence_frames=list(entry.sentence_frames),
+                show_ielts_band=entry.show_ielts_band,
             )
             for entry in result.entries
         ]
@@ -84,6 +94,11 @@ def retry(
     focus = db.query(DailyFocus).filter_by(
         user_id=user.id, day=target_day, skill=skill
     ).one()
+    config = (
+        service.writing_level_config(focus.phase, focus.task_type)
+        if skill == "writing"
+        else None
+    )
     return SkillOverviewEntry(
         day=target_day,
         skill=skill,
@@ -96,4 +111,14 @@ def retry(
         rationale=focus.rationale,
         generated_prompt_text=focus.generated_prompt_text,
         task_type=focus.task_type,
+        writing_level=config.level if config else None,
+        exercise_type=config.exercise_type if config else None,
+        exercise_label=config.label if config else None,
+        objective=config.objective if config else None,
+        min_sentences=config.min_sentences if config else None,
+        max_sentences=config.max_sentences if config else None,
+        min_words=config.min_words if config else None,
+        max_words=config.max_words if config else None,
+        sentence_frames=list(config.sentence_frames) if config else [],
+        show_ielts_band=config.show_ielts_band if config else False,
     )

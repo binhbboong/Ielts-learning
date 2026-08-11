@@ -18,6 +18,31 @@ def level_context_line(target_band: float | None, phase: str | None) -> str:
     )
 
 
+def writing_evaluation_context_line(
+    target_band: float | None,
+    phase: str | None,
+    exercise_type: str | None,
+    practice_level: int | None,
+) -> str:
+    context = level_context_line(target_band, phase)
+    if exercise_type not in {
+        "sentence_building",
+        "sentence_expansion",
+        "guided_paragraph",
+        "structured_response",
+    }:
+        return context
+    return context + (
+        f"\nThis is a developmental Level {practice_level or 1} '{exercise_type}' activity, "
+        "not a full IELTS essay. Keep the numeric band fields honest for internal progress "
+        "tracking, but make the written feedback encouraging and appropriate to the requested "
+        "number of sentences. Interpret task_response as instruction fulfilment, "
+        "coherence_and_cohesion as sentence order and connections, lexical_resource as useful "
+        "word choice, and grammatical_range_and_accuracy as sentence construction. Prioritize "
+        "one achievable next step and correct the learner's exact sentences."
+    )
+
+
 class _RequiredTextModel(BaseModel):
     @field_validator("*")
     @classmethod
@@ -49,6 +74,8 @@ class WritingEvaluationRequest(_RequiredTextModel):
     question_text: str
     target_band: float | None = None
     phase: str | None = None
+    exercise_type: str | None = None
+    practice_level: int | None = Field(default=None, ge=1, le=6)
 
 
 class WritingEvaluationResult(BaseModel):

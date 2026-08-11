@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { DailyLessonFacade } from '../../../daily-lesson/state/daily-lesson.facade';
+import { SkillOverviewEntry } from '../../../daily-lesson/models/daily-focus.model';
 import { WritingTaskType } from '../../models/writing-submission.model';
 import { WritingCoachFacade } from '../../state/writing-coach.facade';
 
@@ -24,6 +25,7 @@ export class WritingSubmitComponent implements OnInit {
   promptDay: string | null = null;
   promptTargetBand: number | null = null;
   promptPhase: string | null = null;
+  practiceEntry: SkillOverviewEntry | null = null;
   readonly writingAgain = signal(false);
 
   async ngOnInit(): Promise<void> {
@@ -35,6 +37,7 @@ export class WritingSubmitComponent implements OnInit {
       (s) => s.skill === 'writing' && s.generatedPromptText,
     );
     if (entry?.generatedPromptText) {
+      this.practiceEntry = entry;
       this.questionText = entry.generatedPromptText;
       this.promptDay = entry.day;
       this.promptTargetBand = entry.targetBand;
@@ -56,7 +59,44 @@ export class WritingSubmitComponent implements OnInit {
   }
 
   get canSubmit(): boolean {
-    return Boolean(this.questionText.trim() && this.responseText.trim());
+    return Boolean(
+      this.questionText.trim() &&
+      this.responseText.trim() &&
+      this.meetsMinimumTarget,
+    );
+  }
+
+  get wordCount(): number {
+    const text = this.responseText.trim();
+    return text ? text.split(/\s+/).length : 0;
+  }
+
+  get sentenceCount(): number {
+    const text = this.responseText.trim();
+    if (!text) return 0;
+    const completed = text.match(/[^.!?]+[.!?]+(?=\s|$)/g)?.length ?? 0;
+    const remainder = text.replace(/[^.!?]+[.!?]+(?=\s|$)/g, '').trim();
+    return completed + (remainder ? 1 : 0);
+  }
+
+  get meetsMinimumTarget(): boolean {
+    if (!this.practiceEntry) return true;
+    const minSentences = this.practiceEntry.minSentences ?? 1;
+    const minWords = this.practiceEntry.minWords ?? 1;
+    return this.sentenceCount >= minSentences && this.wordCount >= minWords;
+  }
+
+  get showIeltsTaskSelector(): boolean {
+    return this.practiceEntry?.showIeltsBand ?? true;
+  }
+
+  isDevelopmental(exerciseType: string | null | undefined): boolean {
+    return Boolean(exerciseType && [
+      'sentence_building',
+      'sentence_expansion',
+      'guided_paragraph',
+      'structured_response',
+    ].includes(exerciseType));
   }
 
   async submit(): Promise<void> {

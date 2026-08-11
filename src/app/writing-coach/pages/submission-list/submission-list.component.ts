@@ -30,4 +30,23 @@ export class WritingSubmissionListComponent implements OnInit {
       // Facade owns the visible error state.
     }
   }
+
+  isDevelopmental(exerciseType: string | null | undefined): boolean {
+    return Boolean(exerciseType && [
+      'sentence_building', 'sentence_expansion', 'guided_paragraph', 'structured_response',
+    ].includes(exerciseType));
+  }
+
+  exerciseLabel(exerciseType: string | null | undefined, taskType: string): string {
+    const labels: Record<string, string> = {
+      sentence_building: 'Sentence foundations',
+      sentence_expansion: 'Connect and expand',
+      guided_paragraph: 'Guided paragraph',
+      structured_response: 'Structured response',
+      ielts_task1: 'IELTS Task 1',
+      ielts_task2: 'IELTS Task 2',
+      exam_simulation: 'Timed exam practice',
+    };
+    return exerciseType ? labels[exerciseType] ?? exerciseType : (taskType === 'task1' ? 'Task 1' : 'Task 2');
+  }
 }
