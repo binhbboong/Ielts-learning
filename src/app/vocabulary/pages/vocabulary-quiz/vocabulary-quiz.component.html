@@ -37,17 +37,16 @@
           <p class="quiz-page__pass">Checkpoint passed — nice work.</p>
         } @else {
           <p class="quiz-page__fail">
-            Below today's 80% checkpoint. Keep reviewing — tomorrow's lesson unlocks once
-            every checkpoint is passed.
+            Below the 80% checkpoint. Review the words and try again later.
           </p>
         }
-        <a routerLink="/">Back to today's lesson</a>
+        <a routerLink="/" [queryParams]="day ? { day } : null">Back to lesson</a>
       </section>
     } @else if (state.status === 'not_ready') {
       <section class="quiz-page__state">
-        <h2>Finish today's review first</h2>
-        <p>The checkpoint quiz unlocks once you've reviewed all of today's words.</p>
-        <a routerLink="/vocabulary/review">Go to review</a>
+        <h2>Finish {{ day ? 'this day’s' : "today's" }} review first</h2>
+        <p>The checkpoint quiz unlocks once you've reviewed all words for this lesson.</p>
+        <a routerLink="/vocabulary/review" [queryParams]="day ? { day } : null">Go to review</a>
       </section>
     }
   }

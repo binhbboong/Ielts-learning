@@ -721,7 +721,7 @@ class LessonCalendarDay:
     status: str
     selected: bool
     passed_count: int
-    required_count: int = len(ALL_SKILLS)
+    required_count: int = len(ALL_SKILLS) + 1
 
 
 def _lesson_calendar(
@@ -753,10 +753,7 @@ def _lesson_calendar(
     while day <= calendar_end:
         passed_count = 0
         if day in generated_days:
-            passed_count = sum(
-                get_skill_status(db, day, skill, user_id) == "done"
-                for skill in ALL_SKILLS
-            )
+            passed_count = evaluate_checkpoint(db, day, user_id).passed_count
 
         if day < start_date:
             status = "inactive"
@@ -764,7 +761,7 @@ def _lesson_calendar(
             status = "upcoming"
         elif day == today:
             status = "today"
-        elif passed_count == len(ALL_SKILLS):
+        elif passed_count == len(ALL_SKILLS) + 1:
             status = "complete"
         else:
             status = "missed"

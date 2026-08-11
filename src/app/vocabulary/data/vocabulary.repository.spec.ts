@@ -88,6 +88,38 @@ describe('VocabularyRepository', () => {
     await expectAsync(repository.getDueSummary()).toBeRejected();
   });
 
+  it('keeps the selected make-up day on review and quiz requests', async () => {
+    const api = jasmine.createSpyObj<ApiClient>('ApiClient', ['get', 'post']);
+    api.post.and.returnValues(
+      of({ status: 'nothing_due' }),
+      of({ status: 'nothing_due' }),
+      of({ status: 'not_ready' }),
+      of({ status: 'not_ready' }),
+    );
+    const repository = new VocabularyRepository(api);
+    const day = '2026-07-29';
+
+    await repository.startOrResumeReview(day);
+    await repository.assessCurrentItem('remembered', day);
+    await repository.startQuiz(day);
+    await repository.answerQuizItem(1, day);
+
+    expect(api.post).toHaveBeenCalledWith(
+      '/api/vocabulary/review/start?day=2026-07-29', {},
+    );
+    expect(api.post).toHaveBeenCalledWith(
+      '/api/vocabulary/review/current/assess?day=2026-07-29',
+      { outcome: 'remembered' },
+    );
+    expect(api.post).toHaveBeenCalledWith(
+      '/api/vocabulary/quiz/start?day=2026-07-29', {},
+    );
+    expect(api.post).toHaveBeenCalledWith(
+      '/api/vocabulary/quiz/current/answer?day=2026-07-29',
+      { selected_option_index: 1 },
+    );
+  });
+
   it('maps the history endpoint', async () => {
     const api = jasmine.createSpyObj<ApiClient>('ApiClient', ['get', 'post']);
     api.get.and.returnValue(of({

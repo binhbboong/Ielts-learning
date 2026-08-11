@@ -118,7 +118,7 @@ def test_run_migrations_upgrades_the_configured_database_to_head(monkeypatch):
         )
 
         assert response.status_code == 200
-        assert response.json() == {"revision": "0022"}
+        assert response.json() == {"revision": "0023"}
     finally:
         command.downgrade(cfg, "base")
 

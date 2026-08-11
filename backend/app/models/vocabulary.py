@@ -57,6 +57,7 @@ class ReviewSession(Base):
         Index(
             "uq_review_sessions_single_active",
             "user_id",
+            "day",
             unique=True,
             postgresql_where=text("completed_at IS NULL"),
         ),

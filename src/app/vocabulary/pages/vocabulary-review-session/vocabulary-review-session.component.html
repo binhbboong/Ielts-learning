@@ -54,12 +54,12 @@
         </p>
         @if (state.summary.newWordsIncluded > 0) {
           <p data-testid="new-words-included">
-            {{ state.summary.newWordsIncluded }} of these were new words added today.
+            {{ state.summary.newWordsIncluded }} of these were new words added {{ day ? 'for this lesson' : 'today' }}.
           </p>
         }
         <p>Review dates were updated.</p>
-        <a routerLink="/vocabulary/quiz" class="review-page__quiz-link">
-          Take today's checkpoint quiz
+        <a routerLink="/vocabulary/quiz" [queryParams]="day ? { day } : null" class="review-page__quiz-link">
+          Take {{ day ? "this lesson's" : "today's" }} checkpoint quiz
         </a>
       </section>
     } @else if (state.status === 'nothing_due') {

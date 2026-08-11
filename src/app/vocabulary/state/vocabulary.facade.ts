@@ -17,6 +17,8 @@ export type VocabularyLoadState = 'idle' | 'loading' | 'ready' | 'error';
 
 @Injectable({ providedIn: 'root' })
 export class VocabularyFacade {
+  private reviewDay: string | undefined;
+  private quizDay: string | undefined;
   private readonly dueSummarySignal = signal<DueQueueSummary | null>(null);
   private readonly reviewStateSignal = signal<ReviewSessionState | null>(null);
   private readonly dueLoadStateSignal = signal<VocabularyLoadState>('idle');
@@ -75,11 +77,14 @@ export class VocabularyFacade {
     await Promise.all([this.loadRecommendations(), this.loadDueSummary()]);
   }
 
-  async startOrResumeReview(): Promise<void> {
+  async startOrResumeReview(day?: string): Promise<void> {
+    this.reviewDay = day;
     this.reviewLoadStateSignal.set('loading');
     try {
       this.reviewStateSignal.set(
-        await this.repository.startOrResumeReview(),
+        await (day
+          ? this.repository.startOrResumeReview(day)
+          : this.repository.startOrResumeReview()),
       );
       this.reviewLoadStateSignal.set('ready');
     } catch (error) {
@@ -91,7 +96,9 @@ export class VocabularyFacade {
 
   async assessCurrentItem(outcome: ReviewOutcome): Promise<void> {
     this.reviewStateSignal.set(
-      await this.repository.assessCurrentItem(outcome),
+      await (this.reviewDay
+        ? this.repository.assessCurrentItem(outcome, this.reviewDay)
+        : this.repository.assessCurrentItem(outcome)),
     );
   }
 
@@ -111,10 +118,13 @@ export class VocabularyFacade {
     }
   }
 
-  async startQuiz(): Promise<void> {
+  async startQuiz(day?: string): Promise<void> {
+    this.quizDay = day;
     this.quizLoadStateSignal.set('loading');
     try {
-      this.quizStateSignal.set(await this.repository.startQuiz());
+      this.quizStateSignal.set(
+        await (day ? this.repository.startQuiz(day) : this.repository.startQuiz()),
+      );
       this.quizLoadStateSignal.set('ready');
     } catch (error) {
       this.quizStateSignal.set(null);
@@ -125,7 +135,9 @@ export class VocabularyFacade {
 
   async answerQuizItem(selectedOptionIndex: number): Promise<void> {
     this.quizStateSignal.set(
-      await this.repository.answerQuizItem(selectedOptionIndex),
+      await (this.quizDay
+        ? this.repository.answerQuizItem(selectedOptionIndex, this.quizDay)
+        : this.repository.answerQuizItem(selectedOptionIndex)),
     );
   }
 }

@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ReviewOutcome } from '../../../vocabulary/models/review-session.model';
 import { VocabularyFacade } from '../../../vocabulary/state/vocabulary.facade';
 import { LessonCalendarDay, Skill, SkillOverviewEntry } from '../../models/daily-focus.model';
@@ -23,6 +23,8 @@ function todayIso(): string {
 export class DailyOverviewComponent implements OnInit {
   readonly facade = inject(DailyLessonFacade);
   readonly vocabulary = inject(VocabularyFacade);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   readonly today = todayIso();
   // Speaking is no longer part of the daily rotation/checkpoint (it remains a
   // standalone feature reachable from the secondary-links nav) — see
@@ -33,9 +35,11 @@ export class DailyOverviewComponent implements OnInit {
   readonly addingRecommendation = signal<string | null>(null);
 
   async ngOnInit(): Promise<void> {
+    const routeDay = this.route.snapshot.queryParamMap.get('day');
+    const lessonDay = routeDay && routeDay !== this.today ? routeDay : undefined;
     await Promise.all([
-      this.facade.load(),
-      this.vocabulary.startOrResumeReview().catch(() => undefined),
+      this.facade.load(lessonDay),
+      this.vocabulary.startOrResumeReview(lessonDay).catch(() => undefined),
       this.vocabulary.loadRecommendations().catch(() => undefined),
     ]);
   }
@@ -72,7 +76,22 @@ export class DailyOverviewComponent implements OnInit {
 
   async selectDay(item: LessonCalendarDay): Promise<void> {
     if (item.status === 'inactive' || item.status === 'upcoming' || item.selected) return;
-    await this.facade.load(item.day === this.today ? undefined : item.day);
+    const day = item.day === this.today ? undefined : item.day;
+    this.vocabularyRevealed.set(false);
+    await Promise.all([
+      this.facade.load(day),
+      this.vocabulary.startOrResumeReview(day).catch(() => undefined),
+    ]);
+    await this.router.navigate([], { queryParams: { day: day ?? null } });
+  }
+
+  async backToToday(): Promise<void> {
+    this.vocabularyRevealed.set(false);
+    await Promise.all([
+      this.facade.load(),
+      this.vocabulary.startOrResumeReview().catch(() => undefined),
+    ]);
+    await this.router.navigate([], { queryParams: { day: null } });
   }
 
   calendarDayLabel(day: string): string {

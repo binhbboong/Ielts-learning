@@ -18,7 +18,7 @@
       <p class="eyebrow">IELTS Academic · Week {{ overview.week }}</p>
       <h2>{{ overview.phase.replace('_', ' ') }} · target band {{ overview.targetBand }}</h2>
       <p>
-        {{ overview.totalMinutes }} minutes today. Start with
+        {{ overview.totalMinutes }} minutes for this lesson. Start with
         {{ overview.reviewMinutes }} minutes of vocabulary, then
         {{ overview.totalMinutes - overview.reviewMinutes }} minutes of focused skills.
       </p>
@@ -32,7 +32,7 @@
           <p>Today's lesson comes first. Choose an orange day whenever you want to catch up.</p>
         </div>
         @if (overview.effectiveDay !== today) {
-          <button type="button" class="today-button" (click)="facade.load()">Back to today</button>
+          <button type="button" class="today-button" (click)="backToToday()">Back to today</button>
         }
       </header>
       <div class="lesson-calendar__weekdays" aria-hidden="true">
@@ -72,7 +72,7 @@
       <section class="catch-up-banner" data-testid="catch-up-banner" role="status">
         <strong>Make-up lesson for {{ calendarDayLabel(overview.effectiveDay) }}</strong>
         <p>
-          Complete the three focused skills below. Today's lesson stays available and is never locked.
+          Complete the vocabulary review and quiz plus the three focused skills below. Today's lesson stays available and is never locked.
         </p>
       </section>
     }
@@ -110,7 +110,7 @@
         <div>
           <p class="step-label">Start here · {{ overview.reviewMinutes }} min</p>
           <h2>Vocabulary warm-up</h2>
-          <p>Recall first, then continue into today's focused skills.</p>
+          <p>Recall first, then continue into this day's focused skills.</p>
         </div>
         <a routerLink="/vocabulary">Open word library</a>
       </header>
@@ -181,13 +181,13 @@
                 {{ review.summary.remembered }} remembered,
                 {{ review.summary.forgot }} to revisit.
               </p>
-              <a routerLink="/vocabulary/quiz">Take the checkpoint quiz</a>
+              <a routerLink="/vocabulary/quiz" [queryParams]="{ day: overview.effectiveDay }">Take the checkpoint quiz</a>
             </div>
           </div>
         } @else if (review.status === 'nothing_due') {
           <div class="recommendation-panel">
             <div>
-              <h3>No words are due today</h3>
+              <h3>No words are due for this day</h3>
               <p>Add one band-matched word now, then it will enter your review schedule.</p>
             </div>
             @if (vocabulary.recommendationsLoadState() === 'loading') {
@@ -218,7 +218,7 @@
     </section>
 
     @if (overview.skills.length === 0) {
-      <p role="status">Generating today's lesson...</p>
+      <p role="status">Generating the selected lesson...</p>
     } @else {
       <section class="skills-section">
         <header>

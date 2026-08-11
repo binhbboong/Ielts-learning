@@ -183,50 +183,57 @@ export class VocabularyRepository {
     };
   }
 
-  async startOrResumeReview(): Promise<ReviewSessionState> {
+  async startOrResumeReview(day?: string): Promise<ReviewSessionState> {
+    const query = day ? `?day=${encodeURIComponent(day)}` : '';
     return mapReviewState(
       await firstValueFrom(
-        this.api.post<any>('/api/vocabulary/review/start', {}),
+        this.api.post<any>(`/api/vocabulary/review/start${query}`, {}),
       ),
     );
   }
 
-  async getCurrentItem(): Promise<ReviewSessionState> {
+  async getCurrentItem(day?: string): Promise<ReviewSessionState> {
+    const query = day ? `?day=${encodeURIComponent(day)}` : '';
     return mapReviewState(
       await firstValueFrom(
-        this.api.get<any>('/api/vocabulary/review/current'),
+        this.api.get<any>(`/api/vocabulary/review/current${query}`),
       ),
     );
   }
 
   async assessCurrentItem(
     outcome: ReviewOutcome,
+    day?: string,
   ): Promise<ReviewSessionState> {
+    const query = day ? `?day=${encodeURIComponent(day)}` : '';
     return mapReviewState(
       await firstValueFrom(
-        this.api.post<any>('/api/vocabulary/review/current/assess', {
+        this.api.post<any>(`/api/vocabulary/review/current/assess${query}`, {
           outcome,
         }),
       ),
     );
   }
 
-  async startQuiz(): Promise<QuizState> {
+  async startQuiz(day?: string): Promise<QuizState> {
+    const query = day ? `?day=${encodeURIComponent(day)}` : '';
     return mapQuizState(
-      await firstValueFrom(this.api.post<any>('/api/vocabulary/quiz/start', {})),
+      await firstValueFrom(this.api.post<any>(`/api/vocabulary/quiz/start${query}`, {})),
     );
   }
 
-  async getQuizCurrent(): Promise<QuizState> {
+  async getQuizCurrent(day?: string): Promise<QuizState> {
+    const query = day ? `?day=${encodeURIComponent(day)}` : '';
     return mapQuizState(
-      await firstValueFrom(this.api.get<any>('/api/vocabulary/quiz/current')),
+      await firstValueFrom(this.api.get<any>(`/api/vocabulary/quiz/current${query}`)),
     );
   }
 
-  async answerQuizItem(selectedOptionIndex: number): Promise<QuizState> {
+  async answerQuizItem(selectedOptionIndex: number, day?: string): Promise<QuizState> {
+    const query = day ? `?day=${encodeURIComponent(day)}` : '';
     return mapQuizState(
       await firstValueFrom(
-        this.api.post<any>('/api/vocabulary/quiz/current/answer', {
+        this.api.post<any>(`/api/vocabulary/quiz/current/answer${query}`, {
           selected_option_index: selectedOptionIndex,
         }),
       ),

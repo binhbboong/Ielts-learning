@@ -277,6 +277,23 @@ def test_start_or_resume_snapshots_due_queue_without_rewriting_it(db_session, mo
     ]
 
 
+def test_review_sessions_can_stay_active_for_two_different_days(db_session, monkeypatch):
+    monkeypatch.setattr(vocabulary_service, "DAILY_REVIEW_TARGET", 1)
+    missed_day = date(2026, 7, 29)
+    today = date(2026, 7, 30)
+    db_session.add(_due_word("make-up", missed_day))
+    db_session.commit()
+
+    missed_session = start_or_resume_review(db_session, today=missed_day)
+    today_session = start_or_resume_review(db_session, today=today)
+
+    assert missed_session.id != today_session.id
+    assert missed_session.day == missed_day
+    assert today_session.day == today
+    assert get_current_item(db_session, today=missed_day).item.session_id == missed_session.id
+    assert get_current_item(db_session, today=today).item.session_id == today_session.id
+
+
 def test_resume_returns_exact_first_unassessed_item(db_session, monkeypatch):
     monkeypatch.setattr(vocabulary_service, "DAILY_REVIEW_TARGET", 3)
     today = date(2026, 7, 29)

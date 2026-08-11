@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { VocabularyFacade } from '../../state/vocabulary.facade';
 
 @Component({
@@ -12,10 +12,12 @@ import { VocabularyFacade } from '../../state/vocabulary.facade';
 })
 export class VocabularyQuizComponent {
   readonly facade = inject(VocabularyFacade);
+  private readonly route = inject(ActivatedRoute);
+  readonly day = this.route.snapshot.queryParamMap.get('day');
   readonly answering = signal(false);
 
   ngOnInit(): void {
-    void this.facade.startQuiz().catch(() => undefined);
+    void this.facade.startQuiz(this.day ?? undefined).catch(() => undefined);
   }
 
   async answer(index: number): Promise<void> {

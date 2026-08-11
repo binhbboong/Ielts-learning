@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -22,6 +24,13 @@ router = APIRouter(
     prefix="/api/vocabulary",
     dependencies=[Depends(require_learner)],
 )
+
+
+def _target_day(day: date | None) -> date:
+    target = day or learner_today()
+    if target > learner_today():
+        raise HTTPException(status_code=400, detail="Future vocabulary is not available yet")
+    return target
 
 
 def _unavailable(db: Session) -> None:
@@ -119,18 +128,35 @@ def add_recommendation(
 
 
 @router.post("/review/start")
-def start_review(db: Session = Depends(get_db), user: User = Depends(require_learner)):
+def start_review(
+    day: date | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_learner),
+):
     try:
-        service.start_or_resume_review(db, user_id=user.id)
-        return _current_body(service.get_current_item(db, user_id=user.id))
+        target = _target_day(day)
+        service.start_or_resume_review(db, today=target, user_id=user.id)
+        return _current_body(
+            service.get_current_item(db, today=target, user_id=user.id)
+        )
+    except HTTPException:
+        raise
     except Exception:
         _unavailable(db)
 
 
 @router.get("/review/current")
-def current_item(db: Session = Depends(get_db), user: User = Depends(require_learner)):
+def current_item(
+    day: date | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_learner),
+):
     try:
-        return _current_body(service.get_current_item(db, user_id=user.id))
+        return _current_body(
+            service.get_current_item(db, today=_target_day(day), user_id=user.id)
+        )
+    except HTTPException:
+        raise
     except Exception:
         _unavailable(db)
 
@@ -138,15 +164,19 @@ def current_item(db: Session = Depends(get_db), user: User = Depends(require_lea
 @router.post("/review/current/assess")
 def assess(
     payload: ReviewAssessmentRequest,
+    day: date | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(require_learner),
 ):
     try:
-        current = service.get_current_item(db, user_id=user.id)
+        target = _target_day(day)
+        current = service.get_current_item(db, today=target, user_id=user.id)
         if current.kind != "item":
             raise HTTPException(status_code=409, detail="No current review item")
         session_id = current.item.session_id
-        result = service.assess_current_item(db, payload.outcome, user_id=user.id)
+        result = service.assess_current_item(
+            db, payload.outcome, today=target, user_id=user.id
+        )
         if result.kind == "complete":
             return {
                 "status": "complete",
@@ -162,19 +192,37 @@ def assess(
 
 
 @router.post("/quiz/start")
-def start_quiz(db: Session = Depends(get_db), user: User = Depends(require_learner)):
+def start_quiz(
+    day: date | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_learner),
+):
     try:
-        today = learner_today()
-        return _quiz_body(service.get_or_start_quiz_item(db, day=today, user_id=user.id))
+        return _quiz_body(
+            service.get_or_start_quiz_item(
+                db, day=_target_day(day), user_id=user.id
+            )
+        )
+    except HTTPException:
+        raise
     except Exception:
         _unavailable(db)
 
 
 @router.get("/quiz/current")
-def quiz_current(db: Session = Depends(get_db), user: User = Depends(require_learner)):
+def quiz_current(
+    day: date | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_learner),
+):
     try:
-        today = learner_today()
-        return _quiz_body(service.get_or_start_quiz_item(db, day=today, user_id=user.id))
+        return _quiz_body(
+            service.get_or_start_quiz_item(
+                db, day=_target_day(day), user_id=user.id
+            )
+        )
+    except HTTPException:
+        raise
     except Exception:
         _unavailable(db)
 
@@ -182,15 +230,18 @@ def quiz_current(db: Session = Depends(get_db), user: User = Depends(require_lea
 @router.post("/quiz/current/answer")
 def quiz_answer(
     payload: QuizAnswerRequest,
+    day: date | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(require_learner),
 ):
     try:
-        today = learner_today()
+        target = _target_day(day)
         result = service.answer_current_quiz_item(
-            db, payload.selected_option_index, day=today, user_id=user.id
+            db, payload.selected_option_index, day=target, user_id=user.id
         )
         return _quiz_body(result)
+    except HTTPException:
+        raise
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except Exception:

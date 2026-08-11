@@ -301,7 +301,7 @@ def _daily_backfill_preview(
     # Mirrors start_or_resume_review's own gate: backfill happens at most once per
     # calendar day, so once today's session exists (active or completed) there's
     # nothing left to preview.
-    if _active_session(session, user_id) is None and _session_for_day(
+    if _active_session(session, user_id, today) is None and _session_for_day(
         session, user_id, today
     ) is not None:
         return 0, False
@@ -398,10 +398,14 @@ def reschedule(
     return next_index, current_date + timedelta(days=INTERVAL_DAYS[next_index])
 
 
-def _active_session(session: Session, user_id=LEGACY_USER_ID) -> ReviewSession | None:
+def _active_session(
+    session: Session, user_id=LEGACY_USER_ID, day: date | None = None
+) -> ReviewSession | None:
+    target_day = day or learner_today()
     return session.scalar(
         select(ReviewSession).where(
             ReviewSession.user_id == user_id,
+            ReviewSession.day == target_day,
             ReviewSession.completed_at.is_(None),
         )
     )
@@ -421,11 +425,11 @@ def _session_for_day(
 def start_or_resume_review(
     session: Session, *, today: date | None = None, user_id=LEGACY_USER_ID
 ) -> ReviewSession | None:
-    active = _active_session(session, user_id)
+    current_date = today or learner_today()
+    active = _active_session(session, user_id, current_date)
     if active is not None:
         return active
 
-    current_date = today or learner_today()
     if _session_for_day(session, user_id, current_date) is not None:
         # Today's session (whether due-only or backfilled) already ran and
         # completed — backfill happens at most once per calendar day.
@@ -465,7 +469,7 @@ def start_or_resume_review(
         session.commit()
     except IntegrityError:
         session.rollback()
-        active = _active_session(session, user_id)
+        active = _active_session(session, user_id, current_date)
         if active is None:
             raise
         return active
@@ -476,7 +480,8 @@ def start_or_resume_review(
 def get_current_item(
     session: Session, *, today: date | None = None, user_id=LEGACY_USER_ID
 ) -> CurrentItemResult:
-    active = _active_session(session, user_id)
+    current_date = today or learner_today()
+    active = _active_session(session, user_id, current_date)
     if active is None:
         summary = get_due_summary(session, today=today, user_id=user_id)
         nothing_to_review = summary.total_due == 0 and summary.backfill_count == 0
@@ -523,8 +528,9 @@ def assess_current_item(
     today: date | None = None,
     user_id=LEGACY_USER_ID,
 ) -> CurrentItemResult:
-    active = _active_session(session, user_id)
-    current = get_current_item(session, today=today, user_id=user_id)
+    current_date = today or learner_today()
+    active = _active_session(session, user_id, current_date)
+    current = get_current_item(session, today=current_date, user_id=user_id)
     if active is None or current.kind != "item" or current.item is None:
         raise ValueError("There is no current review item")
 
@@ -533,7 +539,7 @@ def assess_current_item(
     item.outcome = outcome.value
     item.assessed_at = datetime.now(timezone.utc)
     word.interval_index, word.next_due_date = reschedule(
-        word.interval_index, outcome, today=today
+        word.interval_index, outcome, today=current_date
     )
     word.last_reviewed_at = item.assessed_at
     session.flush()
@@ -550,7 +556,7 @@ def assess_current_item(
         return CurrentItemResult(kind="complete")
 
     session.commit()
-    return get_current_item(session, today=today, user_id=user_id)
+    return get_current_item(session, today=current_date, user_id=user_id)
 
 
 def get_review_complete_summary(

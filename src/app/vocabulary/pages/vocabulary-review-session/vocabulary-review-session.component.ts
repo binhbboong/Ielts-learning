@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AddVocabularyWordPanelComponent } from '../../components/add-vocabulary-word-panel/add-vocabulary-word-panel.component';
 import { ReviewOutcome } from '../../models/review-session.model';
 import { VocabularyFacade } from '../../state/vocabulary.facade';
@@ -14,13 +14,15 @@ import { VocabularyFacade } from '../../state/vocabulary.facade';
 })
 export class VocabularyReviewSessionComponent {
   readonly facade = inject(VocabularyFacade);
+  private readonly route = inject(ActivatedRoute);
+  readonly day = this.route.snapshot.queryParamMap.get('day');
   readonly revealed = signal(false);
   readonly addPanelOpen = signal(false);
   readonly assessing = signal(false);
   readonly wordAddedMessage = signal('');
 
   ngOnInit(): void {
-    void this.facade.startOrResumeReview().catch(() => undefined);
+    void this.facade.startOrResumeReview(this.day ?? undefined).catch(() => undefined);
   }
 
   reveal(): void {
