@@ -132,6 +132,19 @@ describe('DailyOverviewComponent', () => {
     ]);
   });
 
+  it('makes the vocabulary checkpoint open the selected make-up day', async () => {
+    const { fixture, component } = await setUp();
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="checkpoint-link-vocabulary"]')
+        .getAttribute('href'),
+    ).toBe(`/vocabulary/review?day=${emptyOverview.effectiveDay}`);
+  });
+
   it('offers a standalone link to Speaking practice outside the daily skill grid', async () => {
     const { fixture, component } = await setUp();
     await component.ngOnInit();

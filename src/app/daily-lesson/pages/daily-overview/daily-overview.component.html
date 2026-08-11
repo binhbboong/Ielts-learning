@@ -84,14 +84,32 @@
       </div>
       <ul class="checkpoint-summary__list">
         @for (skill of skillOrder; track skill) {
-          <li [class.checkpoint-summary__item--passed]="overview.checkpoint.skills[skill]">
-            {{ skill }}
-            <span aria-hidden="true">{{ overview.checkpoint.skills[skill] ? '✓' : '·' }}</span>
-          </li>
+          @if (skillEntry(overview.skills, skill); as entry) {
+            <li>
+              <a
+                [class.checkpoint-summary__item--passed]="overview.checkpoint.skills[skill]"
+                [routerLink]="skillRoute(entry)"
+                [queryParams]="skillQueryParams(entry)"
+                [attr.data-testid]="'checkpoint-link-' + skill"
+                [attr.aria-label]="'Open ' + skill + ' lesson for ' + overview.effectiveDay"
+              >
+                {{ skill }}
+                <span aria-hidden="true">{{ overview.checkpoint.skills[skill] ? '✓' : '·' }}</span>
+              </a>
+            </li>
+          }
         }
-        <li [class.checkpoint-summary__item--passed]="overview.checkpoint.vocabularyQuiz">
-          vocabulary quiz
-          <span aria-hidden="true">{{ overview.checkpoint.vocabularyQuiz ? '✓' : '·' }}</span>
+        <li>
+          <a
+            routerLink="/vocabulary/review"
+            [queryParams]="{ day: overview.effectiveDay }"
+            [class.checkpoint-summary__item--passed]="overview.checkpoint.vocabularyQuiz"
+            data-testid="checkpoint-link-vocabulary"
+            [attr.aria-label]="'Open vocabulary review for ' + overview.effectiveDay"
+          >
+            vocabulary
+            <span aria-hidden="true">{{ overview.checkpoint.vocabularyQuiz ? '✓' : '·' }}</span>
+          </a>
         </li>
       </ul>
       @if (overview.checkpoint.allPassed) {
@@ -100,7 +118,7 @@
         </p>
       } @else {
         <p class="checkpoint-summary__message">
-          Incomplete lessons remain in the calendar so you can return anytime.
+          Select an incomplete checkpoint above to continue that lesson.
         </p>
       }
     </section>

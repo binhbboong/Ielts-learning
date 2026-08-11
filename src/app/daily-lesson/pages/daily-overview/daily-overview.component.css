@@ -208,7 +208,7 @@
   list-style: none;
 }
 
-.checkpoint-summary__list li {
+.checkpoint-summary__list a {
   display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -217,7 +217,7 @@
   background: #edf1f0;
   color: #61716c;
   font-weight: 700;
-  text-transform: capitalize;
+  text-decoration: none;
 }
 
 .checkpoint-summary__item--passed {

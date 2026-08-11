@@ -70,6 +70,10 @@ export class DailyOverviewComponent implements OnInit {
     return entry.skill === 'writing' ? { day: entry.day } : null;
   }
 
+  skillEntry(entries: SkillOverviewEntry[], skill: Skill): SkillOverviewEntry | undefined {
+    return entries.find((entry) => entry.skill === skill);
+  }
+
   async retry(skill: string, day: string): Promise<void> {
     await this.facade.retry(skill, day);
   }
