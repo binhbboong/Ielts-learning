@@ -5,6 +5,7 @@ from app.ai.schemas import (
     ChatRequest,
     ListeningScriptGenerationRequest,
     ReadingExerciseGenerationRequest,
+    WritingEvaluationRequest,
 )
 
 
@@ -17,8 +18,10 @@ class _FakeResponses:
     def __init__(self, response_text: str = "", error: Exception | None = None):
         self._response_text = response_text
         self._error = error
+        self.last_kwargs = None
 
     def create(self, **kwargs):
+        self.last_kwargs = kwargs
         if self._error:
             raise self._error
         return _FakeResponse(self._response_text)
@@ -99,3 +102,41 @@ def test_openai_provider_generates_chat_response():
 
     assert result.status == "ok"
     assert result.message == "An IELTS practice prompt"
+
+
+def test_openai_writing_evaluation_recovers_wrapped_overall_band():
+    criterion = {
+        "band_score": 4.5,
+        "feedback": "Specific feedback about 'I go school'.",
+        "strengths": ["The meaning is clear."],
+        "weaknesses": ["A preposition is missing."],
+    }
+    payload = {
+        "task_response": criterion,
+        "coherence_and_cohesion": criterion,
+        "lexical_resource": criterion,
+        "grammatical_range_and_accuracy": criterion,
+        "overall_band": {"band_score": 4.5, "feedback": "Accidentally wrapped."},
+        "corrections": [{
+            "original": "I go school.",
+            "corrected": "I go to school.",
+            "explanation": "Use the preposition 'to'.",
+        }],
+    }
+    client = _FakeOpenAIClient(json.dumps(payload))
+    provider = OpenAIProvider(client=client)
+
+    result = provider.evaluate_writing(WritingEvaluationRequest(
+        response_text="I go school.",
+        task_type="task2",
+        question_text="Write one sentence about your routine.",
+        target_band=4.5,
+        phase="foundation",
+        exercise_type="sentence_building",
+        practice_level=1,
+    ))
+
+    assert result.status == "ok"
+    assert result.overall_band == 4.5
+    prompt = client.responses.last_kwargs["input"]
+    assert "overall_band MUST be one JSON number" in prompt

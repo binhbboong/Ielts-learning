@@ -51,7 +51,8 @@ Response: {request.response_text}
 Return JSON only with keys: task_response, coherence_and_cohesion, lexical_resource,
 grammatical_range_and_accuracy, overall_band, corrections. Each criterion must contain
 band_score, feedback, strengths, weaknesses and cite exact submitted wording. Corrections must
-contain at least one object with original, corrected, explanation."""
+contain at least one object with original, corrected, explanation. The four criterion fields are
+objects, but overall_band MUST be one JSON number such as 4.5 — never an object or string."""
         try:
             return WritingEvaluationResult(
                 status="ok", **self._generate_json(prompt, 2500)

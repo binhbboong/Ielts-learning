@@ -124,6 +124,44 @@ def test_writing_result_discriminates_complete_success_from_error():
         WritingEvaluationResult(status="error")
 
 
+def test_writing_result_recovers_overall_band_wrapped_in_ai_feedback_object():
+    wrapped = WritingEvaluationResult(
+        status="ok",
+        task_response=_criterion(4.5),
+        coherence_and_cohesion=_criterion(4.5),
+        lexical_resource=_criterion(4.5),
+        grammatical_range_and_accuracy=_criterion(4.5),
+        overall_band={
+            "band_score": 4.5,
+            "feedback": "The model accidentally returned a criterion object.",
+        },
+        corrections=[
+            SentenceCorrection(
+                original="I go school.",
+                corrected="I go to school.",
+                explanation="Use the preposition 'to'.",
+            )
+        ],
+    )
+
+    assert wrapped.overall_band == 4.5
+
+
+def test_writing_result_rejects_ambiguous_overall_band_object():
+    with pytest.raises(ValidationError, match="does not contain a numeric score"):
+        WritingEvaluationResult(
+            status="ok",
+            task_response=_criterion(),
+            coherence_and_cohesion=_criterion(),
+            lexical_resource=_criterion(),
+            grammatical_range_and_accuracy=_criterion(),
+            overall_band={"feedback": "No score present"},
+            corrections=[
+                SentenceCorrection(original="A", corrected="B", explanation="C")
+            ],
+        )
+
+
 def test_stub_request_result_pairs_are_typed_and_status_discriminated():
     speaking_request = SpeakingEvaluationRequest(
         transcript="I would like to describe...",

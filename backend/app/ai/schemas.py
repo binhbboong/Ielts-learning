@@ -88,6 +88,22 @@ class WritingEvaluationResult(BaseModel):
     overall_band: float | None = Field(default=None, ge=0, le=9)
     corrections: list[SentenceCorrection] = Field(default_factory=list)
 
+    @field_validator("overall_band", mode="before")
+    @classmethod
+    def normalize_overall_band(cls, value):
+        """Recover a numeric score when an AI wraps it in a criterion-like object.
+
+        Providers are instructed to return a scalar, but generative models can still
+        produce ``{"band_score": 4.5, ...}``. The score is unambiguous in that shape,
+        so accepting it avoids discarding an otherwise complete evaluation.
+        """
+        if isinstance(value, dict):
+            for key in ("band_score", "overall_band", "score", "value"):
+                if key in value:
+                    return value[key]
+            raise ValueError("overall_band object does not contain a numeric score")
+        return value
+
     @model_validator(mode="after")
     def validate_status_shape(self):
         feedback = (
