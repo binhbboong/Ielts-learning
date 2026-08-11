@@ -295,6 +295,56 @@ def _backfill_daily_words(
     return created
 
 
+def _progressive_make_up_words(
+    session: Session,
+    user_id,
+    needed: int,
+    *,
+    today: date,
+) -> list[VocabularyWord]:
+    """Create fresh words for a missed lesson before reusing library words."""
+    if needed <= 0:
+        return []
+    _week, _phase, current_band, _cefr = learner_level_context(
+        session, user_id, today=today
+    )
+    existing = {
+        value.casefold()
+        for value in session.scalars(
+            select(VocabularyWord.word).where(VocabularyWord.user_id == user_id)
+        )
+    }
+    created: list[VocabularyWord] = []
+    for band in sorted(_LEVEL_VOCABULARY):
+        if band < current_band:
+            continue
+        cefr = _cefr_for_band(band)
+        for word, meaning, example, topic in _LEVEL_VOCABULARY[band]:
+            if word.casefold() in existing:
+                continue
+            vocabulary_word = VocabularyWord(
+                user_id=user_id,
+                word=word,
+                meaning=meaning,
+                example=example,
+                topic=topic,
+                target_band=band,
+                cefr_level=cefr,
+                source="make_up_backfill",
+                interval_index=0,
+                next_due_date=today,
+            )
+            session.add(vocabulary_word)
+            created.append(vocabulary_word)
+            existing.add(word.casefold())
+            if len(created) == needed:
+                session.flush()
+                return created
+    if created:
+        session.flush()
+    return created
+
+
 def _daily_backfill_preview(
     session: Session, user_id, today: date, total_due: int
 ) -> tuple[int, bool]:
@@ -428,12 +478,59 @@ def get_review_session_for_day(
     return _session_for_day(session, user_id, day)
 
 
+def _replace_untouched_duplicate_make_up_words(
+    session: Session,
+    review_session: ReviewSession,
+    *,
+    today: date,
+    user_id,
+) -> None:
+    """Upgrade make-up queues created by the old reuse-only behavior."""
+    if today >= learner_today():
+        return
+    items = list(
+        session.scalars(
+            select(ReviewSessionItem)
+            .where(ReviewSessionItem.session_id == review_session.id)
+            .order_by(ReviewSessionItem.position)
+        )
+    )
+    if not items or any(item.outcome is not None for item in items):
+        return
+    used_on_other_days = set(
+        session.scalars(
+            select(ReviewSessionItem.word_id)
+            .join(ReviewSession)
+            .where(
+                ReviewSession.user_id == user_id,
+                ReviewSession.id != review_session.id,
+            )
+        )
+    )
+    duplicates = [item for item in items if item.word_id in used_on_other_days]
+    replacements = _progressive_make_up_words(
+        session, user_id, len(duplicates), today=today
+    )
+    if not replacements:
+        return
+    for item, replacement in zip(duplicates, replacements):
+        item.word_id = replacement.id
+    session.commit()
+    session.refresh(review_session)
+
+
 def start_or_resume_review(
     session: Session, *, today: date | None = None, user_id=LEGACY_USER_ID
 ) -> ReviewSession | None:
     current_date = today or learner_today()
     active = _active_session(session, user_id, current_date)
     if active is not None:
+        _replace_untouched_duplicate_make_up_words(
+            session,
+            active,
+            today=current_date,
+            user_id=user_id,
+        )
         return active
 
     if _session_for_day(session, user_id, current_date) is not None:
@@ -456,10 +553,17 @@ def start_or_resume_review(
     )
     queue_words = due_words + backfilled
 
-    # A missed lesson must remain actionable even when none of the learner's
-    # existing words were due on that historical date. Reuse library words to
-    # create a stable make-up queue; today's queue keeps normal SRS semantics.
+    # Missed lessons should receive fresh, progressively harder vocabulary
+    # before falling back to reusable library words. Today's queue keeps normal
+    # SRS semantics.
     remaining = DAILY_REVIEW_TARGET - len(queue_words)
+    if current_date < learner_today() and remaining > 0:
+        progressive = _progressive_make_up_words(
+            session, user_id, remaining, today=current_date
+        )
+        queue_words.extend(progressive)
+        remaining = DAILY_REVIEW_TARGET - len(queue_words)
+
     if current_date < learner_today() and remaining > 0:
         queued_ids = [word.id for word in queue_words]
         make_up_query = select(VocabularyWord).where(

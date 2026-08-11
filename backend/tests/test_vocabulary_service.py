@@ -4,6 +4,7 @@ import pytest
 
 from app.core import clock
 from app.models.vocabulary import (
+    ReviewSession,
     ReviewSessionItem,
     VocabularyQuizItem,
     VocabularyWord,
@@ -295,7 +296,7 @@ def test_review_sessions_can_stay_active_for_two_different_days(db_session, monk
     assert get_current_item(db_session, today=today).item.session_id == today_session.id
 
 
-def test_missed_day_reuses_existing_library_words_when_nothing_was_due(
+def test_missed_day_prefers_fresh_progressive_words_over_reusing_library(
     db_session, monkeypatch
 ):
     monkeypatch.setattr(vocabulary_service, "DAILY_REVIEW_TARGET", 1)
@@ -316,7 +317,55 @@ def test_missed_day_reuses_existing_library_words_when_nothing_was_due(
     assert review_session is not None
     current = get_current_item(db_session, today=missed_day)
     assert current.kind == "item"
-    assert current.item.word == "reusable"
+    assert current.item.word != "reusable"
+    stored = db_session.get(VocabularyWord, current.item.word_id)
+    assert stored.source == "make_up_backfill"
+    assert stored.target_band == 4.5
+
+
+def test_untouched_old_duplicate_queue_is_replaced_on_resume(
+    db_session, monkeypatch
+):
+    monkeypatch.setattr(vocabulary_service, "DAILY_REVIEW_TARGET", 1)
+    missed_day = clock.learner_today() - timedelta(days=1)
+    word = VocabularyWord(
+        word="duplicate",
+        meaning="already used on another day",
+        interval_index=2,
+        next_due_date=missed_day + timedelta(days=30),
+    )
+    previous = ReviewSession(
+        day=missed_day - timedelta(days=1),
+        completed_at=datetime.now(timezone.utc),
+    )
+    active = ReviewSession(day=missed_day)
+    db_session.add_all([word, previous, active])
+    db_session.flush()
+    db_session.add_all(
+        [
+            ReviewSessionItem(
+                session_id=previous.id,
+                word_id=word.id,
+                position=0,
+                outcome="remembered",
+                assessed_at=datetime.now(timezone.utc),
+            ),
+            ReviewSessionItem(
+                session_id=active.id,
+                word_id=word.id,
+                position=0,
+            ),
+        ]
+    )
+    db_session.commit()
+
+    resumed = start_or_resume_review(db_session, today=missed_day)
+    current = get_current_item(db_session, today=missed_day)
+
+    assert resumed.id == active.id
+    assert current.item.word != "duplicate"
+    replacement = db_session.get(VocabularyWord, current.item.word_id)
+    assert replacement.source == "make_up_backfill"
 
 
 def test_resume_returns_exact_first_unassessed_item(db_session, monkeypatch):
